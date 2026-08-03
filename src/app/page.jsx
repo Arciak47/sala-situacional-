@@ -50,7 +50,7 @@ export default function Home() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [activeTab, setActiveTab] = useState('forms'); // will be overridden by localStorage on mount
+  const [activeTab, setActiveTab] = useState(''); // starts empty to prevent premature localStorage overwrite
   const [selectedSubmission, setSelectedSubmission] = useState(null);
 
   const [loginError, setLoginError] = useState('');
@@ -89,11 +89,20 @@ export default function Home() {
   // ── Firestore real-time subscriptions & localStorage initialization ──
   useEffect(() => {
     initializeStorage();
-    setCurrentUser(getStoredSession());
+    const session = getStoredSession();
+    setCurrentUser(session);
     setUsers(getStoredUsers());
     setSubmissions(getStoredSubmissions());
     setMessages(getStoredMessages());
     setAuditLogs(getStoredAuditLogs());
+
+    // Restore active tab or default to 'dashboard' if logged in, otherwise 'forms'
+    if (session) {
+      const savedTab = localStorage.getItem('sdm_activeTab');
+      setActiveTab(savedTab || 'dashboard');
+    } else {
+      setActiveTab('forms');
+    }
 
     // Subscribe to Firestore collections in real-time
     const unsubUsers = subscribeUsers((data) => {
@@ -122,16 +131,6 @@ export default function Home() {
   // ── State persistence & sync ──
   useEffect(() => {
     saveStoredSession(currentUser);
-    // Only redirect to dashboard on a fresh login (not on F5 restore)
-    // We use a flag: if currentUser just became non-null AND there's no saved tab, go to dashboard
-    if (currentUser) {
-      const savedTab = localStorage.getItem('sdm_activeTab');
-      if (!savedTab) {
-        setActiveTab('dashboard');
-      } else {
-        setActiveTab(savedTab);
-      }
-    }
   }, [currentUser]);
 
   // ── Persist activeTab so F5 restores the same section ──
@@ -215,7 +214,7 @@ export default function Home() {
       setSelId(null);
       setEditingId(null);
     }
-  }, [activeTab]); // eslint-disable-line
+  }, [activeTab]);
 
   // ── Audit log helper ──
   const addLog = (user, action, details, type = 'info') => {
@@ -237,6 +236,7 @@ export default function Home() {
   // ── Auth Handlers ──
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
+    setActiveTab('dashboard'); // fresh logins always start on dashboard
     addLog(user.email, 'Inicio de Sesión', `Ingreso como ${user.role}`, 'success');
   };
 
