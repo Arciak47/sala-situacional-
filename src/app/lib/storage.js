@@ -1,6 +1,6 @@
 import { INITIAL_USERS, INITIAL_LOGS, INITIAL_MESSAGES } from './constants';
 
-const VERSION = 'v7-canva-chat';
+const VERSION = 'v8-username-login';
 
 export function initializeStorage() {
   if (typeof window === 'undefined') return;

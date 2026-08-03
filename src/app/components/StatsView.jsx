@@ -189,6 +189,7 @@ export default function StatsView({ currentUser, stats, allStats, submissions = 
               <table className="w-full text-xs text-left">
                 <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-500 font-bold border-b dark:border-slate-800">
                   <tr>
+                    <th className="py-3.5 px-4">Sala de Pertenencia</th>
                     <th className="py-3.5 px-4">Analista</th>
                     <th className="py-3.5 px-4 text-center">Total Enviados</th>
                     <th className="py-3.5 px-4 text-center">Hoy</th>
@@ -200,9 +201,16 @@ export default function StatsView({ currentUser, stats, allStats, submissions = 
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {allStats.perAnalyst.map((a) => (
                     <tr key={a.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                      <td className="py-4 px-4 font-black text-blue-600 dark:text-blue-400 text-xs">
+                        🏢 {a.sala || 'Sala Comuna'}
+                      </td>
                       <td className="py-4 px-4">
-                        <div className="font-bold text-slate-900 dark:text-white">{a.name}</div>
-                        <div className="text-[10px] text-slate-500">{a.email}</div>
+                        <div className="font-bold text-slate-900 dark:text-white">
+                          {a.name}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                          @{a.username || a.email?.split('@')[0]} • {a.email}
+                        </div>
                       </td>
                       <td className="py-4 px-4 text-center font-black text-sm text-red-600 dark:text-red-400">
                         {a.total}

@@ -6,36 +6,31 @@ export const CW = 1200;
 export const CH = 750;
 export const HR = 6; // Handle radius in px
 
+export const SALAS_DISPONIBLES = [
+  'Sala Comuna',
+  'Sala CLEBG',
+  'Sala Posicionamiento de Gestión',
+  'Sala Principal',
+];
+
 export const INITIAL_USERS = [
   {
     id: 'usr-admin-01',
+    username: 'admin',
+    nombres: 'Administrador',
+    apellidos: 'Principal',
     name: 'Administrador Principal',
+    sala: 'Sala Principal',
+    salaCodigo: 'Sala Principal 01',
+    salaEtiqueta: 'Sala Principal 01 - Administrador Principal',
+    edad: '35',
+    fechaNacimiento: '1991-01-01',
     email: 'admin@monitoreo.com',
     password: 'admin123',
     role: 'Administrador',
     department: 'Gerencia de Sala Situacional',
     status: 'Activo',
     createdAt: '2026-07-01',
-  },
-  {
-    id: 'usr-analyst-01',
-    name: 'María García',
-    email: 'analista@monitoreo.com',
-    password: 'analista123',
-    role: 'Analista',
-    department: 'Análisis de Redes Sociales',
-    status: 'Activo',
-    createdAt: '2026-07-10',
-  },
-  {
-    id: 'usr-super-01',
-    name: 'Carlos Mendoza',
-    email: 'supervisor@monitoreo.com',
-    password: 'supervisor123',
-    role: 'Supervisor',
-    department: 'Supervisión de Sala Situacional',
-    status: 'Activo',
-    createdAt: '2026-07-05',
   },
 ];
 
@@ -50,38 +45,7 @@ export const INITIAL_LOGS = [
   },
 ];
 
-export const INITIAL_MESSAGES = [
-  {
-    id: 'msg-101',
-    chatId: 'usr-admin-01_usr-analyst-01',
-    emisorId: 'usr-analyst-01',
-    emisorNombre: 'María García',
-    receptorId: 'usr-admin-01',
-    mensaje: 'Hola Administrador, acabo de enviar el reporte de Juan Germán Roscio.',
-    fecha: new Date(Date.now() - 3600000 * 2).toISOString(),
-    leido: true,
-  },
-  {
-    id: 'msg-102',
-    chatId: 'usr-admin-01_usr-analyst-01',
-    emisorId: 'usr-admin-01',
-    emisorNombre: 'Administrador Principal',
-    receptorId: 'usr-analyst-01',
-    mensaje: 'Excelente María, revisaremos la información oportunamente.',
-    fecha: new Date(Date.now() - 3600000 * 1).toISOString(),
-    leido: true,
-  },
-  {
-    id: 'msg-103',
-    chatId: 'usr-admin-01_usr-super-01',
-    emisorId: 'usr-super-01',
-    emisorNombre: 'Carlos Mendoza',
-    receptorId: 'usr-admin-01',
-    mensaje: 'Buenas tardes. Todo conforme con el flujo de supervisión.',
-    fecha: new Date(Date.now() - 1800000).toISOString(),
-    leido: false,
-  },
-];
+export const INITIAL_MESSAGES = [];
 
 export const EMPTY_REPORT = {
   municipio: '',

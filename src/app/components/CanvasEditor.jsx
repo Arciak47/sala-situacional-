@@ -22,6 +22,9 @@ export default function CanvasEditor({
   setSelId,
   editingId,
   setEditingId,
+  editText,
+  setEditText,
+  commitTextEdit,
   imageCache,
   setImageCache,
   setOverlayRect,
@@ -220,7 +223,7 @@ export default function CanvasEditor({
 
   // ── Mouse / touch events ──
   const handleMouseDown = (e) => {
-    if (editingId) setEditingId(null);
+    if (editingId && commitTextEdit) commitTextEdit();
     const pos = getCanvasPos(e);
 
     // Check handle hit on current selection
@@ -299,6 +302,12 @@ export default function CanvasEditor({
       .reverse()
       .find((el) => el.type === 'text' && !el.locked && hitTest(el, pos.x, pos.y));
     if (!hit) return;
+
+    if (editingId && editingId !== hit.id && commitTextEdit) {
+      commitTextEdit();
+    }
+    if (setEditText) setEditText(hit.text || '');
+
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     const sx = rect.width / CW,
@@ -386,6 +395,9 @@ export default function CanvasEditor({
         return;
       }
       const title = `Reporte_${(reportData.municipio || 'Unico').replace(/\s+/g, '_')}`;
+      const linkUrl = (reportData.enlace || '').trim();
+      const hasLink = linkUrl.startsWith('http://') || linkUrl.startsWith('https://');
+
       win.document.write(`
         <!DOCTYPE html>
         <html>
@@ -393,12 +405,21 @@ export default function CanvasEditor({
             <title>${title}</title>
             <style>
               @page { size: A4 landscape; margin: 0; }
-              body { margin: 0; padding: 0; background: #fff; display: flex; align-items: center; justify-content: center; height: 100vh; }
-              img { max-width: 98vw; max-height: 98vh; object-fit: contain; }
+              body { margin: 0; padding: 0; background: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: system-ui, sans-serif; }
+              img { max-width: 98vw; max-height: 86vh; object-fit: contain; }
+              .link-banner { margin-top: 10px; background: #2563eb; color: #ffffff; padding: 8px 24px; border-radius: 30px; font-weight: 800; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+              .link-banner a { color: #ffffff; text-decoration: underline; font-weight: 900; font-size: 14px; }
             </style>
           </head>
           <body>
-            <img src="${imgData}" onload="setTimeout(() => { window.print(); window.close(); }, 300);" />
+            <img src="${imgData}" onload="setTimeout(() => { window.print(); window.close(); }, 400);" />
+            ${
+              hasLink
+                ? `<div class="link-banner">
+                    🔗 Enlace Interactivo: <a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${linkUrl}</a>
+                   </div>`
+                : ''
+            }
           </body>
         </html>
       `);

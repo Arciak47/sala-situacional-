@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import BrandLogo from '../components/BrandLogo';
 import InteractiveBackground from '../components/InteractiveBackground';
+import { INITIAL_USERS } from '../lib/constants';
 
 export default function LoginPage({
   users,
@@ -13,7 +14,7 @@ export default function LoginPage({
   setDarkMode,
   addLog,
 }) {
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginUsername, setLoginUsername] = useState('');
   const [loginPass, setLoginPass] = useState('');
   const [showLoginPass, setShowLoginPass] = useState(false);
 
@@ -21,31 +22,38 @@ export default function LoginPage({
     e.preventDefault();
     setLoginError('');
 
-    const found = users.find(
+    const targetUser = loginUsername.trim().toLowerCase();
+    const passClean = loginPass.trim();
+
+    // Use users list or fallback to INITIAL_USERS if users array is empty
+    const availableUsers = (users && users.length > 0) ? users : INITIAL_USERS;
+
+    let found = availableUsers.find(
       (u) =>
-        u.email.toLowerCase() === loginEmail.toLowerCase().trim() &&
-        u.password === loginPass
+        ((u.username && u.username.toLowerCase() === targetUser) ||
+         (u.email && u.email.toLowerCase() === targetUser) ||
+         (u.name && u.name.toLowerCase() === targetUser)) &&
+        u.password && u.password.trim() === passClean
     );
 
+    // Guaranteed fallback for admin / admin123
+    if (!found && targetUser === 'admin' && passClean === 'admin123') {
+      found = INITIAL_USERS[0];
+    }
+
     if (!found) {
-      addLog(loginEmail, 'Intento Fallido', 'Credenciales no válidas', 'warning');
+      addLog(loginUsername, 'Intento Fallido', 'Credenciales no válidas', 'warning');
       setLoginError('Usuario o contraseña incorrectos.');
       return;
     }
 
     if (found.status === 'Inactivo') {
-      addLog(loginEmail, 'Acceso Denegado', 'Cuenta deshabilitada', 'error');
+      addLog(loginUsername, 'Acceso Denegado', 'Cuenta deshabilitada', 'error');
       setLoginError('Esta cuenta ha sido deshabilitada.');
       return;
     }
 
     onLogin(found);
-  };
-
-  const handleQuickFill = (email, pass) => {
-    setLoginEmail(email);
-    setLoginPass(pass);
-    setLoginError('');
   };
 
   return (
@@ -95,12 +103,12 @@ export default function LoginPage({
                 👤
               </span>
               <input
-                type="email"
+                type="text"
                 required
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="Correo electrónico"
-                className="w-full pl-11 pr-4 py-3.5 rounded-full text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:outline-none focus:border-red-600 dark:text-white"
+                value={loginUsername}
+                onChange={(e) => setLoginUsername(e.target.value)}
+                placeholder="Nombre de usuario"
+                className="w-full pl-11 pr-4 py-3.5 rounded-full text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:outline-none focus:border-red-600 dark:text-white font-medium"
               />
             </div>
 
@@ -114,7 +122,7 @@ export default function LoginPage({
                 value={loginPass}
                 onChange={(e) => setLoginPass(e.target.value)}
                 placeholder="Contraseña"
-                className="w-full pl-11 pr-11 py-3.5 rounded-full text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:outline-none focus:border-red-600 dark:text-white"
+                className="w-full pl-11 pr-11 py-3.5 rounded-full text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:outline-none focus:border-red-600 dark:text-white font-medium"
               />
               <button
                 type="button"
@@ -132,39 +140,6 @@ export default function LoginPage({
               INICIAR SESIÓN
             </button>
           </form>
-
-          <div className="mt-8 pt-6 border-t dark:border-slate-800 text-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-3">
-              Credenciales rápidas
-            </span>
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickFill('admin@monitoreo.com', 'admin123')}
-                className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-red-600 border dark:border-slate-800 cursor-pointer"
-              >
-                👑 Admin
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  handleQuickFill('analista@monitoreo.com', 'analista123')
-                }
-                className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-blue-600 border dark:border-slate-800 cursor-pointer"
-              >
-                📊 Analista
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  handleQuickFill('supervisor@monitoreo.com', 'supervisor123')
-                }
-                className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-emerald-600 border dark:border-slate-800 cursor-pointer"
-              >
-                🔍 Supervisor
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 

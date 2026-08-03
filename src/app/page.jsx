@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Toast from './components/Toast';
 import UserModal from './components/UserModal';
+import EditUserModal from './components/EditUserModal';
 import TextOverlay from './components/TextOverlay';
 import LoginPage from './login/page.jsx';
 import AdministradorView from './administrador/page.jsx';
@@ -34,7 +35,9 @@ import {
   subscribeAuditLogs,
   saveUserToFirestore,
   saveUsersBatchToFirestore,
+  deleteUserFromFirestore,
   addSubmissionToFirestore,
+  deleteSubmissionFromFirestore,
   addMessageToFirestore,
   updateMessageInFirestore,
   addAuditLogToFirestore,
@@ -52,8 +55,15 @@ export default function Home() {
 
   const [loginError, setLoginError] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState({
-    name: '',
+    username: '',
+    nombres: '',
+    apellidos: '',
+    sala: 'Sala Comuna',
+    edad: '',
+    fechaNacimiento: '',
+    createdAt: new Date().toISOString().split('T')[0],
     email: '',
     password: '',
     role: 'Analista',
@@ -80,12 +90,24 @@ export default function Home() {
   useEffect(() => {
     initializeStorage();
     setCurrentUser(getStoredSession());
+    setUsers(getStoredUsers());
+    setSubmissions(getStoredSubmissions());
+    setMessages(getStoredMessages());
+    setAuditLogs(getStoredAuditLogs());
 
     // Subscribe to Firestore collections in real-time
-    const unsubUsers = subscribeUsers((data) => setUsers(data));
-    const unsubSubs = subscribeSubmissions((data) => setSubmissions(data));
-    const unsubMsgs = subscribeMessages((data) => setMessages(data));
-    const unsubLogs = subscribeAuditLogs((data) => setAuditLogs(data));
+    const unsubUsers = subscribeUsers((data) => {
+      if (data && data.length > 0) setUsers(data);
+    });
+    const unsubSubs = subscribeSubmissions((data) => {
+      if (data) setSubmissions(data);
+    });
+    const unsubMsgs = subscribeMessages((data) => {
+      if (data) setMessages(data);
+    });
+    const unsubLogs = subscribeAuditLogs((data) => {
+      if (data) setAuditLogs(data);
+    });
 
     return () => {
       unsubUsers();
@@ -95,13 +117,29 @@ export default function Home() {
     };
   }, []);
 
-  // ── Session persistence ──
+  // ── State persistence & sync ──
   useEffect(() => {
     saveStoredSession(currentUser);
     if (currentUser) {
       setActiveTab('dashboard');
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    if (users && users.length > 0) saveStoredUsers(users);
+  }, [users]);
+
+  useEffect(() => {
+    if (submissions && submissions.length >= 0) saveStoredSubmissions(submissions);
+  }, [submissions]);
+
+  useEffect(() => {
+    if (messages && messages.length >= 0) saveStoredMessages(messages);
+  }, [messages]);
+
+  useEffect(() => {
+    if (auditLogs && auditLogs.length > 0) saveStoredAuditLogs(auditLogs);
+  }, [auditLogs]);
 
   // Unread messages count for current user
   const unreadMessagesCount = messages.filter(
@@ -196,42 +234,104 @@ export default function Home() {
   const handleCreateUser = (e) => {
     e.preventDefault();
     setModalError('');
-    if (!formData.name || !formData.email || !formData.password) {
-      setModalError('Todos los campos son obligatorios.');
+    const usernameClean = (formData.username || '').trim().toLowerCase();
+    const nombresClean = (formData.nombres || '').trim();
+    const apellidosClean = (formData.apellidos || '').trim();
+    const emailClean = (formData.email || '').trim().toLowerCase() || `${usernameClean}@monitoreo.com`;
+    const selectedSala = formData.sala || 'Sala Comuna';
+    const selectedRole = formData.role || 'Analista';
+
+    if (!usernameClean || !nombresClean || !apellidosClean || !formData.password) {
+      setModalError('Por favor completa el usuario, nombres, apellidos y contraseña.');
+      return;
+    }
+    if (selectedRole === 'Administrador' && users.some((u) => u.role === 'Administrador')) {
+      setModalError('⚠️ El sistema solo permite tener 1 Administrador Principal activo.');
       return;
     }
     if (
       users.some(
-        (u) => u.email.toLowerCase() === formData.email.toLowerCase().trim()
+        (u) =>
+          (u.username && u.username.toLowerCase() === usernameClean) ||
+          (u.email && u.email.toLowerCase() === emailClean && emailClean !== '')
       )
     ) {
-      setModalError('Ya existe un usuario con este correo.');
+      setModalError('Ya existe un usuario registrado con este nombre de usuario o correo.');
       return;
     }
+
+    // Calculate room + role sequential number (01, 02, 03...)
+    const existingInSalaRoleCount = users.filter(
+      (u) => u.sala === selectedSala && u.role === selectedRole
+    ).length;
+
+    const numStr = String(existingInSalaRoleCount + 1).padStart(2, '0');
+    const salaCodigo = `${selectedSala} ${selectedRole} ${numStr}`;
+    const fullName = `${nombresClean} ${apellidosClean}`;
+    const salaEtiqueta = `${salaCodigo} - ${fullName}`;
+
     const newUser = {
       id: `usr-${Date.now()}`,
-      ...formData,
-      email: formData.email.trim(),
+      username: usernameClean,
+      nombres: nombresClean,
+      apellidos: apellidosClean,
+      name: fullName,
+      sala: selectedSala,
+      salaCodigo,
+      salaEtiqueta,
+      edad: formData.edad || '',
+      fechaNacimiento: formData.fechaNacimiento || '',
+      createdAt: formData.createdAt || new Date().toISOString().split('T')[0],
+      email: emailClean,
+      password: formData.password.trim(),
+      role: selectedRole,
+      department: formData.department?.trim() || 'Análisis de Redes Sociales',
       status: 'Activo',
-      createdAt: new Date().toISOString().split('T')[0],
     };
     setUsers((prev) => [newUser, ...prev]);
     saveUserToFirestore(newUser);
     addLog(
-      currentUser.email,
+      currentUser?.email || 'Admin',
       'Usuario Creado',
-      `${newUser.email} (${newUser.role})`,
+      `${newUser.salaEtiqueta} (${newUser.role})`,
       'success'
     );
     setShowCreateModal(false);
     setFormData({
-      name: '',
+      username: '',
+      nombres: '',
+      apellidos: '',
+      sala: 'Sala Comuna',
+      edad: '',
+      fechaNacimiento: '',
+      createdAt: new Date().toISOString().split('T')[0],
       email: '',
       password: '',
       role: 'Analista',
       department: 'Análisis de Redes Sociales',
     });
-    setToastMsg(`✅ Usuario ${newUser.name} creado.`);
+    setToastMsg(`✅ Usuario ${newUser.salaEtiqueta} creado.`);
+    setTimeout(() => setToastMsg(''), 4000);
+  };
+
+  const handleSaveEditedUser = (updatedUser) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === updatedUser.id ? updatedUser : u))
+    );
+    saveUserToFirestore(updatedUser);
+
+    if (currentUser && currentUser.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+      saveStoredSession(updatedUser);
+    }
+
+    addLog(
+      currentUser?.email || 'Admin',
+      'Usuario Editado',
+      `Se actualizaron los datos de @${updatedUser.username} (${updatedUser.name})`,
+      'info'
+    );
+    setToastMsg(`✅ Usuario ${updatedUser.salaEtiqueta || updatedUser.name} actualizado.`);
     setTimeout(() => setToastMsg(''), 4000);
   };
 
@@ -254,11 +354,8 @@ export default function Home() {
   const deleteUser = (id, name) => {
     if (currentUser?.role !== 'Administrador') return;
     if (confirm(`¿Eliminar al usuario ${name}?`)) {
-      setUsers((prev) => {
-        const next = prev.filter((u) => u.id !== id);
-        saveUsersBatchToFirestore(next);
-        return next;
-      });
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      deleteUserFromFirestore(id);
       addLog(currentUser.email, 'Usuario Eliminado', name, 'error');
     }
   };
@@ -284,6 +381,9 @@ export default function Home() {
       analystId: currentUser.id,
       analystName: currentUser.name,
       analystEmail: currentUser.email,
+      analystSala: currentUser.sala || 'Sala Comuna',
+      analystSalaCodigo: currentUser.salaCodigo || '',
+      analystSalaEtiqueta: currentUser.salaEtiqueta || `${currentUser.sala || 'Sala Comuna'} - ${currentUser.name}`,
       timestamp: new Date().toISOString(),
       reportData: { ...reportData },
       status: 'pendiente',
@@ -363,6 +463,7 @@ export default function Home() {
       window.confirm('¿Estás seguro de que deseas eliminar este reporte de la bandeja? Esta acción no se puede deshacer.')
     ) {
       setSubmissions((prev) => prev.filter((s) => s.id !== subId));
+      deleteSubmissionFromFirestore(subId);
       addLog(currentUser?.email, 'Reporte Eliminado', `ID: ${subId}`, 'warning');
       setToastMsg('🗑️ Reporte eliminado de la bandeja.');
       setTimeout(() => setToastMsg(''), 4000);
@@ -441,10 +542,15 @@ export default function Home() {
       const mine = submissions.filter(
         (s) => s.analystId === a.id || s.analystEmail === a.email
       );
+      const defaultEtiqueta = a.salaEtiqueta || (a.salaCodigo ? `${a.salaCodigo} - ${a.name}` : `${a.sala || 'Sala Comuna'} - ${a.name}`);
       return {
         id: a.id,
+        username: a.username || '',
         name: a.name,
         email: a.email,
+        sala: a.sala || 'Sala Comuna',
+        salaCodigo: a.salaCodigo || '',
+        salaEtiqueta: defaultEtiqueta,
         total: mine.length,
         today: mine.filter((s) => s.timestamp.split('T')[0] === today).length,
         week: mine.filter((s) => new Date(s.timestamp) >= weekStart).length,
@@ -606,6 +712,7 @@ export default function Home() {
             currentUser={currentUser}
             toggleStatus={toggleStatus}
             deleteUser={deleteUser}
+            setEditingUser={setEditingUser}
             setShowCreateModal={setShowCreateModal}
             auditLogs={auditLogs}
             reportData={reportData}
@@ -623,6 +730,9 @@ export default function Home() {
             setSelId={setSelId}
             editingId={editingId}
             setEditingId={setEditingId}
+            editText={editText}
+            setEditText={setEditText}
+            commitTextEdit={commitTextEdit}
             imageCache={imageCache}
             setImageCache={setImageCache}
             setOverlayRect={setOverlayRect}
@@ -656,6 +766,9 @@ export default function Home() {
             setSelId={setSelId}
             editingId={editingId}
             setEditingId={setEditingId}
+            editText={editText}
+            setEditText={setEditText}
+            commitTextEdit={commitTextEdit}
             imageCache={imageCache}
             setImageCache={setImageCache}
             setOverlayRect={setOverlayRect}
@@ -709,6 +822,14 @@ export default function Home() {
         setFormData={setFormData}
         modalError={modalError}
         handleCreateUser={handleCreateUser}
+        users={users}
+      />
+
+      <EditUserModal
+        editingUser={editingUser}
+        setEditingUser={setEditingUser}
+        onSaveUser={handleSaveEditedUser}
+        users={users}
       />
 
       <Toast toastMsg={toastMsg} setToastMsg={setToastMsg} />

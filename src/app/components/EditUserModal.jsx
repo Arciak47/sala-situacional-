@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import { SALAS_DISPONIBLES } from '../lib/constants';
 
 function calcAge(birthDateStr) {
@@ -14,41 +15,116 @@ function calcAge(birthDateStr) {
   return age > 0 ? age : 0;
 }
 
-export default function UserModal({
-  showCreateModal,
-  setShowCreateModal,
-  formData,
-  setFormData,
-  modalError,
-  handleCreateUser,
+export default function EditUserModal({
+  editingUser,
+  setEditingUser,
+  onSaveUser,
   users = [],
 }) {
-  if (!showCreateModal) return null;
+  const [username, setUsername] = useState('');
+  const [nombres, setNombres] = useState('');
+  const [apellidos, setApellidos] = useState('');
+  const [sala, setSala] = useState('Sala Comuna');
+  const [role, setRole] = useState('Analista');
+  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [fechaNacimiento, setFechaNacimiento] = useState('');
+  const [edad, setEdad] = useState('');
+  const [createdAt, setCreatedAt] = useState('');
+  const [department, setDepartment] = useState('');
+  const [status, setStatus] = useState('Activo');
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const hasAdmin = users.some((u) => u.role === 'Administrador');
-  const selectedSala = formData.sala || SALAS_DISPONIBLES[0];
-  const selectedRole = (hasAdmin && formData.role === 'Administrador') ? 'Analista' : (formData.role || 'Analista');
+  useEffect(() => {
+    if (editingUser) {
+      setUsername(editingUser.username || '');
+      setNombres(editingUser.nombres || editingUser.name?.split(' ')[0] || '');
+      setApellidos(editingUser.apellidos || editingUser.name?.split(' ').slice(1).join(' ') || '');
+      setSala(editingUser.sala || SALAS_DISPONIBLES[0]);
+      setRole(editingUser.role || 'Analista');
+      setPassword(editingUser.password || '');
+      setEmail(editingUser.email || '');
+      setFechaNacimiento(editingUser.fechaNacimiento || '');
+      setEdad(editingUser.edad || '');
+      setCreatedAt(editingUser.createdAt || new Date().toISOString().split('T')[0]);
+      setDepartment(editingUser.department || '');
+      setStatus(editingUser.status || 'Activo');
+      setErrorMsg('');
+    }
+  }, [editingUser]);
 
-  // Count existing users matching BOTH the selected room and the selected role
-  const existingInSalaRoleCount = users.filter(
-    (u) => u.sala === selectedSala && u.role === selectedRole
-  ).length;
-
-  const nextNumStr = String(existingInSalaRoleCount + 1).padStart(2, '0');
-  const salaCodigoPreview = `${selectedSala} ${selectedRole} ${nextNumStr}`;
-  const fullNamePreview = [formData.nombres, formData.apellidos].filter(Boolean).join(' ');
-  const salaEtiquetaPreview = fullNamePreview
-    ? `${salaCodigoPreview} - ${fullNamePreview}`
-    : `${salaCodigoPreview} - [Nombre y Apellido]`;
+  if (!editingUser) return null;
 
   const handleBirthDateChange = (e) => {
     const val = e.target.value;
+    setFechaNacimiento(val);
     const computedAge = calcAge(val);
-    setFormData({
-      ...formData,
-      fechaNacimiento: val,
-      edad: computedAge !== '' ? String(computedAge) : formData.edad,
-    });
+    if (computedAge !== '') setEdad(String(computedAge));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+
+    if (!username.trim() || !nombres.trim() || !apellidos.trim() || !password.trim()) {
+      setErrorMsg('El nombre de usuario, nombres, apellidos y contraseña son obligatorios.');
+      return;
+    }
+
+    const usernameClean = username.trim().toLowerCase();
+    const emailClean = email.trim().toLowerCase();
+
+    // Check duplicate username if changed
+    if (
+      users.some(
+        (u) =>
+          u.id !== editingUser.id &&
+          ((u.username && u.username.toLowerCase() === usernameClean) ||
+           (u.email && u.email.toLowerCase() === emailClean && emailClean !== ''))
+      )
+    ) {
+      setErrorMsg('Ya existe otro usuario registrado con este nombre de usuario o correo.');
+      return;
+    }
+
+    const fullName = `${nombres.trim()} ${apellidos.trim()}`;
+
+    // Recalculate room code if room or role changed, otherwise preserve
+    let finalSalaCodigo = editingUser.salaCodigo;
+    let finalSalaEtiqueta = editingUser.salaEtiqueta;
+
+    if (editingUser.sala !== sala || editingUser.role !== role || !finalSalaCodigo) {
+      const existingInSalaRoleCount = users.filter(
+        (u) => u.id !== editingUser.id && u.sala === sala && u.role === role
+      ).length;
+      const numStr = String(existingInSalaRoleCount + 1).padStart(2, '0');
+      finalSalaCodigo = `${sala} ${role} ${numStr}`;
+      finalSalaEtiqueta = `${finalSalaCodigo} - ${fullName}`;
+    } else {
+      finalSalaEtiqueta = `${finalSalaCodigo} - ${fullName}`;
+    }
+
+    const updatedUser = {
+      ...editingUser,
+      username: usernameClean,
+      nombres: nombres.trim(),
+      apellidos: apellidos.trim(),
+      name: fullName,
+      sala,
+      salaCodigo: finalSalaCodigo,
+      salaEtiqueta: finalSalaEtiqueta,
+      password: password.trim(),
+      email: emailClean,
+      fechaNacimiento,
+      edad,
+      createdAt,
+      department: department.trim(),
+      role,
+      status,
+    };
+
+    onSaveUser(updatedUser);
+    setEditingUser(null);
   };
 
   return (
@@ -58,14 +134,14 @@ export default function UserModal({
         <div className="flex items-center justify-between border-b dark:border-slate-800 pb-4">
           <div>
             <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-wider">
-              👤 Crear Nuevo Usuario
+              ✏️ Editar Usuario: {editingUser.name}
             </h3>
             <p className="text-xs text-slate-500 font-medium">
-              Secuencia independiente asignada por Rol y Sala.
+              Modifica la información personal, credenciales, sala y permisos.
             </p>
           </div>
           <button
-            onClick={() => setShowCreateModal(false)}
+            onClick={() => setEditingUser(null)}
             className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center cursor-pointer text-base font-bold transition-all"
           >
             ✕
@@ -73,40 +149,27 @@ export default function UserModal({
         </div>
 
         {/* ERROR NOTIFICATION */}
-        {modalError && (
+        {errorMsg && (
           <div className="p-3.5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs rounded-2xl font-bold flex items-center gap-2">
-            ⚠️ {modalError}
+            ⚠️ {errorMsg}
           </div>
         )}
 
-        {/* LIVE ROOM & ROLE PREVIEW BANNER */}
-        <div className="bg-gradient-to-r from-red-600 via-amber-600 to-red-700 p-4.5 rounded-2xl text-white shadow-lg space-y-1">
-          <div className="text-[10px] font-black uppercase tracking-widest opacity-80 flex justify-between items-center">
-            <span>🏷️ Identificador Único Asignado (Rol + Sala)</span>
-            <span className="bg-white/20 px-2 py-0.5 rounded text-[9px]">
-              {existingInSalaRoleCount} {selectedRole}s en {selectedSala}
-            </span>
-          </div>
-          <div className="text-base sm:text-lg font-black tracking-wide font-mono">
-            {salaEtiquetaPreview}
-          </div>
-        </div>
-
-        <form onSubmit={handleCreateUser} className="space-y-4">
-          {/* SELECCIÓN DE SALA Y ROL */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* SALA Y ROL */}
           <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3">
             <span className="text-[11px] font-black uppercase text-amber-600 dark:text-amber-400 tracking-wider">
               🏛️ Asignación de Sala y Rol
             </span>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Sala de Pertenencia *
                 </label>
                 <select
-                  value={selectedSala}
-                  onChange={(e) => setFormData({ ...formData, sala: e.target.value })}
+                  value={sala}
+                  onChange={(e) => setSala(e.target.value)}
                   className="w-full text-xs py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 font-bold"
                 >
                   {SALAS_DISPONIBLES.map((salaOption) => (
@@ -122,21 +185,32 @@ export default function UserModal({
                   Rol Asignado *
                 </label>
                 <select
-                  value={selectedRole}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  className="w-full text-xs py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 font-bold"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  disabled={editingUser.role === 'Administrador'}
+                  className="w-full text-xs py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 font-bold disabled:opacity-60"
                 >
                   <option value="Analista">Analista</option>
                   <option value="Supervisor">Supervisor</option>
-                  <option value="Administrador" disabled={hasAdmin}>
-                    {hasAdmin ? 'Administrador (Límite: 1 Admin alcanzado)' : 'Administrador'}
-                  </option>
+                  {editingUser.role === 'Administrador' && (
+                    <option value="Administrador">Administrador Principal</option>
+                  )}
                 </select>
-                {hasAdmin && (
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold mt-1">
-                    🔒 El sistema permite solo 1 Administrador Principal.
-                  </p>
-                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Estado de la Cuenta *
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  disabled={editingUser.role === 'Administrador'}
+                  className="w-full text-xs py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 font-bold disabled:opacity-60"
+                >
+                  <option value="Activo">🟢 Activo</option>
+                  <option value="Inactivo">🔴 Inactivo</option>
+                </select>
               </div>
             </div>
           </div>
@@ -154,22 +228,20 @@ export default function UserModal({
                 <input
                   type="text"
                   required
-                  placeholder="ej: arangel"
-                  value={formData.username || ''}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 font-mono font-bold"
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Contraseña Inicial *
+                  Contraseña *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="ej: Clave123*"
-                  value={formData.password || ''}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 font-mono"
                 />
               </div>
@@ -190,9 +262,8 @@ export default function UserModal({
                 <input
                   type="text"
                   required
-                  placeholder="ej: Anderson"
-                  value={formData.nombres || ''}
-                  onChange={(e) => setFormData({ ...formData, nombres: e.target.value })}
+                  value={nombres}
+                  onChange={(e) => setNombres(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
                 />
               </div>
@@ -203,9 +274,8 @@ export default function UserModal({
                 <input
                   type="text"
                   required
-                  placeholder="ej: Rangel"
-                  value={formData.apellidos || ''}
-                  onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })}
+                  value={apellidos}
+                  onChange={(e) => setApellidos(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
                 />
               </div>
@@ -218,7 +288,7 @@ export default function UserModal({
                 </label>
                 <input
                   type="date"
-                  value={formData.fechaNacimiento || ''}
+                  value={fechaNacimiento}
                   onChange={handleBirthDateChange}
                   className="w-full px-4 py-2.5 rounded-xl text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
@@ -229,9 +299,8 @@ export default function UserModal({
                 </label>
                 <input
                   type="number"
-                  placeholder="ej: 28"
-                  value={formData.edad || ''}
-                  onChange={(e) => setFormData({ ...formData, edad: e.target.value })}
+                  value={edad}
+                  onChange={(e) => setEdad(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 font-bold"
                 />
               </div>
@@ -241,8 +310,8 @@ export default function UserModal({
                 </label>
                 <input
                   type="date"
-                  value={formData.createdAt || new Date().toISOString().split('T')[0]}
-                  onChange={(e) => setFormData({ ...formData, createdAt: e.target.value })}
+                  value={createdAt}
+                  onChange={(e) => setCreatedAt(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
                 />
               </div>
@@ -262,9 +331,8 @@ export default function UserModal({
                 </label>
                 <input
                   type="email"
-                  placeholder="ej: arangel@monitoreo.com"
-                  value={formData.email || ''}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
@@ -274,9 +342,8 @@ export default function UserModal({
                 </label>
                 <input
                   type="text"
-                  placeholder="ej: Monitoreo en Vivo"
-                  value={formData.department || ''}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
@@ -286,7 +353,7 @@ export default function UserModal({
           <div className="pt-4 flex justify-end gap-3 border-t dark:border-slate-800">
             <button
               type="button"
-              onClick={() => setShowCreateModal(false)}
+              onClick={() => setEditingUser(null)}
               className="px-5 py-2.5 rounded-full text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 cursor-pointer"
             >
               Cancelar
@@ -295,7 +362,7 @@ export default function UserModal({
               type="submit"
               className="px-7 py-2.5 rounded-full text-xs font-black uppercase text-white bg-red-600 hover:bg-red-700 cursor-pointer shadow-lg shadow-red-600/30"
             >
-              💾 Guardar Usuario
+              💾 Guardar Cambios
             </button>
           </div>
         </form>

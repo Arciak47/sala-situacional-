@@ -18,6 +18,7 @@ export function exportSubmissionsToExcel(submissions = [], filenamePrefix = 'Bas
     'ID Reporte',
     'Fecha Envío',
     'Estado',
+    'Sala de Pertenencia',
     'Analista',
     'Municipio',
     'Fecha Evento',
@@ -45,6 +46,8 @@ export function exportSubmissionsToExcel(submissions = [], filenamePrefix = 'Bas
       const statusColor = s.status === 'pendiente' ? '#92400e' : '#065f46';
       const statusText = s.status === 'pendiente' ? '⏳ Pendiente' : '✅ Revisado';
 
+      const salaName = s.analystSala || s.sala || 'Sala Comuna';
+
       const sentBg =
         rd.sentimiento === 'NEGATIVO'
           ? '#fee2e2'
@@ -63,6 +66,7 @@ export function exportSubmissionsToExcel(submissions = [], filenamePrefix = 'Bas
         <td style="border: 1px solid #cbd5e1; padding: 8px; font-family: monospace;">${s.id || ''}</td>
         <td style="border: 1px solid #cbd5e1; padding: 8px; white-space: nowrap;">${s.timestamp ? new Date(s.timestamp).toLocaleString('es-ES') : ''}</td>
         <td style="border: 1px solid #cbd5e1; padding: 8px; background-color: ${statusBg}; color: ${statusColor}; font-weight: bold; text-align: center;">${statusText}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px; font-weight: bold; color: #2563eb;">${salaName}</td>
         <td style="border: 1px solid #cbd5e1; padding: 8px; font-weight: bold;">${s.analystName || s.analystEmail || 'Analista'}</td>
         <td style="border: 1px solid #cbd5e1; padding: 8px; font-weight: bold; color: #032b69;">${rd.municipio || ''}</td>
         <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: center;">${rd.fecha || ''}</td>
@@ -198,8 +202,8 @@ export function exportStatsToExcel(allStats, filenamePrefix = 'Estadisticas_Sala
     <table>
       <thead>
         <tr>
-          <th>ID Analista</th>
-          <th>Nombre Completo</th>
+          <th>Sala de Pertenencia</th>
+          <th>Nombre del Analista</th>
           <th>Correo Electrónico</th>
           <th>Total Enviados</th>
           <th>Hoy</th>
@@ -213,7 +217,7 @@ export function exportStatsToExcel(allStats, filenamePrefix = 'Estadisticas_Sala
           .map(
             (a) => `
           <tr>
-            <td style="font-family:monospace;">${a.id}</td>
+            <td style="font-weight:bold; color:#2563eb;">${a.sala || 'Sala Comuna'}</td>
             <td style="font-weight:bold;">${a.name}</td>
             <td>${a.email}</td>
             <td style="text-align:center; font-weight:bold; color:#dc2626;">${a.total}</td>
@@ -362,6 +366,180 @@ export function exportStatsToPDF(title = 'Informe Estadístico - Sala Situaciona
             window.print();
             window.close();
           }, 800);
+        </script>
+      </body>
+    </html>
+  `);
+  win.document.close();
+}
+
+/**
+ * Exports selected submissions array to High Definition (HD) PDF document
+ * with vector layout, high-res images, and active clickable hyperlinks.
+ */
+import { CW, CH } from './constants';
+import { buildElements, drawWrapped } from './canvasHelpers';
+
+/**
+ * Renders a submission object onto an off-screen HTML5 Canvas matching the exact Canvas Editor ficha,
+ * returning high-resolution PNG data URL.
+ */
+async function renderCanvasFichaImage(sub) {
+  if (typeof window === 'undefined') return null;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = CW; // 1200
+  canvas.height = CH; // 750
+  const ctx = canvas.getContext('2d');
+  const elements = buildElements(sub.reportData || {});
+
+  // Preload images
+  const imageCache = {};
+  await Promise.all(
+    elements
+      .filter((el) => el.type === 'image' && el.src)
+      .map(
+        (el) =>
+          new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              imageCache[el.id] = img;
+              resolve();
+            };
+            img.onerror = () => resolve();
+            img.src = el.src;
+          })
+      )
+  );
+
+  // Fill white background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, CW, CH);
+
+  // Draw elements
+  for (const el of elements) {
+    ctx.save();
+    if (el.type === 'rect') {
+      ctx.fillStyle = el.fill || '#fff';
+      ctx.fillRect(el.x, el.y, el.w, el.h);
+    } else if (el.type === 'poly') {
+      ctx.fillStyle = el.fill;
+      ctx.beginPath();
+      ctx.moveTo(el.pts[0][0], el.pts[0][1]);
+      el.pts.slice(1).forEach((p) => ctx.lineTo(p[0], p[1]));
+      ctx.closePath();
+      ctx.fill();
+    } else if (el.type === 'line') {
+      ctx.strokeStyle = el.stroke;
+      ctx.lineWidth = el.lw;
+      ctx.beginPath();
+      ctx.moveTo(el.x, el.y);
+      ctx.lineTo(el.x2, el.y2);
+      ctx.stroke();
+    } else if (el.type === 'image') {
+      const img = imageCache[el.id];
+      if (img) {
+        ctx.drawImage(img, el.x, el.y, el.w, el.h);
+      } else {
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(el.x, el.y, el.w, el.h);
+        ctx.fillStyle = '#64748b';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(el.placeholder || 'IMAGEN', el.x + el.w / 2, el.y + el.h / 2);
+      }
+    } else if (el.type === 'text') {
+      ctx.fillStyle = el.color;
+      ctx.font = `${el.fw || 'normal'} ${el.fs || 16}px sans-serif`;
+      ctx.textAlign = el.align || 'left';
+      ctx.textBaseline = 'top';
+      const tx =
+        el.align === 'center'
+          ? el.x + el.w / 2
+          : el.align === 'right'
+          ? el.x + el.w
+          : el.x;
+      if (el.wrap) {
+        drawWrapped(ctx, el.text, tx, el.y, el.w, (el.fs || 16) * 1.3, el.align);
+      } else {
+        ctx.fillText(el.text, tx, el.y);
+      }
+    }
+    ctx.restore();
+  }
+
+  return canvas.toDataURL('image/png');
+}
+
+/**
+ * Exports selected submissions array to High Definition (HD) PDF document
+ * using the EXACT ORIGINAL CANVAS FICHA template from the Canvas Editor.
+ */
+export async function exportSubmissionsToHDPDF(selectedSubmissions = [], docTitle = 'Reportes_Sala_Situacional_HD') {
+  if (!selectedSubmissions || selectedSubmissions.length === 0) {
+    alert('Selecciona al menos un formulario de la lista para exportar a PDF HD.');
+    return;
+  }
+
+  const win = window.open('', '_blank');
+  if (!win) {
+    alert('Por favor autoriza las ventanas emergentes para generar el PDF HD.');
+    return;
+  }
+
+  // Render each submission's exact canvas ficha
+  const pagesData = await Promise.all(
+    selectedSubmissions.map(async (sub) => {
+      const imgData = await renderCanvasFichaImage(sub);
+      const linkUrl = (sub.reportData?.enlace || '').trim();
+      const hasLink = linkUrl.startsWith('http://') || linkUrl.startsWith('https://');
+      return { sub, imgData, linkUrl, hasLink };
+    })
+  );
+
+  const cardsHtml = pagesData
+    .map(
+      ({ imgData, linkUrl, hasLink }) => `
+      <div className="canvas-pdf-page" style="page-break-after: always; page-break-inside: avoid; width: 100%; max-width: 1100px; margin: 0 auto 20px auto; text-align: center;">
+        <div style="position: relative; display: inline-block; width: 100%;">
+          <img src="${imgData}" style="width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 4px;" alt="Ficha Canvas Oficial" />
+          ${
+            hasLink
+              ? `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" title="Abrir enlace" style="position: absolute; left: 2.5%; top: 83.2%; width: 29.16%; height: 10%; display: block; z-index: 10; cursor: pointer;"></a>`
+              : ''
+          }
+        </div>
+      </div>`
+    )
+    .join('');
+
+  win.document.write(`
+    <!DOCTYPE html>
+    <html lang="es">
+      <head>
+        <meta charset="utf-8" />
+        <title>${docTitle}</title>
+        <style>
+          @page { size: landscape; margin: 5mm; }
+          @media print {
+            html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #ffffff !important; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .canvas-pdf-page { page-break-after: always; page-break-inside: avoid; max-width: 100% !important; margin: 0 auto !important; }
+            a { text-decoration: underline !important; color: #2563eb !important; }
+          }
+          body { font-family: Arial, Helvetica, sans-serif; background: #ffffff; padding: 10px; margin: 0; }
+        </style>
+      </head>
+      <body>
+        ${cardsHtml}
+
+        <script>
+          setTimeout(() => {
+            window.print();
+            window.close();
+          }, 700);
         </script>
       </body>
     </html>
