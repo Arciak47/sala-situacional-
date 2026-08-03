@@ -408,7 +408,16 @@ export default function CanvasEditor({
     setTimeout(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const imgData = canvas.toDataURL('image/png');
+
+      // Render at 2x resolution for HD quality
+      const offscreen = document.createElement('canvas');
+      offscreen.width = CW * 2;
+      offscreen.height = CH * 2;
+      const octx = offscreen.getContext('2d');
+      octx.scale(2, 2);
+      octx.drawImage(canvas, 0, 0);
+      const imgData = offscreen.toDataURL('image/png', 1.0);
+
       const win = window.open('', '_blank');
       if (!win) {
         alert('Por favor autoriza ventanas emergentes para generar el PDF.');
@@ -418,6 +427,11 @@ export default function CanvasEditor({
       const linkUrl = (reportData.enlace || '').trim();
       const hasLink = linkUrl.startsWith('http://') || linkUrl.startsWith('https://');
 
+      // ENLACE element bounds in canvas coords (1200x750):
+      //   enl-l: x=30, y=602, w=350, h=22
+      //   enl-v: x=30, y=624, w=350, h=75  → bottom = 699
+      // So clickable zone: x=30, y=600, w=350, h=100
+
       win.document.write(`
         <!DOCTYPE html>
         <html lang="es">
@@ -425,21 +439,48 @@ export default function CanvasEditor({
             <meta charset="utf-8" />
             <title>${title}</title>
             <style>
-              @page { size: landscape; margin: 0; }
-              @media print {
-                html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #ffffff !important; }
-                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .pdf-container { width: 100vw !important; height: 100vh !important; max-width: 100% !important; margin: 0 !important; }
+              @page { size: ${CW}px ${CH}px; margin: 0; }
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              html, body {
+                width: ${CW}px;
+                height: ${CH}px;
+                overflow: hidden;
+                background: #ffffff;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
               }
-              body { font-family: Arial, sans-serif; background: #ffffff; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; height: 100vh; width: 100vw; overflow: hidden; }
-              .pdf-container { position: relative; width: 100vw; height: auto; aspect-ratio: 1200/750; max-height: 100vh; max-width: calc(100vh * 1200 / 750); margin: 0 auto; }
-              .pdf-container img { width: 100%; height: 100%; display: block; object-fit: contain; }
-              .pdf-link { position: absolute; left: 2.5%; top: 83.2%; width: 29.16%; height: 10%; display: block; z-index: 100; cursor: pointer; text-decoration: none !important; border: none !important; outline: none !important; background: transparent !important; }
+              .pdf-wrap {
+                position: relative;
+                width: ${CW}px;
+                height: ${CH}px;
+              }
+              .pdf-wrap img {
+                width: ${CW}px;
+                height: ${CH}px;
+                display: block;
+              }
+              .pdf-link {
+                position: absolute;
+                left: 30px;
+                top: 600px;
+                width: 350px;
+                height: 100px;
+                display: block;
+                z-index: 100;
+                cursor: pointer;
+                text-decoration: none !important;
+                border: none !important;
+                outline: none !important;
+                background: transparent !important;
+              }
             </style>
           </head>
           <body>
-            <div class="pdf-container">
-              <img src="${imgData}" onload="setTimeout(() => { window.print(); window.close(); }, 500);" />
+            <div class="pdf-wrap">
+              <img
+                src="${imgData}"
+                onload="setTimeout(() => { window.print(); window.close(); }, 600);"
+              />
               ${
                 hasLink
                   ? `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="pdf-link" title="Abrir enlace"></a>`
@@ -451,7 +492,7 @@ export default function CanvasEditor({
       `);
       win.document.close();
       setSelId(prevSel);
-    }, 120);
+    }, 150);
   };
 
   const selEl = elements.find((e) => e.id === selId);

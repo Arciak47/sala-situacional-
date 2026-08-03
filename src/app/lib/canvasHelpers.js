@@ -79,7 +79,7 @@ export function buildElements(rd = {}) {
 
     // ── RIGHT COLUMN: POST ──
     { id: 'post-l', type: 'text', x: 740, y: 114, w: 420, h: 26, text: 'PUBLICACIÓN / POST', fs: 20, fw: '800', color: '#dc2626', align: 'center' },
-    { id: 'post-v', type: 'text', x: 740, y: 144, w: 420, h: 50, text: up(r.postTitle) || 'PUBLICACIÓN', fs: 17, fw: '900', color: '#032b69', align: 'center', wrap: true, sync: 'postTitle' },
+    { id: 'post-v', type: 'text', x: 740, y: 144, w: 420, h: 65, text: up(r.postTitle) || 'PUBLICACIÓN', fs: 13, fw: '900', color: '#032b69', align: 'center', wrap: true, sync: 'postTitle' },
 
     // ── RIGHT COLUMN: USUARIO ──
     { id: 'usr-l', type: 'text', x: 430, y: 225, w: 275, h: 26, text: 'USUARIO', fs: 20, fw: '800', color: '#dc2626', align: 'center' },
