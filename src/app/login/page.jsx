@@ -4,6 +4,7 @@ import { useState } from 'react';
 import BrandLogo from '../components/BrandLogo';
 import InteractiveBackground from '../components/InteractiveBackground';
 import { INITIAL_USERS } from '../lib/constants';
+import { getStoredUsers } from '../lib/storage';
 
 export default function LoginPage({
   users,
@@ -25,20 +26,41 @@ export default function LoginPage({
     const targetUser = loginUsername.trim().toLowerCase();
     const passClean = loginPass.trim();
 
-    // Use users list or fallback to INITIAL_USERS if users array is empty
-    const availableUsers = (users && users.length > 0) ? users : INITIAL_USERS;
+    if (!targetUser || !passClean) {
+      setLoginError('Por favor ingresa usuario y contraseña.');
+      return;
+    }
 
-    let found = availableUsers.find(
-      (u) =>
-        ((u.username && u.username.toLowerCase() === targetUser) ||
-         (u.email && u.email.toLowerCase() === targetUser) ||
-         (u.name && u.name.toLowerCase() === targetUser)) &&
-        u.password && u.password.trim() === passClean
-    );
+    // Read combined users from state, local storage, and fallback defaults
+    const storedUsers = typeof window !== 'undefined' ? getStoredUsers() : [];
+    const userMap = new Map();
+    (users || []).forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
+    (storedUsers || []).forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
+    (INITIAL_USERS || []).forEach((u) => { if (u && u.id && !userMap.has(String(u.id))) userMap.set(String(u.id), u); });
+
+    const availableUsers = Array.from(userMap.values());
+
+    let found = availableUsers.find((u) => {
+      const uUser = (u.username || '').trim().toLowerCase();
+      const uEmail = (u.email || '').trim().toLowerCase();
+      const uName = (u.name || '').trim().toLowerCase();
+      const uSalaCod = (u.salaCodigo || '').trim().toLowerCase();
+      const uPass = String(u.password || '').trim();
+
+      const matchesIdentifier =
+        (uUser && uUser === targetUser) ||
+        (uEmail && uEmail === targetUser) ||
+        (uName && uName === targetUser) ||
+        (uSalaCod && uSalaCod === targetUser);
+
+      const matchesPass = uPass === passClean;
+
+      return matchesIdentifier && matchesPass;
+    });
 
     // Guaranteed fallback for admin / admin123
-    if (!found && targetUser === 'admin' && passClean === 'admin123') {
-      found = INITIAL_USERS[0];
+    if (!found && (targetUser === 'admin' || targetUser === 'administrador') && passClean === 'admin123') {
+      found = availableUsers.find((u) => u.role === 'Administrador') || INITIAL_USERS[0];
     }
 
     if (!found) {
@@ -49,7 +71,7 @@ export default function LoginPage({
 
     if (found.status === 'Inactivo') {
       addLog(loginUsername, 'Acceso Denegado', 'Cuenta deshabilitada', 'error');
-      setLoginError('Esta cuenta ha sido deshabilitada.');
+      setLoginError('Esta cuenta ha sido deshabilitada por el Administrador.');
       return;
     }
 
