@@ -226,6 +226,16 @@ export default function CanvasEditor({
     if (editingId && commitTextEdit) commitTextEdit();
     const pos = getCanvasPos(e);
 
+    // ── Click on ENLACE area → open link in new tab ──
+    const isEnlaceArea = pos.x >= 30 && pos.x <= 380 && pos.y >= 598 && pos.y <= 700;
+    if (isEnlaceArea) {
+      const linkUrl = (reportData.enlace || '').trim();
+      if (linkUrl.startsWith('http://') || linkUrl.startsWith('https://')) {
+        window.open(linkUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+    }
+
     // Check handle hit on current selection
     if (selId) {
       const sel = elements.find((el) => el.id === selId);
@@ -264,8 +274,18 @@ export default function CanvasEditor({
   };
 
   const handleMouseMove = (e) => {
-    if (!isDragging.current && !isResizing.current) return;
+    // Update cursor to pointer when hovering the ENLACE area
     const pos = getCanvasPos(e);
+    const isEnlaceArea = pos.x >= 30 && pos.x <= 380 && pos.y >= 598 && pos.y <= 700;
+    const linkUrl = (reportData.enlace || '').trim();
+    const hasValidLink = linkUrl.startsWith('http://') || linkUrl.startsWith('https://');
+    if (isEnlaceArea && hasValidLink) {
+      if (canvasRef.current) canvasRef.current.style.cursor = 'pointer';
+    } else if (!isDragging.current && !isResizing.current) {
+      if (canvasRef.current) canvasRef.current.style.cursor = selEl && !selEl.locked ? 'move' : 'crosshair';
+    }
+
+    if (!isDragging.current && !isResizing.current) return;
     const dx = pos.x - dragStart.current.x;
     const dy = pos.y - dragStart.current.y;
 
