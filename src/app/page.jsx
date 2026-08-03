@@ -50,7 +50,7 @@ export default function Home() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [activeTab, setActiveTab] = useState('forms');
+  const [activeTab, setActiveTab] = useState('forms'); // will be overridden by localStorage on mount
   const [selectedSubmission, setSelectedSubmission] = useState(null);
 
   const [loginError, setLoginError] = useState('');
@@ -122,10 +122,24 @@ export default function Home() {
   // ── State persistence & sync ──
   useEffect(() => {
     saveStoredSession(currentUser);
+    // Only redirect to dashboard on a fresh login (not on F5 restore)
+    // We use a flag: if currentUser just became non-null AND there's no saved tab, go to dashboard
     if (currentUser) {
-      setActiveTab('dashboard');
+      const savedTab = localStorage.getItem('sdm_activeTab');
+      if (!savedTab) {
+        setActiveTab('dashboard');
+      } else {
+        setActiveTab(savedTab);
+      }
     }
   }, [currentUser]);
+
+  // ── Persist activeTab so F5 restores the same section ──
+  useEffect(() => {
+    if (typeof window !== 'undefined' && activeTab) {
+      localStorage.setItem('sdm_activeTab', activeTab);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (users && users.length > 0) saveStoredUsers(users);
@@ -230,6 +244,9 @@ export default function Home() {
     if (currentUser) addLog(currentUser.email, 'Cierre de Sesión', 'Sesión terminada');
     setCurrentUser(null);
     setSelectedSubmission(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('sdm_activeTab');
+    }
   };
 
   // ── User Management ──
