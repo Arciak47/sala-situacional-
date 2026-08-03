@@ -74,7 +74,36 @@ export function getStoredSubmissions() {
 export function saveStoredSubmissions(submissions) {
   if (typeof window === 'undefined') return;
   if (Array.isArray(submissions)) {
-    localStorage.setItem('sdm_submissions', JSON.stringify(submissions));
+    try {
+      // Strip large base64 data URLs to prevent localStorage quota overflow.
+      // Images are persisted in Firebase Storage; only keep hosted URLs locally.
+      const lightweight = submissions.map((s) => {
+        if (!s?.reportData?.evidenceImageSrc) return s;
+        if (typeof s.reportData.evidenceImageSrc === 'string' && s.reportData.evidenceImageSrc.startsWith('data:')) {
+          return {
+            ...s,
+            reportData: { ...s.reportData, evidenceImageSrc: '__pending_upload__' },
+          };
+        }
+        return s;
+      });
+      localStorage.setItem('sdm_submissions', JSON.stringify(lightweight));
+    } catch (e) {
+      console.warn('localStorage quota exceeded for submissions, trimming old entries:', e);
+      try {
+        // Fallback: keep only the last 50 submissions
+        const trimmed = submissions.slice(0, 50).map((s) => {
+          if (!s?.reportData?.evidenceImageSrc) return s;
+          if (typeof s.reportData.evidenceImageSrc === 'string' && s.reportData.evidenceImageSrc.startsWith('data:')) {
+            return { ...s, reportData: { ...s.reportData, evidenceImageSrc: '__pending_upload__' } };
+          }
+          return s;
+        });
+        localStorage.setItem('sdm_submissions', JSON.stringify(trimmed));
+      } catch (e2) {
+        console.error('Failed to save submissions to localStorage even after trimming:', e2);
+      }
+    }
   }
 }
 

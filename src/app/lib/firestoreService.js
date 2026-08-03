@@ -203,11 +203,14 @@ export function subscribeSubmissions(onUpdate) {
             firestoreId: d.id,
           }));
 
-      // MERGE: Combine local & remote submissions by unique ID
+      // MERGE: Local-first strategy. Local submissions that don't exist
+      // remotely yet (race condition during upload) are preserved.
       const subMap = new Map();
+      // 1. Start with local submissions (preserves pending ones)
       localSubs.forEach((s) => {
         if (s && s.id) subMap.set(String(s.id), s);
       });
+      // 2. Remote wins for docs that exist in both (they have the latest Firestore state)
       remoteSubs.forEach((s) => {
         if (s && s.id) subMap.set(String(s.id), s);
       });
@@ -243,6 +246,7 @@ export async function addSubmissionToFirestore(submission) {
     const subId = String(submission.id || `sub-${Date.now()}`);
     let updatedSub = JSON.parse(JSON.stringify(submission));
 
+    // Upload base64 evidence image to Firebase Storage
     if (updatedSub.reportData?.evidenceImageSrc && updatedSub.reportData.evidenceImageSrc.startsWith('data:')) {
       const imgUrl = await uploadImageToStorage(
         updatedSub.reportData.evidenceImageSrc, 
@@ -251,6 +255,11 @@ export async function addSubmissionToFirestore(submission) {
       if (imgUrl) {
         updatedSub.reportData.evidenceImageSrc = imgUrl;
       }
+    }
+
+    // Don't send the localStorage placeholder to Firestore
+    if (updatedSub.reportData?.evidenceImageSrc === '__pending_upload__') {
+      delete updatedSub.reportData.evidenceImageSrc;
     }
 
     const subRef = doc(db, 'submissions', subId);
