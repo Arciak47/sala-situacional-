@@ -61,43 +61,61 @@ export function subscribeUsers(onUpdate) {
   try {
     const colRef = collection(db, 'users');
     const unsubscribe = onSnapshot(colRef, async (snapshot) => {
-      if (snapshot.empty) {
-        // Seed users: check local storage first to preserve any user-created accounts!
-        const localUsers = getStoredUsers();
-        const usersToSeed = (localUsers && localUsers.length > 0) ? localUsers : INITIAL_USERS;
+      const localUsers = getStoredUsers() || [];
+      const remoteUsers = snapshot.empty ? [] : snapshot.docs.map((d) => d.data());
+
+      // MERGE: Combine local & remote users by unique ID
+      const userMap = new Map();
+      localUsers.forEach((u) => {
+        if (u && u.id) userMap.set(String(u.id), u);
+      });
+      remoteUsers.forEach((u) => {
+        if (u && u.id) userMap.set(String(u.id), u);
+      });
+
+      let merged = Array.from(userMap.values());
+      if (merged.length === 0) {
+        merged = INITIAL_USERS;
+      }
+
+      saveStoredUsers(merged);
+      onUpdate(merged);
+
+      // Auto-sync missing local users to Firestore in background
+      if (snapshot.empty || remoteUsers.length < merged.length) {
         try {
           const batch = writeBatch(db);
-          usersToSeed.forEach((user) => {
+          merged.forEach((user) => {
             const userRef = doc(db, 'users', String(user.id));
-            batch.set(userRef, sanitize(user));
+            batch.set(userRef, sanitize(user), { merge: true });
           });
           await batch.commit();
         } catch (e) {
-          console.warn('Firestore seed users warning:', e);
+          console.warn('Firestore sync users warning:', e);
         }
-        saveStoredUsers(usersToSeed);
-        onUpdate(usersToSeed);
-      } else {
-        const users = snapshot.docs.map((d) => d.data());
-        saveStoredUsers(users);
-        onUpdate(users);
       }
     }, (err) => {
-      console.warn('Firestore users subscription error, falling back to local cache:', err);
+      console.warn('Firestore users subscription warning, using local cache:', err);
       const localUsers = getStoredUsers();
-      if (localUsers && localUsers.length > 0) onUpdate(localUsers);
+      onUpdate(localUsers && localUsers.length > 0 ? localUsers : INITIAL_USERS);
     });
     return unsubscribe;
   } catch (err) {
-    console.warn('Firestore users init error, using local cache:', err);
+    console.warn('Firestore users init warning, using local cache:', err);
     const localUsers = getStoredUsers();
-    if (localUsers && localUsers.length > 0) onUpdate(localUsers);
+    onUpdate(localUsers && localUsers.length > 0 ? localUsers : INITIAL_USERS);
     return () => {};
   }
 }
 
 export async function saveUserToFirestore(user) {
   if (!user || !user.id) return;
+  // 1. IMMEDIATELY update local storage
+  const localUsers = getStoredUsers();
+  const updatedList = [user, ...localUsers.filter((u) => String(u.id) !== String(user.id))];
+  saveStoredUsers(updatedList);
+
+  // 2. Then save to Firestore in background
   try {
     let updatedUser = { ...user };
     if (updatedUser.avatar && updatedUser.avatar.startsWith('data:')) {
@@ -106,39 +124,29 @@ export async function saveUserToFirestore(user) {
     }
     const userRef = doc(db, 'users', String(user.id));
     await setDoc(userRef, sanitize(updatedUser), { merge: true });
-
-    // Instantly update local cache
-    const localUsers = getStoredUsers();
-    const existingIdx = localUsers.findIndex((u) => u.id === user.id);
-    let updatedList;
-    if (existingIdx >= 0) {
-      updatedList = localUsers.map((u) => (u.id === user.id ? updatedUser : u));
-    } else {
-      updatedList = [updatedUser, ...localUsers];
-    }
-    saveStoredUsers(updatedList);
   } catch (err) {
-    console.error('Error saving user to Firestore:', err);
+    console.warn('Firestore saveUserToFirestore warning (saved locally):', err);
   }
 }
 
 export async function deleteUserFromFirestore(userId) {
   if (!userId) return;
+  // 1. IMMEDIATELY update local cache
+  const localUsers = getStoredUsers();
+  const updatedList = localUsers.filter((u) => String(u.id) !== String(userId));
+  saveStoredUsers(updatedList);
+
   try {
     const userRef = doc(db, 'users', String(userId));
     await deleteDoc(userRef);
-
-    // Update local cache
-    const localUsers = getStoredUsers();
-    const updatedList = localUsers.filter((u) => u.id !== userId);
-    saveStoredUsers(updatedList);
   } catch (err) {
-    console.error('Error deleting user from Firestore:', err);
+    console.warn('Error deleting user from Firestore:', err);
   }
 }
 
 export async function saveUsersBatchToFirestore(users) {
   if (!users || !users.length) return;
+  saveStoredUsers(users);
   try {
     const batch = writeBatch(db);
     users.forEach((u) => {
@@ -146,9 +154,8 @@ export async function saveUsersBatchToFirestore(users) {
       batch.set(userRef, sanitize(u), { merge: true });
     });
     await batch.commit();
-    saveStoredUsers(users);
   } catch (err) {
-    console.error('Error saving users batch to Firestore:', err);
+    console.warn('Error saving users batch to Firestore:', err);
   }
 }
 
@@ -159,21 +166,36 @@ export function subscribeSubmissions(onUpdate) {
   try {
     const colRef = collection(db, 'submissions');
     const unsubscribe = onSnapshot(colRef, (snapshot) => {
-      const submissions = snapshot.docs.map((d) => ({
-        ...d.data(),
-        firestoreId: d.id,
-      }));
-      submissions.sort((a, b) => new Date(b.timestamp || b.fechaHora || 0) - new Date(a.timestamp || a.fechaHora || 0));
-      saveStoredSubmissions(submissions);
-      onUpdate(submissions);
+      const localSubs = getStoredSubmissions() || [];
+      const remoteSubs = snapshot.empty
+        ? []
+        : snapshot.docs.map((d) => ({
+            ...d.data(),
+            firestoreId: d.id,
+          }));
+
+      // MERGE: Combine local & remote submissions by unique ID
+      const subMap = new Map();
+      localSubs.forEach((s) => {
+        if (s && s.id) subMap.set(String(s.id), s);
+      });
+      remoteSubs.forEach((s) => {
+        if (s && s.id) subMap.set(String(s.id), s);
+      });
+
+      const merged = Array.from(subMap.values());
+      merged.sort((a, b) => new Date(b.timestamp || b.fechaHora || 0) - new Date(a.timestamp || a.fechaHora || 0));
+
+      saveStoredSubmissions(merged);
+      onUpdate(merged);
     }, (err) => {
-      console.warn('Firestore submissions subscription error, falling back to local cache:', err);
+      console.warn('Firestore submissions subscription warning, using local cache:', err);
       const localSubs = getStoredSubmissions();
       onUpdate(localSubs);
     });
     return unsubscribe;
   } catch (err) {
-    console.warn('Firestore submissions init error:', err);
+    console.warn('Firestore submissions init warning:', err);
     const localSubs = getStoredSubmissions();
     onUpdate(localSubs);
     return () => {};
@@ -181,6 +203,13 @@ export function subscribeSubmissions(onUpdate) {
 }
 
 export async function addSubmissionToFirestore(submission) {
+  if (!submission || !submission.id) return;
+  // 1. IMMEDIATELY update local storage
+  const localSubs = getStoredSubmissions();
+  const updatedList = [submission, ...localSubs.filter((s) => String(s.id) !== String(submission.id))];
+  saveStoredSubmissions(updatedList);
+
+  // 2. Then save to Firestore in background
   try {
     const subId = String(submission.id || `sub-${Date.now()}`);
     let updatedSub = JSON.parse(JSON.stringify(submission));
@@ -198,26 +227,24 @@ export async function addSubmissionToFirestore(submission) {
     const subRef = doc(db, 'submissions', subId);
     await setDoc(subRef, sanitize(updatedSub), { merge: true });
 
-    // Update local cache
-    const localSubs = getStoredSubmissions();
-    const updatedList = [updatedSub, ...localSubs.filter((s) => s.id !== updatedSub.id)];
-    saveStoredSubmissions(updatedList);
+    const latestLocal = getStoredSubmissions();
+    saveStoredSubmissions([updatedSub, ...latestLocal.filter((s) => String(s.id) !== String(updatedSub.id))]);
   } catch (err) {
-    console.error('Error adding submission to Firestore:', err);
+    console.warn('Firestore addSubmissionToFirestore warning (saved locally):', err);
   }
 }
 
 export async function deleteSubmissionFromFirestore(subId) {
   if (!subId) return;
+  const localSubs = getStoredSubmissions();
+  const updatedList = localSubs.filter((s) => String(s.id) !== String(subId));
+  saveStoredSubmissions(updatedList);
+
   try {
     const subRef = doc(db, 'submissions', String(subId));
     await deleteDoc(subRef);
-
-    const localSubs = getStoredSubmissions();
-    const updatedList = localSubs.filter((s) => s.id !== subId);
-    saveStoredSubmissions(updatedList);
   } catch (err) {
-    console.error('Error deleting submission from Firestore:', err);
+    console.warn('Error deleting submission from Firestore:', err);
   }
 }
 
@@ -228,21 +255,29 @@ export function subscribeMessages(onUpdate) {
   try {
     const colRef = collection(db, 'messages');
     const unsubscribe = onSnapshot(colRef, (snapshot) => {
-      const messages = snapshot.docs.map((d) => ({
+      const localMsgs = getStoredMessages() || [];
+      const remoteMsgs = snapshot.empty ? [] : snapshot.docs.map((d) => ({
         ...d.data(),
         firestoreId: d.id,
       }));
-      messages.sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
-      saveStoredMessages(messages);
-      onUpdate(messages);
+
+      const msgMap = new Map();
+      localMsgs.forEach((m) => { if (m && m.id) msgMap.set(String(m.id), m); });
+      remoteMsgs.forEach((m) => { if (m && m.id) msgMap.set(String(m.id), m); });
+
+      const merged = Array.from(msgMap.values());
+      merged.sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
+
+      saveStoredMessages(merged);
+      onUpdate(merged);
     }, (err) => {
-      console.warn('Firestore messages subscription error, falling back to local cache:', err);
+      console.warn('Firestore messages subscription warning, falling back to local cache:', err);
       const localMsgs = getStoredMessages();
       onUpdate(localMsgs);
     });
     return unsubscribe;
   } catch (err) {
-    console.warn('Firestore messages init error:', err);
+    console.warn('Firestore messages init warning:', err);
     const localMsgs = getStoredMessages();
     onUpdate(localMsgs);
     return () => {};
@@ -250,6 +285,10 @@ export function subscribeMessages(onUpdate) {
 }
 
 export async function addMessageToFirestore(message) {
+  if (!message || !message.id) return;
+  const localMsgs = getStoredMessages();
+  saveStoredMessages([...localMsgs, message]);
+
   try {
     const msgId = String(message.id || `msg-${Date.now()}`);
     let updatedMsg = JSON.parse(JSON.stringify(message));
@@ -264,26 +303,21 @@ export async function addMessageToFirestore(message) {
 
     const msgRef = doc(db, 'messages', msgId);
     await setDoc(msgRef, sanitize(updatedMsg), { merge: true });
-
-    const localMsgs = getStoredMessages();
-    const updatedList = [...localMsgs, updatedMsg];
-    saveStoredMessages(updatedList);
   } catch (err) {
-    console.error('Error adding message to Firestore:', err);
+    console.warn('Error adding message to Firestore:', err);
   }
 }
 
 export async function updateMessageInFirestore(message) {
   if (!message || !message.id) return;
+  const localMsgs = getStoredMessages();
+  saveStoredMessages(localMsgs.map((m) => (m.id === message.id ? message : m)));
+
   try {
     const msgRef = doc(db, 'messages', String(message.id));
     await setDoc(msgRef, sanitize(message), { merge: true });
-
-    const localMsgs = getStoredMessages();
-    const updatedList = localMsgs.map((m) => (m.id === message.id ? message : m));
-    saveStoredMessages(updatedList);
   } catch (err) {
-    console.error('Error updating message in Firestore:', err);
+    console.warn('Error updating message in Firestore:', err);
   }
 }
 
@@ -294,22 +328,26 @@ export function subscribeAuditLogs(onUpdate) {
   try {
     const colRef = collection(db, 'audit_logs');
     const unsubscribe = onSnapshot(colRef, (snapshot) => {
-      if (snapshot.empty) {
-        onUpdate(INITIAL_LOGS);
-      } else {
-        const logs = snapshot.docs.map((d) => d.data());
-        logs.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
-        saveStoredAuditLogs(logs);
-        onUpdate(logs);
-      }
+      const localLogs = getStoredAuditLogs() || [];
+      const remoteLogs = snapshot.empty ? [] : snapshot.docs.map((d) => d.data());
+
+      const logMap = new Map();
+      localLogs.forEach((l) => { if (l && l.id) logMap.set(String(l.id), l); });
+      remoteLogs.forEach((l) => { if (l && l.id) logMap.set(String(l.id), l); });
+
+      const merged = Array.from(logMap.values());
+      merged.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+
+      saveStoredAuditLogs(merged);
+      onUpdate(merged);
     }, (err) => {
-      console.warn('Firestore audit logs subscription error, using local cache:', err);
+      console.warn('Firestore audit logs subscription warning, using local cache:', err);
       const localLogs = getStoredAuditLogs();
       onUpdate(localLogs);
     });
     return unsubscribe;
   } catch (err) {
-    console.warn('Firestore audit logs init error:', err);
+    console.warn('Firestore audit logs init warning:', err);
     const localLogs = getStoredAuditLogs();
     onUpdate(localLogs);
     return () => {};
@@ -317,15 +355,15 @@ export function subscribeAuditLogs(onUpdate) {
 }
 
 export async function addAuditLogToFirestore(logItem) {
+  if (!logItem || !logItem.id) return;
+  const localLogs = getStoredAuditLogs();
+  saveStoredAuditLogs([logItem, ...localLogs]);
+
   try {
     const logId = String(logItem.id || `log-${Date.now()}`);
     const logRef = doc(db, 'audit_logs', logId);
     await setDoc(logRef, sanitize(logItem), { merge: true });
-
-    const localLogs = getStoredAuditLogs();
-    const updatedList = [logItem, ...localLogs];
-    saveStoredAuditLogs(updatedList);
   } catch (err) {
-    console.error('Error adding audit log to Firestore:', err);
+    console.warn('Error adding audit log to Firestore:', err);
   }
 }
