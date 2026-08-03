@@ -400,26 +400,32 @@ export default function CanvasEditor({
 
       win.document.write(`
         <!DOCTYPE html>
-        <html>
+        <html lang="es">
           <head>
+            <meta charset="utf-8" />
             <title>${title}</title>
             <style>
-              @page { size: A4 landscape; margin: 0; }
-              body { margin: 0; padding: 0; background: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: system-ui, sans-serif; }
-              img { max-width: 98vw; max-height: 86vh; object-fit: contain; }
-              .link-banner { margin-top: 10px; background: #2563eb; color: #ffffff; padding: 8px 24px; border-radius: 30px; font-weight: 800; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
-              .link-banner a { color: #ffffff; text-decoration: underline; font-weight: 900; font-size: 14px; }
+              @page { size: landscape; margin: 0; }
+              @media print {
+                html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #ffffff !important; }
+                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .pdf-container { width: 100vw !important; height: 100vh !important; max-width: 100% !important; margin: 0 !important; }
+              }
+              body { font-family: Arial, sans-serif; background: #ffffff; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; height: 100vh; width: 100vw; overflow: hidden; }
+              .pdf-container { position: relative; width: 100vw; height: auto; aspect-ratio: 1200/750; max-height: 100vh; max-width: calc(100vh * 1200 / 750); margin: 0 auto; }
+              .pdf-container img { width: 100%; height: 100%; display: block; object-fit: contain; }
+              .pdf-link { position: absolute; left: 2.5%; top: 83.2%; width: 29.16%; height: 10%; display: block; z-index: 100; cursor: pointer; text-decoration: none !important; border: none !important; outline: none !important; background: transparent !important; }
             </style>
           </head>
           <body>
-            <img src="${imgData}" onload="setTimeout(() => { window.print(); window.close(); }, 400);" />
-            ${
-              hasLink
-                ? `<div class="link-banner">
-                    🔗 Enlace Interactivo: <a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${linkUrl}</a>
-                   </div>`
-                : ''
-            }
+            <div class="pdf-container">
+              <img src="${imgData}" onload="setTimeout(() => { window.print(); window.close(); }, 500);" />
+              ${
+                hasLink
+                  ? `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="pdf-link" title="Abrir enlace"></a>`
+                  : ''
+              }
+            </div>
           </body>
         </html>
       `);

@@ -5,6 +5,7 @@ import BrandLogo from '../components/BrandLogo';
 import InteractiveBackground from '../components/InteractiveBackground';
 import { INITIAL_USERS } from '../lib/constants';
 import { getStoredUsers } from '../lib/storage';
+import { fetchAllUsersFromFirestore } from '../lib/firestoreService';
 
 export default function LoginPage({
   users,
@@ -18,8 +19,9 @@ export default function LoginPage({
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPass, setLoginPass] = useState('');
   const [showLoginPass, setShowLoginPass] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoginError('');
 
@@ -31,51 +33,69 @@ export default function LoginPage({
       return;
     }
 
-    // Read combined users from state, local storage, and fallback defaults
-    const storedUsers = typeof window !== 'undefined' ? getStoredUsers() : [];
-    const userMap = new Map();
-    (users || []).forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
-    (storedUsers || []).forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
-    (INITIAL_USERS || []).forEach((u) => { if (u && u.id && !userMap.has(String(u.id))) userMap.set(String(u.id), u); });
+    setIsLoading(true);
 
-    const availableUsers = Array.from(userMap.values());
+    try {
+      // Gather users from ALL sources: props, localStorage, Firestore direct query, and defaults
+      const storedUsers = typeof window !== 'undefined' ? getStoredUsers() : [];
+      
+      // CRITICAL: Query Firestore directly to get the latest users
+      // This ensures users created in other browsers are found immediately
+      let firestoreUsers = [];
+      try {
+        firestoreUsers = await fetchAllUsersFromFirestore();
+      } catch (err) {
+        console.warn('Could not fetch users from Firestore for login, using cached data:', err);
+      }
+      
+      // Merge all sources — Firestore data wins on conflicts (most up-to-date)
+      const userMap = new Map();
+      (INITIAL_USERS || []).forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
+      (storedUsers || []).forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
+      (users || []).forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
+      (firestoreUsers || []).forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
 
-    let found = availableUsers.find((u) => {
-      const uUser = (u.username || '').trim().toLowerCase();
-      const uEmail = (u.email || '').trim().toLowerCase();
-      const uName = (u.name || '').trim().toLowerCase();
-      const uSalaCod = (u.salaCodigo || '').trim().toLowerCase();
-      const uPass = String(u.password || '').trim();
+      const availableUsers = Array.from(userMap.values());
 
-      const matchesIdentifier =
-        (uUser && uUser === targetUser) ||
-        (uEmail && uEmail === targetUser) ||
-        (uName && uName === targetUser) ||
-        (uSalaCod && uSalaCod === targetUser);
+      let found = availableUsers.find((u) => {
+        const uUser = (u.username || '').trim().toLowerCase();
+        const uEmail = (u.email || '').trim().toLowerCase();
+        const uName = (u.name || '').trim().toLowerCase();
+        const uSalaCod = (u.salaCodigo || '').trim().toLowerCase();
+        const uPass = String(u.password || '').trim();
 
-      const matchesPass = uPass === passClean;
+        const matchesIdentifier =
+          (uUser && uUser === targetUser) ||
+          (uEmail && uEmail === targetUser) ||
+          (uName && uName === targetUser) ||
+          (uSalaCod && uSalaCod === targetUser);
 
-      return matchesIdentifier && matchesPass;
-    });
+        const matchesPass = uPass === passClean;
 
-    // Guaranteed fallback for admin / admin123
-    if (!found && (targetUser === 'admin' || targetUser === 'administrador') && passClean === 'admin123') {
-      found = availableUsers.find((u) => u.role === 'Administrador') || INITIAL_USERS[0];
+        return matchesIdentifier && matchesPass;
+      });
+
+      // Guaranteed fallback for admin / admin123
+      if (!found && (targetUser === 'admin' || targetUser === 'administrador') && passClean === 'admin123') {
+        found = availableUsers.find((u) => u.role === 'Administrador') || INITIAL_USERS[0];
+      }
+
+      if (!found) {
+        addLog(loginUsername, 'Intento Fallido', 'Credenciales no válidas', 'warning');
+        setLoginError('Usuario o contraseña incorrectos.');
+        return;
+      }
+
+      if (found.status === 'Inactivo') {
+        addLog(loginUsername, 'Acceso Denegado', 'Cuenta deshabilitada', 'error');
+        setLoginError('Esta cuenta ha sido deshabilitada por el Administrador.');
+        return;
+      }
+
+      onLogin(found);
+    } finally {
+      setIsLoading(false);
     }
-
-    if (!found) {
-      addLog(loginUsername, 'Intento Fallido', 'Credenciales no válidas', 'warning');
-      setLoginError('Usuario o contraseña incorrectos.');
-      return;
-    }
-
-    if (found.status === 'Inactivo') {
-      addLog(loginUsername, 'Acceso Denegado', 'Cuenta deshabilitada', 'error');
-      setLoginError('Esta cuenta ha sido deshabilitada por el Administrador.');
-      return;
-    }
-
-    onLogin(found);
   };
 
   return (
@@ -130,7 +150,8 @@ export default function LoginPage({
                 value={loginUsername}
                 onChange={(e) => setLoginUsername(e.target.value)}
                 placeholder="Nombre de usuario"
-                className="w-full pl-11 pr-4 py-3.5 rounded-full text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:outline-none focus:border-red-600 dark:text-white font-medium"
+                disabled={isLoading}
+                className="w-full pl-11 pr-4 py-3.5 rounded-full text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:outline-none focus:border-red-600 dark:text-white font-medium disabled:opacity-60"
               />
             </div>
 
@@ -144,7 +165,8 @@ export default function LoginPage({
                 value={loginPass}
                 onChange={(e) => setLoginPass(e.target.value)}
                 placeholder="Contraseña"
-                className="w-full pl-11 pr-11 py-3.5 rounded-full text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:outline-none focus:border-red-600 dark:text-white font-medium"
+                disabled={isLoading}
+                className="w-full pl-11 pr-11 py-3.5 rounded-full text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:outline-none focus:border-red-600 dark:text-white font-medium disabled:opacity-60"
               />
               <button
                 type="button"
@@ -157,9 +179,20 @@ export default function LoginPage({
 
             <button
               type="submit"
-              className="w-full py-4 px-6 rounded-full text-xs font-black uppercase tracking-wider text-white bg-gradient-to-r from-red-600 to-red-800 hover:opacity-95 shadow-lg shadow-red-600/30 cursor-pointer"
+              disabled={isLoading}
+              className="w-full py-4 px-6 rounded-full text-xs font-black uppercase tracking-wider text-white bg-gradient-to-r from-red-600 to-red-800 hover:opacity-95 shadow-lg shadow-red-600/30 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              INICIAR SESIÓN
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  VERIFICANDO...
+                </>
+              ) : (
+                'INICIAR SESIÓN'
+              )}
             </button>
           </form>
         </div>

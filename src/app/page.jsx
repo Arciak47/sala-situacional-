@@ -97,7 +97,9 @@ export default function Home() {
 
     // Subscribe to Firestore collections in real-time
     const unsubUsers = subscribeUsers((data) => {
-      if (data && data.length > 0) setUsers(data);
+      if (Array.isArray(data) && data.length > 0) {
+        setUsers(data);
+      }
     });
     const unsubSubs = subscribeSubmissions((data) => {
       if (data) setSubmissions(data);
@@ -231,7 +233,7 @@ export default function Home() {
   };
 
   // ── User Management ──
-  const handleCreateUser = (e) => {
+  const handleCreateUser = async (e) => {
     e.preventDefault();
     setModalError('');
     const usernameClean = (formData.username || '').trim().toLowerCase();
@@ -289,7 +291,7 @@ export default function Home() {
       status: 'Activo',
     };
     setUsers((prev) => [newUser, ...prev]);
-    saveUserToFirestore(newUser);
+    await saveUserToFirestore(newUser);
     addLog(
       currentUser?.email || 'Admin',
       'Usuario Creado',
@@ -314,11 +316,11 @@ export default function Home() {
     setTimeout(() => setToastMsg(''), 4000);
   };
 
-  const handleSaveEditedUser = (updatedUser) => {
+  const handleSaveEditedUser = async (updatedUser) => {
     setUsers((prev) =>
       prev.map((u) => (u.id === updatedUser.id ? updatedUser : u))
     );
-    saveUserToFirestore(updatedUser);
+    await saveUserToFirestore(updatedUser);
 
     if (currentUser && currentUser.id === updatedUser.id) {
       setCurrentUser(updatedUser);
@@ -335,14 +337,14 @@ export default function Home() {
     setTimeout(() => setToastMsg(''), 4000);
   };
 
-  const toggleStatus = (id) => {
+  const toggleStatus = async (id) => {
     if (currentUser?.role !== 'Administrador') return;
     setUsers((prev) =>
       prev.map((u) => {
         if (u.id === id) {
           const ns = u.status === 'Activo' ? 'Inactivo' : 'Activo';
           const updated = { ...u, status: ns };
-          saveUserToFirestore(updated);
+          saveUserToFirestore(updated); // fire-and-forget is OK for status toggle
           addLog(currentUser.email, 'Cambio Estado', `${u.email} → ${ns}`, 'warning');
           return updated;
         }

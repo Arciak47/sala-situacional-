@@ -4,7 +4,8 @@ import {
   doc, 
   setDoc, 
   deleteDoc,
-  writeBatch 
+  writeBatch,
+  getDocs
 } from 'firebase/firestore';
 import { ref, uploadString, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
@@ -55,6 +56,23 @@ export async function uploadImageToStorage(fileOrDataUrl, path) {
 }
 
 // ----------------------------------------------------
+// DIRECT FIRESTORE READ (for login verification)
+// This bypasses localStorage and reads directly from Firestore
+// to ensure we always have the latest users across browsers
+// ----------------------------------------------------
+export async function fetchAllUsersFromFirestore() {
+  try {
+    const colRef = collection(db, 'users');
+    const snapshot = await getDocs(colRef);
+    if (snapshot.empty) return [];
+    return snapshot.docs.map((d) => d.data());
+  } catch (err) {
+    console.warn('fetchAllUsersFromFirestore failed:', err);
+    return [];
+  }
+}
+
+// ----------------------------------------------------
 // 1. USERS COLLECTION
 // ----------------------------------------------------
 export function subscribeUsers(onUpdate) {
@@ -64,34 +82,44 @@ export function subscribeUsers(onUpdate) {
       const localUsers = getStoredUsers() || [];
       const remoteUsers = snapshot.empty ? [] : snapshot.docs.map((d) => d.data());
 
-      // MERGE: Combine local & remote users by unique ID
+      // MERGE: local-first, then overlay remote data (remote wins on conflict)
       const userMap = new Map();
+      
+      // 1. Start with INITIAL_USERS as baseline
+      INITIAL_USERS.forEach((u) => {
+        if (u && u.id) userMap.set(String(u.id), u);
+      });
+      
+      // 2. Layer local users on top
       localUsers.forEach((u) => {
         if (u && u.id) userMap.set(String(u.id), u);
       });
+      
+      // 3. Layer remote users on top (remote is latest truth for cross-browser)
       remoteUsers.forEach((u) => {
         if (u && u.id) userMap.set(String(u.id), u);
       });
 
-      let merged = Array.from(userMap.values());
-      if (merged.length === 0) {
-        merged = INITIAL_USERS;
-      }
+      const merged = Array.from(userMap.values());
 
       saveStoredUsers(merged);
       onUpdate(merged);
 
-      // Auto-sync missing local users to Firestore in background
-      if (snapshot.empty || remoteUsers.length < merged.length) {
-        try {
-          const batch = writeBatch(db);
-          merged.forEach((user) => {
-            const userRef = doc(db, 'users', String(user.id));
-            batch.set(userRef, sanitize(user), { merge: true });
-          });
-          await batch.commit();
-        } catch (e) {
-          console.warn('Firestore sync users warning:', e);
+      // Auto-sync local-only users to Firestore
+      if (remoteUsers.length < merged.length) {
+        const remoteIds = new Set(remoteUsers.map((u) => String(u.id)));
+        const localOnly = merged.filter((u) => !remoteIds.has(String(u.id)));
+        if (localOnly.length > 0) {
+          try {
+            const batch = writeBatch(db);
+            localOnly.forEach((user) => {
+              const userRef = doc(db, 'users', String(user.id));
+              batch.set(userRef, sanitize(user), { merge: true });
+            });
+            await batch.commit();
+          } catch (e) {
+            console.warn('Firestore sync users warning:', e);
+          }
         }
       }
     }, (err) => {
@@ -115,17 +143,18 @@ export async function saveUserToFirestore(user) {
   const updatedList = [user, ...localUsers.filter((u) => String(u.id) !== String(user.id))];
   saveStoredUsers(updatedList);
 
-  // 2. Then save to Firestore in background
+  // 2. Save to Firestore — AWAIT to ensure it's persisted before returning
   try {
     let updatedUser = { ...user };
-    if (updatedUser.avatar && updatedUser.avatar.startsWith('data:')) {
+    if (updatedUser.avatar && typeof updatedUser.avatar === 'string' && updatedUser.avatar.startsWith('data:')) {
       const avatarUrl = await uploadImageToStorage(updatedUser.avatar, `avatars/${user.id}_${Date.now()}`);
       if (avatarUrl) updatedUser.avatar = avatarUrl;
     }
     const userRef = doc(db, 'users', String(user.id));
     await setDoc(userRef, sanitize(updatedUser), { merge: true });
+    console.log(`✅ User ${user.username || user.id} saved to Firestore successfully`);
   } catch (err) {
-    console.warn('Firestore saveUserToFirestore warning (saved locally):', err);
+    console.error('❌ Firestore saveUserToFirestore ERROR (saved locally only):', err);
   }
 }
 
@@ -266,7 +295,7 @@ export function subscribeMessages(onUpdate) {
       remoteMsgs.forEach((m) => { if (m && m.id) msgMap.set(String(m.id), m); });
 
       const merged = Array.from(msgMap.values());
-      merged.sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
+      merged.sort((a, b) => new Date(a.fecha || a.timestamp || 0) - new Date(b.fecha || b.timestamp || 0));
 
       saveStoredMessages(merged);
       onUpdate(merged);
@@ -293,12 +322,12 @@ export async function addMessageToFirestore(message) {
     const msgId = String(message.id || `msg-${Date.now()}`);
     let updatedMsg = JSON.parse(JSON.stringify(message));
 
-    if (updatedMsg.adjunto && updatedMsg.adjunto.startsWith('data:')) {
+    if (updatedMsg.imagen && typeof updatedMsg.imagen === 'string' && updatedMsg.imagen.startsWith('data:')) {
       const imgUrl = await uploadImageToStorage(
-        updatedMsg.adjunto,
+        updatedMsg.imagen,
         `messages/chat_${msgId}_${Date.now()}`
       );
-      if (imgUrl) updatedMsg.adjunto = imgUrl;
+      if (imgUrl) updatedMsg.imagen = imgUrl;
     }
 
     const msgRef = doc(db, 'messages', msgId);
@@ -308,14 +337,27 @@ export async function addMessageToFirestore(message) {
   }
 }
 
-export async function updateMessageInFirestore(message) {
-  if (!message || !message.id) return;
+/**
+ * Update specific fields of a message in Firestore
+ * Called as: updateMessageInFirestore(messageId, { leido: true })
+ */
+export async function updateMessageInFirestore(messageId, fieldsToUpdate) {
+  if (!messageId) return;
+  
+  // Update local cache
   const localMsgs = getStoredMessages();
-  saveStoredMessages(localMsgs.map((m) => (m.id === message.id ? message : m)));
+  const updatedMsgs = localMsgs.map((m) => {
+    if (String(m.id) === String(messageId)) {
+      return { ...m, ...fieldsToUpdate };
+    }
+    return m;
+  });
+  saveStoredMessages(updatedMsgs);
 
+  // Update Firestore — merge fields into existing document
   try {
-    const msgRef = doc(db, 'messages', String(message.id));
-    await setDoc(msgRef, sanitize(message), { merge: true });
+    const msgRef = doc(db, 'messages', String(messageId));
+    await setDoc(msgRef, sanitize(fieldsToUpdate), { merge: true });
   } catch (err) {
     console.warn('Error updating message in Firestore:', err);
   }

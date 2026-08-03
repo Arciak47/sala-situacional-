@@ -502,12 +502,12 @@ export async function exportSubmissionsToHDPDF(selectedSubmissions = [], docTitl
   const cardsHtml = pagesData
     .map(
       ({ imgData, linkUrl, hasLink }) => `
-      <div className="canvas-pdf-page" style="page-break-after: always; page-break-inside: avoid; width: 100%; max-width: 1100px; margin: 0 auto 20px auto; text-align: center;">
+      <div class="canvas-pdf-page" style="page-break-after: always; page-break-inside: avoid; width: 100%; max-width: 1100px; margin: 0 auto 20px auto; text-align: center;">
         <div style="position: relative; display: inline-block; width: 100%;">
           <img src="${imgData}" style="width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 4px;" alt="Ficha Canvas Oficial" />
           ${
             hasLink
-              ? `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" title="Abrir enlace" style="position: absolute; left: 2.5%; top: 83.2%; width: 29.16%; height: 10%; display: block; z-index: 10; cursor: pointer;"></a>`
+              ? `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="pdf-link-overlay" title="Abrir enlace" style="position: absolute; left: 2.5%; top: 83.2%; width: 29.16%; height: 10%; display: block; z-index: 100; cursor: pointer; text-decoration: none !important; border: none !important; outline: none !important; background: transparent !important;"></a>`
               : ''
           }
         </div>
@@ -527,9 +527,10 @@ export async function exportSubmissionsToHDPDF(selectedSubmissions = [], docTitl
             html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #ffffff !important; }
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .canvas-pdf-page { page-break-after: always; page-break-inside: avoid; max-width: 100% !important; margin: 0 auto !important; }
-            a { text-decoration: underline !important; color: #2563eb !important; }
+            .pdf-link-overlay { text-decoration: none !important; border: none !important; outline: none !important; background: transparent !important; color: transparent !important; }
           }
           body { font-family: Arial, Helvetica, sans-serif; background: #ffffff; padding: 10px; margin: 0; }
+          .pdf-link-overlay { position: absolute; left: 2.5%; top: 83.2%; width: 29.16%; height: 10%; display: block; z-index: 100; cursor: pointer; text-decoration: none !important; border: none !important; outline: none !important; background: transparent !important; }
         </style>
       </head>
       <body>
