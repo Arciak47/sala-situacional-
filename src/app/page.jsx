@@ -607,6 +607,19 @@ export default function Home() {
 
   const handleSendMessage = ({ receptorId, receptorNombre, mensaje, imagen }) => {
     if (!currentUser) return;
+
+    // Validate role-based messaging: Admin↔Supervisor↔Analista
+    const receptor = users.find((u) => u.id === receptorId);
+    if (receptor) {
+      const senderRole = currentUser.role;
+      const receiverRole = receptor.role;
+      const allowed =
+        (senderRole === 'Administrador' && receiverRole === 'Supervisor') ||
+        (senderRole === 'Supervisor' && (receiverRole === 'Administrador' || receiverRole === 'Analista')) ||
+        (senderRole === 'Analista' && receiverRole === 'Supervisor');
+      if (!allowed) return;
+    }
+
     const chatId = [currentUser.id, receptorId].sort().join('_');
     const newMsg = {
       id: `msg-${Date.now()}`,
