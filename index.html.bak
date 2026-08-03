@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sala de Monitoreo | Sistema Ejecutivo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
+          colors: {
+            guarico: { red: '#dc2626', navy: '#032b69', slate: '#1e293b', grayBg: '#f8fafc' }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; transition: background-color 0.3s ease, color 0.3s ease; }
+    .bg-origami-light {
+      background-color: #f1f5f9;
+      background-image: radial-gradient(at 0% 0%, rgba(220,38,38,0.06) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(3,43,105,0.08) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(220,38,38,0.06) 0px, transparent 50%);
+    }
+    .dark .bg-origami-light {
+      background-color: #0b0f19;
+      background-image: radial-gradient(at 0% 0%, rgba(220,38,38,0.15) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(3,43,105,0.4) 0px, transparent 50%);
+    }
+    .executive-card { background: #fff; border: 1px solid rgba(226,232,240,0.8); box-shadow: 0 20px 50px -10px rgba(0,0,0,0.08); }
+    .dark .executive-card { background: rgba(15,23,42,0.95); border-color: rgba(255,255,255,0.08); box-shadow: 0 25px 60px -15px rgba(0,0,0,0.5); }
+    .executive-input { background: #fff; border: 1px solid #cbd5e1; transition: all 0.2s ease; }
+    .dark .executive-input { background: rgba(30,41,59,0.7); border-color: #475569; color: #f8fafc; }
+    .executive-input:focus { border-color: #dc2626; box-shadow: 0 0 0 4px rgba(220,38,38,0.12); outline: none; }
+    .btn-corporate-red { background: linear-gradient(135deg,#dc2626 0%,#b91c1c 100%); box-shadow: 0 10px 25px -5px rgba(220,38,38,0.4); transition: all 0.25s cubic-bezier(0.4,0,0.2,1); }
+    .btn-corporate-red:hover { background: linear-gradient(135deg,#ef4444 0%,#dc2626 100%); box-shadow: 0 15px 30px -5px rgba(220,38,38,0.55); transform: translateY(-1px); }
+    input[type=range] { accent-color: #dc2626; }
+    input[type=number] { -moz-appearance: textfield; }
+    input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    @keyframes slideInRight { from { opacity: 0; transform: translateX(100px); } to { opacity: 1; transform: translateX(0); } }
+    .toast-slide-in { animation: slideInRight 0.4s cubic-bezier(0.16,1,0.3,1) forwards; }
+    .adj-input { width: 72px; padding: 4px 6px; border-radius: 8px; font-size: 11px; text-align: center; font-family: monospace; font-weight: 700; }
+    .adj-row { display: flex; align-items: center; gap: 6px; }
+    .adj-label { font-size: 10px; color: #64748b; min-width: 90px; flex-shrink: 0; font-weight: 600; }
+    .dark .adj-label { color: #94a3b8; }
+    .section-toggle { cursor: pointer; user-select: none; }
+    .section-toggle:hover { opacity: 0.8; }
+    .stat-card { background: linear-gradient(135deg, rgba(220,38,38,0.08), rgba(3,43,105,0.06)); border: 1px solid rgba(220,38,38,0.15); }
+    .dark .stat-card { background: linear-gradient(135deg, rgba(220,38,38,0.15), rgba(3,43,105,0.12)); border-color: rgba(220,38,38,0.25); }
+  </style>
+</head>
+<body class="bg-origami-light min-h-screen text-slate-800 dark:text-slate-100 transition-colors duration-300">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const INITIAL_USERS = [
+      { id: 'usr-admin-01', name: 'Administrador Principal', email: 'admin@monitoreo.com', password: 'admin123', role: 'Administrador', department: 'Gerencia de Monitoreo', status: 'Activo', createdAt: '2026-07-01' },
+      { id: 'usr-analyst-01', name: 'María García', email: 'analista@monitoreo.com', password: 'analista123', role: 'Analista', department: 'Análisis de Redes Sociales', status: 'Activo', createdAt: '2026-07-10' },
+      { id: 'usr-super-01', name: 'Carlos Mendoza', email: 'supervisor@monitoreo.com', password: 'supervisor123', role: 'Supervisor', department: 'Supervisión de Monitoreo', status: 'Activo', createdAt: '2026-07-05' }
+    ];
+
+    const INITIAL_LOGS = [
+      { id: 'log-101', timestamp: new Date().toLocaleDateString('es-ES') + ' 09:30:00', user: 'Sistema', action: 'Sistema Iniciado', details: 'Roles: Administrador, Analista, Supervisor configurados.', type: 'info' }
+    ];
+
+    const DEFAULT_ADJUSTMENTS = {
+      canvasW: 1200, canvasH: 750,
+      logoCircleX: 60, logoCircleY: 45, logoCircleR: 14,
+      logoText1X: 85, logoText1Y: 42, logoText2X: 85, logoText2Y: 60, logoTextFont: 15,
+      titleX: 600, titleY: 58, titleFont: 38,
+      headerLineY: 95, headerLineWidth: 4,
+      hLine1StartX: 40, hLine1EndX: 540, hLine2StartX: 550, hLine2EndX: 950, hLine3StartX: 960, hLine3EndX: 1160,
+      leftX: 40,
+      municipioLabelOffsetX: 110, municipioLabelY: 138, municipioLabelFont: 22,
+      municipioValueY: 172, municipioValueFont: 24,
+      evidenciaLabelOffsetX: 70, evidenciaLabelY: 212, evidenciaLabelFont: 22,
+      fechaHoraFont: 18, fechaY: 242, horaY: 272,
+      evidenceBaseW: 180, evidenceBaseH: 310, evidenceOffsetX: 130, evidenceBaseY: 295,
+      evidenceScale: 1.0, evidenceExtraX: 0, evidenceExtraY: 0,
+      enlaceLabelY: 640, enlaceLabelFont: 18, enlaceValueY: 665, enlaceValue2Y: 685, enlaceValueFont: 14,
+      separatorX: 395, separatorStartY: 145, separatorEndY: 680, separatorWidth: 5,
+      rightX: 420,
+      redSocialLabelOffsetX: 60, redSocialLabelY: 170, redSocialLabelFont: 20,
+      redSocialValueOffsetX: 70, redSocialValueY: 202, redSocialValueFont: 22,
+      gridVertLineX: 650, gridVertStartY: 150, gridVertEndY: 330, gridVertWidth: 4,
+      postLabelOffsetX: 410, postLabelY: 170, postLabelFont: 20,
+      postValueOffsetX: 260, postValueY: 202, postValueFont: 22,
+      usuarioLabelOffsetX: 80, usuarioLabelY: 290, usuarioLabelFont: 20,
+      usuarioValueOffsetX: 65, usuarioValueY: 322, usuarioValueFont: 22,
+      areaLabelOffsetX: 410, areaLabelY: 290, areaLabelFont: 20,
+      areaValueOffsetX: 310, areaValueY: 322, areaValueFont: 22,
+      gridHLineStartX: 415, gridHLineEndX: 1160, gridHLineY: 360, gridHLineWidth: 4,
+      contextoLabelFont: 20, contextoStartY: 400, contextoValueFont: 17,
+      contextoMaxWidth: 720, contextoLineSpacing: 11,
+      ctxBottomLineStartX: 415, ctxBottomLineEndX: 1160, ctxBottomMinY: 580,
+      bottomOffsetY: 35,
+      sentimientoLabelOffsetX: 30, sentimientoLabelFont: 20,
+      sentimientoValueOffsetX: 50, sentimientoValueFont: 22, sentimientoValueGapY: 32,
+      iconsGapY: 70, iconsFont: 18,
+      likeIconOffsetX: 25, likeValueOffsetX: 55,
+      commentIconOffsetX: 110, commentValueOffsetX: 140,
+      shareIconOffsetX: 195, shareValueOffsetX: 225,
+      viralidadLabelOffsetX: 410, viralidadLabelFont: 20,
+      viralidadValueOffsetX: 480, viralidadValueFont: 22, viralidadValueGapY: 32,
+      decoLeftY1: 720, decoLeftX2: 360, decoLeftX3: 320,
+      decoRightX1: 820, decoRightX2: 870, decoRightY1: 720
+    };
+
+    const EMPTY_REPORT = {
+      municipio: '', fecha: '', hora: '', redSocial: 'INSTAGRAM', postTitle: '', usuario: '',
+      area: 'INFRAESTRUCTURA', contexto: '', sentimiento: 'NEGATIVO', viralidad: 'MEDIO',
+      enlace: '', likes: '0', comments: '0', shares: '0', evidenceImageSrc: ''
+    };
+
+    // =============================================
+    // ADJUSTMENT PANEL SECTIONS DEFINITION
+    // =============================================
+    const ADJ_SECTIONS = [
+      { key: 'canvas', icon: '📐', title: 'Canvas (Dimensiones)', fields: [
+        { k: 'canvasW', label: 'Ancho', u: 'px' }, { k: 'canvasH', label: 'Alto', u: 'px' }
+      ]},
+      { key: 'logo', icon: '🔴', title: 'Logo (Por amor a Guárico)', fields: [
+        { k: 'logoCircleX', label: 'Círculo X', u: 'px' }, { k: 'logoCircleY', label: 'Círculo Y', u: 'px' }, { k: 'logoCircleR', label: 'Radio', u: 'px' },
+        { k: 'logoText1X', label: 'Texto 1 X', u: 'px' }, { k: 'logoText1Y', label: 'Texto 1 Y', u: 'px' },
+        { k: 'logoText2X', label: 'Texto 2 X', u: 'px' }, { k: 'logoText2Y', label: 'Texto 2 Y', u: 'px' }, { k: 'logoTextFont', label: 'Fuente', u: 'px' }
+      ]},
+      { key: 'title', icon: '📰', title: 'Título "REPORTE ÚNICO"', fields: [
+        { k: 'titleX', label: 'Posición X', u: 'px' }, { k: 'titleY', label: 'Posición Y', u: 'px' }, { k: 'titleFont', label: 'Fuente', u: 'px' }
+      ]},
+      { key: 'headerLine', icon: '➖', title: 'Líneas del Header', fields: [
+        { k: 'headerLineY', label: 'Posición Y', u: 'px' }, { k: 'headerLineWidth', label: 'Grosor', u: 'px' },
+        { k: 'hLine1StartX', label: 'Línea1 IniX', u: 'px' }, { k: 'hLine1EndX', label: 'Línea1 FinX', u: 'px' },
+        { k: 'hLine2StartX', label: 'Línea2 IniX', u: 'px' }, { k: 'hLine2EndX', label: 'Línea2 FinX', u: 'px' },
+        { k: 'hLine3StartX', label: 'Línea3 IniX', u: 'px' }, { k: 'hLine3EndX', label: 'Línea3 FinX', u: 'px' }
+      ]},
+      { key: 'municipio', icon: '🏛️', title: 'Municipio', fields: [
+        { k: 'leftX', label: 'Col. Izq. X', u: 'px' },
+        { k: 'municipioLabelOffsetX', label: 'Label Offset X', u: 'px' }, { k: 'municipioLabelY', label: 'Label Y', u: 'px' }, { k: 'municipioLabelFont', label: 'Label Fuente', u: 'px' },
+        { k: 'municipioValueY', label: 'Valor Y', u: 'px' }, { k: 'municipioValueFont', label: 'Valor Fuente', u: 'px' }
+      ]},
+      { key: 'evidencia', icon: '📋', title: 'Evidencia / Fecha / Hora', fields: [
+        { k: 'evidenciaLabelOffsetX', label: 'Label Offset X', u: 'px' }, { k: 'evidenciaLabelY', label: 'Label Y', u: 'px' }, { k: 'evidenciaLabelFont', label: 'Label Fuente', u: 'px' },
+        { k: 'fechaHoraFont', label: 'Fecha/Hora Fuente', u: 'px' }, { k: 'fechaY', label: 'Fecha Y', u: 'px' }, { k: 'horaY', label: 'Hora Y', u: 'px' }
+      ]},
+      { key: 'photo', icon: '📸', title: 'Foto de Evidencia', fields: [
+        { k: 'evidenceBaseW', label: 'Ancho Base', u: 'px' }, { k: 'evidenceBaseH', label: 'Alto Base', u: 'px' },
+        { k: 'evidenceOffsetX', label: 'Offset X', u: 'px' }, { k: 'evidenceBaseY', label: 'Base Y', u: 'px' },
+        { k: 'evidenceScale', label: 'Escala', u: 'x', step: 0.05 },
+        { k: 'evidenceExtraX', label: 'Extra X', u: 'px' }, { k: 'evidenceExtraY', label: 'Extra Y', u: 'px' }
+      ]},
+      { key: 'enlace', icon: '🔗', title: 'Enlace', fields: [
+        { k: 'enlaceLabelY', label: 'Label Y', u: 'px' }, { k: 'enlaceLabelFont', label: 'Label Fuente', u: 'px' },
+        { k: 'enlaceValueY', label: 'Valor Y (L1)', u: 'px' }, { k: 'enlaceValue2Y', label: 'Valor Y (L2)', u: 'px' }, { k: 'enlaceValueFont', label: 'Valor Fuente', u: 'px' }
+      ]},
+      { key: 'separator', icon: '⏸️', title: 'Separador Central', fields: [
+        { k: 'separatorX', label: 'Posición X', u: 'px' }, { k: 'separatorStartY', label: 'Inicio Y', u: 'px' }, { k: 'separatorEndY', label: 'Fin Y', u: 'px' }, { k: 'separatorWidth', label: 'Grosor', u: 'px' }
+      ]},
+      { key: 'redSocial', icon: '📱', title: 'Red Social', fields: [
+        { k: 'rightX', label: 'Col. Der. X', u: 'px' },
+        { k: 'redSocialLabelOffsetX', label: 'Label Offset X', u: 'px' }, { k: 'redSocialLabelY', label: 'Label Y', u: 'px' }, { k: 'redSocialLabelFont', label: 'Label Fuente', u: 'px' },
+        { k: 'redSocialValueOffsetX', label: 'Valor Offset X', u: 'px' }, { k: 'redSocialValueY', label: 'Valor Y', u: 'px' }, { k: 'redSocialValueFont', label: 'Valor Fuente', u: 'px' }
+      ]},
+      { key: 'gridVert', icon: '📊', title: 'Línea Vertical Grid', fields: [
+        { k: 'gridVertLineX', label: 'Posición X', u: 'px' }, { k: 'gridVertStartY', label: 'Inicio Y', u: 'px' }, { k: 'gridVertEndY', label: 'Fin Y', u: 'px' }, { k: 'gridVertWidth', label: 'Grosor', u: 'px' }
+      ]},
+      { key: 'post', icon: '📝', title: 'Post', fields: [
+        { k: 'postLabelOffsetX', label: 'Label Offset X', u: 'px' }, { k: 'postLabelY', label: 'Label Y', u: 'px' }, { k: 'postLabelFont', label: 'Label Fuente', u: 'px' },
+        { k: 'postValueOffsetX', label: 'Valor Offset X', u: 'px' }, { k: 'postValueY', label: 'Valor Y', u: 'px' }, { k: 'postValueFont', label: 'Valor Fuente', u: 'px' }
+      ]},
+      { key: 'usuario', icon: '👤', title: 'Usuario', fields: [
+        { k: 'usuarioLabelOffsetX', label: 'Label Offset X', u: 'px' }, { k: 'usuarioLabelY', label: 'Label Y', u: 'px' }, { k: 'usuarioLabelFont', label: 'Label Fuente', u: 'px' },
+        { k: 'usuarioValueOffsetX', label: 'Valor Offset X', u: 'px' }, { k: 'usuarioValueY', label: 'Valor Y', u: 'px' }, { k: 'usuarioValueFont', label: 'Valor Fuente', u: 'px' }
+      ]},
+      { key: 'area', icon: '🏗️', title: 'Área', fields: [
+        { k: 'areaLabelOffsetX', label: 'Label Offset X', u: 'px' }, { k: 'areaLabelY', label: 'Label Y', u: 'px' }, { k: 'areaLabelFont', label: 'Label Fuente', u: 'px' },
+        { k: 'areaValueOffsetX', label: 'Valor Offset X', u: 'px' }, { k: 'areaValueY', label: 'Valor Y', u: 'px' }, { k: 'areaValueFont', label: 'Valor Fuente', u: 'px' }
+      ]},
+      { key: 'gridHLine', icon: '➖', title: 'Línea Horizontal Grid', fields: [
+        { k: 'gridHLineStartX', label: 'Inicio X', u: 'px' }, { k: 'gridHLineEndX', label: 'Fin X', u: 'px' }, { k: 'gridHLineY', label: 'Posición Y', u: 'px' }, { k: 'gridHLineWidth', label: 'Grosor', u: 'px' }
+      ]},
+      { key: 'contexto', icon: '📄', title: 'Contexto', fields: [
+        { k: 'contextoLabelFont', label: 'Label Fuente', u: 'px' }, { k: 'contextoStartY', label: 'Inicio Y', u: 'px' },
+        { k: 'contextoValueFont', label: 'Texto Fuente', u: 'px' }, { k: 'contextoMaxWidth', label: 'Ancho Máximo', u: 'px' }, { k: 'contextoLineSpacing', label: 'Espaciado', u: 'px' },
+        { k: 'ctxBottomLineStartX', label: 'Línea Ini X', u: 'px' }, { k: 'ctxBottomLineEndX', label: 'Línea Fin X', u: 'px' }, { k: 'ctxBottomMinY', label: 'Línea Mín Y', u: 'px' }
+      ]},
+      { key: 'sentimiento', icon: '😡', title: 'Sentimiento & Métricas', fields: [
+        { k: 'bottomOffsetY', label: 'Offset Y Base', u: 'px' },
+        { k: 'sentimientoLabelOffsetX', label: 'Sent. Label X', u: 'px' }, { k: 'sentimientoLabelFont', label: 'Sent. Fuente', u: 'px' },
+        { k: 'sentimientoValueOffsetX', label: 'Sent. Valor X', u: 'px' }, { k: 'sentimientoValueFont', label: 'Sent. V. Fuente', u: 'px' }, { k: 'sentimientoValueGapY', label: 'Sent. Gap Y', u: 'px' },
+        { k: 'iconsGapY', label: 'Iconos Gap Y', u: 'px' }, { k: 'iconsFont', label: 'Iconos Fuente', u: 'px' },
+        { k: 'likeIconOffsetX', label: '❤ Icono X', u: 'px' }, { k: 'likeValueOffsetX', label: '❤ Valor X', u: 'px' },
+        { k: 'commentIconOffsetX', label: '💬 Icono X', u: 'px' }, { k: 'commentValueOffsetX', label: '💬 Valor X', u: 'px' },
+        { k: 'shareIconOffsetX', label: '🔁 Icono X', u: 'px' }, { k: 'shareValueOffsetX', label: '🔁 Valor X', u: 'px' }
+      ]},
+      { key: 'viralidad', icon: '🔥', title: 'Viralidad', fields: [
+        { k: 'viralidadLabelOffsetX', label: 'Label Offset X', u: 'px' }, { k: 'viralidadLabelFont', label: 'Label Fuente', u: 'px' },
+        { k: 'viralidadValueOffsetX', label: 'Valor Offset X', u: 'px' }, { k: 'viralidadValueFont', label: 'Valor Fuente', u: 'px' }, { k: 'viralidadValueGapY', label: 'Valor Gap Y', u: 'px' }
+      ]},
+      { key: 'deco', icon: '🎨', title: 'Decoraciones Inferiores', fields: [
+        { k: 'decoLeftY1', label: 'Izq. Y1', u: 'px' }, { k: 'decoLeftX2', label: 'Izq. X2', u: 'px' }, { k: 'decoLeftX3', label: 'Izq. X3', u: 'px' },
+        { k: 'decoRightX1', label: 'Der. X1', u: 'px' }, { k: 'decoRightX2', label: 'Der. X2', u: 'px' }, { k: 'decoRightY1', label: 'Der. Y1', u: 'px' }
+      ]}
+    ];
+
+    // Clear old localStorage data if schema version changed
+    const SCHEMA_VERSION = 'v3-roles';
+    if (localStorage.getItem('sdm_version') !== SCHEMA_VERSION) {
+      localStorage.removeItem('sdm_users');
+      localStorage.removeItem('sdm_session');
+      localStorage.removeItem('sdm_audit');
+      localStorage.removeItem('sdm_submissions');
+      localStorage.setItem('sdm_version', SCHEMA_VERSION);
+    }
+
+    function App() {
+      const [darkMode, setDarkMode] = useState(false);
+      const [users, setUsers] = useState(() => { const s = localStorage.getItem('sdm_users'); return s ? JSON.parse(s) : INITIAL_USERS; });
+      const [currentUser, setCurrentUser] = useState(() => { const s = localStorage.getItem('sdm_session'); return s ? JSON.parse(s) : null; });
+      const [auditLogs, setAuditLogs] = useState(() => { const s = localStorage.getItem('sdm_audit'); return s ? JSON.parse(s) : INITIAL_LOGS; });
+      const [submissions, setSubmissions] = useState(() => { const s = localStorage.getItem('sdm_submissions'); return s ? JSON.parse(s) : []; });
+      const [activeTab, setActiveTab] = useState('forms');
+      const [selectedSubmission, setSelectedSubmission] = useState(null);
+      const [adj, setAdj] = useState(DEFAULT_ADJUSTMENTS);
+      const [openSections, setOpenSections] = useState({});
+
+      const [loginEmail, setLoginEmail] = useState('');
+      const [loginPass, setLoginPass] = useState('');
+      const [loginError, setLoginError] = useState('');
+      const [showLoginPass, setShowLoginPass] = useState(false);
+
+      const [showCreateModal, setShowCreateModal] = useState(false);
+      const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'Analista', department: 'Análisis de Redes Sociales' });
+      const [modalError, setModalError] = useState('');
+      const [toastMsg, setToastMsg] = useState('');
+      const [searchTerm, setSearchTerm] = useState('');
+      const [inboxFilter, setInboxFilter] = useState('Todos');
+
+      const [reportData, setReportData] = useState({ ...EMPTY_REPORT });
+
+      const canvasRef = useRef(null);
+
+      // Dark mode sync
+      useEffect(() => { darkMode ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark'); }, [darkMode]);
+
+      // LocalStorage sync
+      useEffect(() => { localStorage.setItem('sdm_users', JSON.stringify(users)); }, [users]);
+      useEffect(() => { currentUser ? localStorage.setItem('sdm_session', JSON.stringify(currentUser)) : localStorage.removeItem('sdm_session'); }, [currentUser]);
+      useEffect(() => { localStorage.setItem('sdm_audit', JSON.stringify(auditLogs)); }, [auditLogs]);
+      useEffect(() => { localStorage.setItem('sdm_submissions', JSON.stringify(submissions)); }, [submissions]);
+
+      // Set default tab based on role
+      useEffect(() => {
+        if (currentUser) {
+          if (currentUser.role === 'Analista') setActiveTab('forms');
+          else if (currentUser.role === 'Supervisor') setActiveTab('inbox');
+          else setActiveTab('forms');
+        }
+      }, [currentUser?.id]);
+
+      const addLog = (user, action, details, type = 'info') => {
+        setAuditLogs(prev => [{ id: `log-${Date.now()}`, timestamp: new Date().toLocaleDateString('es-ES') + ' ' + new Date().toLocaleTimeString(), user, action, details, type }, ...prev]);
+      };
+
+      // ======= LOGIN =======
+      const handleLogin = (e) => {
+        e.preventDefault();
+        setLoginError('');
+        const found = users.find(u => u.email.toLowerCase() === loginEmail.toLowerCase().trim() && u.password === loginPass);
+        if (!found) { addLog(loginEmail, 'Intento Fallido', 'Credenciales no válidas', 'warning'); setLoginError('Usuario o contraseña incorrectos.'); return; }
+        if (found.status === 'Inactivo') { addLog(loginEmail, 'Acceso Denegado', 'Cuenta deshabilitada', 'error'); setLoginError('Esta cuenta ha sido deshabilitada.'); return; }
+        setCurrentUser(found);
+        addLog(found.email, 'Inicio de Sesión', `Ingreso como ${found.role}`, 'success');
+      };
+
+      const handleQuickFill = (email, pass) => { setLoginEmail(email); setLoginPass(pass); setLoginError(''); };
+      const handleLogout = () => { if (currentUser) addLog(currentUser.email, 'Cierre de Sesión', 'Sesión terminada', 'info'); setCurrentUser(null); setSelectedSubmission(null); };
+
+      // ======= USER MANAGEMENT =======
+      const handleCreateUser = (e) => {
+        e.preventDefault(); setModalError('');
+        if (!formData.name || !formData.email || !formData.password) { setModalError('Todos los campos son obligatorios.'); return; }
+        if (users.some(u => u.email.toLowerCase() === formData.email.toLowerCase().trim())) { setModalError('Ya existe un usuario con este correo.'); return; }
+        const newUser = { id: `usr-${Date.now()}`, ...formData, email: formData.email.trim(), status: 'Activo', createdAt: new Date().toISOString().split('T')[0] };
+        setUsers(prev => [newUser, ...prev]);
+        addLog(currentUser.email, 'Usuario Creado', `${newUser.email} (${newUser.role})`, 'success');
+        setShowCreateModal(false);
+        setFormData({ name: '', email: '', password: '', role: 'Analista', department: 'Análisis de Redes Sociales' });
+        setToastMsg(`✅ Usuario ${newUser.name} creado.`); setTimeout(() => setToastMsg(''), 4000);
+      };
+
+      const toggleStatus = (id) => {
+        if (currentUser?.role !== 'Administrador') return;
+        setUsers(prev => prev.map(u => { if (u.id === id) { const ns = u.status === 'Activo' ? 'Inactivo' : 'Activo'; addLog(currentUser.email, 'Cambio Estado', `${u.email} → ${ns}`, 'warning'); return { ...u, status: ns }; } return u; }));
+      };
+
+      const deleteUser = (id, name) => {
+        if (currentUser?.role !== 'Administrador') return;
+        if (confirm(`¿Eliminar al usuario ${name}?`)) { setUsers(prev => prev.filter(u => u.id !== id)); addLog(currentUser.email, 'Usuario Eliminado', name, 'error'); }
+      };
+
+      // ======= SUBMISSIONS =======
+      const handleSubmitForm = () => {
+        const required = ['municipio', 'fecha', 'hora', 'postTitle', 'usuario', 'contexto'];
+        const missing = required.filter(k => !reportData[k].trim());
+        if (missing.length > 0) { setToastMsg('⚠️ Completa todos los campos obligatorios.'); setTimeout(() => setToastMsg(''), 4000); return; }
+
+        const sub = {
+          id: `sub-${Date.now()}`,
+          analystId: currentUser.id,
+          analystName: currentUser.name,
+          analystEmail: currentUser.email,
+          timestamp: new Date().toISOString(),
+          reportData: { ...reportData },
+          status: 'pendiente'
+        };
+        setSubmissions(prev => [sub, ...prev]);
+        addLog(currentUser.email, 'Formulario Enviado', `Municipio: ${reportData.municipio}`, 'success');
+        setReportData({ ...EMPTY_REPORT });
+        setToastMsg('✅ Formulario enviado al Supervisor.'); setTimeout(() => setToastMsg(''), 4000);
+      };
+
+      const openSubmissionForReview = (sub) => {
+        setSelectedSubmission(sub);
+        setReportData({ ...sub.reportData });
+        setAdj({ ...DEFAULT_ADJUSTMENTS });
+        setActiveTab('editor');
+      };
+
+      const markAsReviewed = (subId) => {
+        setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, status: 'revisado' } : s));
+        addLog(currentUser.email, 'Formulario Revisado', `ID: ${subId}`, 'success');
+        setToastMsg('✅ Formulario marcado como revisado.'); setTimeout(() => setToastMsg(''), 4000);
+      };
+
+      // ======= IMAGE =======
+      const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) { const reader = new FileReader(); reader.onload = (ev) => setReportData(prev => ({ ...prev, evidenceImageSrc: ev.target.result })); reader.readAsDataURL(file); }
+      };
+
+      const resetAdjustments = () => setAdj({ ...DEFAULT_ADJUSTMENTS });
+      const toggleSection = (key) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+
+      const updateAdj = (key, val) => {
+        const v = key === 'evidenceScale' ? parseFloat(val) || 0 : parseInt(val) || 0;
+        setAdj(prev => ({ ...prev, [key]: v }));
+      };
+
+      // ======= CANVAS =======
+      const drawCanvas = () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        canvas.width = adj.canvasW; canvas.height = adj.canvasH;
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Logo
+        ctx.save(); ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(adj.logoCircleX, adj.logoCircleY, adj.logoCircleR, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#dc2626'; ctx.font = `bold ${adj.logoTextFont}px "Plus Jakarta Sans", sans-serif`; ctx.textAlign = 'left';
+        ctx.fillText('Por amor', adj.logoText1X, adj.logoText1Y);
+        ctx.fillStyle = '#032b69'; ctx.fillText('a Guárico', adj.logoText2X, adj.logoText2Y); ctx.restore();
+
+        // Title
+        ctx.fillStyle = '#032b69'; ctx.font = `900 ${adj.titleFont}px "Plus Jakarta Sans", sans-serif`; ctx.textAlign = 'center';
+        ctx.fillText('REPORTE ÚNICO', adj.titleX, adj.titleY);
+
+        // Header lines
+        ctx.lineWidth = adj.headerLineWidth;
+        ctx.strokeStyle = '#032b69'; ctx.beginPath(); ctx.moveTo(adj.hLine1StartX, adj.headerLineY); ctx.lineTo(adj.hLine1EndX, adj.headerLineY); ctx.stroke();
+        ctx.strokeStyle = '#dc2626'; ctx.beginPath(); ctx.moveTo(adj.hLine2StartX, adj.headerLineY); ctx.lineTo(adj.hLine2EndX, adj.headerLineY); ctx.stroke();
+        ctx.strokeStyle = '#032b69'; ctx.beginPath(); ctx.moveTo(adj.hLine3StartX, adj.headerLineY); ctx.lineTo(adj.hLine3EndX, adj.headerLineY); ctx.stroke();
+
+        const lx = adj.leftX;
+        ctx.textAlign = 'left';
+
+        // Municipio
+        ctx.fillStyle = '#dc2626'; ctx.font = `800 ${adj.municipioLabelFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText('MUNICIPIO', lx + adj.municipioLabelOffsetX, adj.municipioLabelY);
+        ctx.fillStyle = '#032b69'; ctx.font = `900 ${adj.municipioValueFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText(reportData.municipio.toUpperCase(), lx, adj.municipioValueY);
+
+        // Evidencia
+        ctx.fillStyle = '#dc2626'; ctx.font = `800 ${adj.evidenciaLabelFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText('EVIDENCIA', lx + adj.evidenciaLabelOffsetX, adj.evidenciaLabelY);
+
+        ctx.fillStyle = '#000'; ctx.font = `700 ${adj.fechaHoraFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText(`FECHA: ${reportData.fecha}`, lx, adj.fechaY);
+        ctx.fillText(`HORA: ${reportData.hora}`, lx, adj.horaY);
+
+        // Photo
+        const imgW = adj.evidenceBaseW * adj.evidenceScale, imgH = adj.evidenceBaseH * adj.evidenceScale;
+        const imgX = lx + adj.evidenceOffsetX + adj.evidenceExtraX, imgY = adj.evidenceBaseY + adj.evidenceExtraY;
+        ctx.fillStyle = '#f1f5f9'; ctx.fillRect(imgX, imgY, imgW, imgH);
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1; ctx.strokeRect(imgX, imgY, imgW, imgH);
+        if (reportData.evidenceImageSrc) {
+          const evImg = new Image(); evImg.crossOrigin = 'anonymous'; evImg.src = reportData.evidenceImageSrc;
+          evImg.onload = () => { ctx.drawImage(evImg, imgX, imgY, imgW, imgH); };
+        }
+
+        // Enlace
+        ctx.fillStyle = '#dc2626'; ctx.font = `800 ${adj.enlaceLabelFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText('ENLACE:', lx, adj.enlaceLabelY);
+        ctx.fillStyle = '#032b69'; ctx.font = `700 ${adj.enlaceValueFont}px "Plus Jakarta Sans", sans-serif`;
+        const rawUrl = reportData.enlace.toUpperCase();
+        if (rawUrl.length > 40) { ctx.fillText(rawUrl.substring(0, 40), lx, adj.enlaceValueY); ctx.fillText(rawUrl.substring(40), lx, adj.enlaceValue2Y); }
+        else { ctx.fillText(rawUrl, lx, adj.enlaceValueY); }
+
+        // Separator
+        ctx.strokeStyle = '#032b69'; ctx.lineWidth = adj.separatorWidth; ctx.beginPath();
+        ctx.moveTo(adj.separatorX, adj.separatorStartY); ctx.lineTo(adj.separatorX, adj.separatorEndY); ctx.stroke();
+
+        const rx = adj.rightX;
+
+        // Red Social
+        ctx.fillStyle = '#dc2626'; ctx.font = `800 ${adj.redSocialLabelFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText('RED SOCIAL', rx + adj.redSocialLabelOffsetX, adj.redSocialLabelY);
+        ctx.fillStyle = '#032b69'; ctx.font = `900 ${adj.redSocialValueFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText(reportData.redSocial.toUpperCase(), rx + adj.redSocialValueOffsetX, adj.redSocialValueY);
+
+        // Grid vert line
+        ctx.strokeStyle = '#032b69'; ctx.lineWidth = adj.gridVertWidth; ctx.beginPath();
+        ctx.moveTo(adj.gridVertLineX, adj.gridVertStartY); ctx.lineTo(adj.gridVertLineX, adj.gridVertEndY); ctx.stroke();
+
+        // Post
+        ctx.fillStyle = '#dc2626'; ctx.font = `800 ${adj.postLabelFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText('POST', rx + adj.postLabelOffsetX, adj.postLabelY);
+        ctx.fillStyle = '#032b69'; ctx.font = `900 ${adj.postValueFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText(reportData.postTitle.toUpperCase(), rx + adj.postValueOffsetX, adj.postValueY);
+
+        // Usuario
+        ctx.fillStyle = '#dc2626'; ctx.font = `800 ${adj.usuarioLabelFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText('USUARIO', rx + adj.usuarioLabelOffsetX, adj.usuarioLabelY);
+        ctx.fillStyle = '#032b69'; ctx.font = `900 ${adj.usuarioValueFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText(reportData.usuario.toUpperCase(), rx + adj.usuarioValueOffsetX, adj.usuarioValueY);
+
+        // Area
+        ctx.fillStyle = '#dc2626'; ctx.font = `800 ${adj.areaLabelFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText('ÁREA:', rx + adj.areaLabelOffsetX, adj.areaLabelY);
+        ctx.fillStyle = '#032b69'; ctx.font = `900 ${adj.areaValueFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText(reportData.area.toUpperCase(), rx + adj.areaValueOffsetX, adj.areaValueY);
+
+        // Grid H line
+        ctx.strokeStyle = '#032b69'; ctx.lineWidth = adj.gridHLineWidth; ctx.beginPath();
+        ctx.moveTo(adj.gridHLineStartX, adj.gridHLineY); ctx.lineTo(adj.gridHLineEndX, adj.gridHLineY); ctx.stroke();
+
+        // Contexto
+        ctx.fillStyle = '#dc2626'; ctx.font = `800 ${adj.contextoLabelFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText('CONTEXTO:', rx, adj.contextoStartY);
+        ctx.fillStyle = '#000'; ctx.font = `700 ${adj.contextoValueFont}px "Plus Jakarta Sans", sans-serif`;
+        const words = reportData.contexto.toUpperCase().split(' ');
+        let line = '', currentY = adj.contextoStartY + 35;
+        for (let n = 0; n < words.length; n++) {
+          const testLine = line + words[n] + ' ';
+          if (ctx.measureText(testLine).width > adj.contextoMaxWidth && n > 0) {
+            ctx.fillText(line, rx, currentY); line = words[n] + ' '; currentY += adj.contextoValueFont + adj.contextoLineSpacing;
+          } else { line = testLine; }
+        }
+        ctx.fillText(line, rx, currentY);
+
+        const endCtxY = Math.max(currentY + 25, adj.ctxBottomMinY);
+        ctx.strokeStyle = '#032b69'; ctx.lineWidth = adj.gridHLineWidth; ctx.beginPath();
+        ctx.moveTo(adj.ctxBottomLineStartX, endCtxY); ctx.lineTo(adj.ctxBottomLineEndX, endCtxY); ctx.stroke();
+
+        const bY = endCtxY + adj.bottomOffsetY;
+        ctx.fillStyle = '#dc2626'; ctx.font = `800 ${adj.sentimientoLabelFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText('SENTIMIENTO', rx + adj.sentimientoLabelOffsetX, bY);
+        ctx.fillStyle = '#032b69'; ctx.font = `900 ${adj.sentimientoValueFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText(reportData.sentimiento.toUpperCase(), rx + adj.sentimientoValueOffsetX, bY + adj.sentimientoValueGapY);
+
+        ctx.font = `bold ${adj.iconsFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillStyle = '#dc2626'; ctx.fillText('❤️', rx + adj.likeIconOffsetX, bY + adj.iconsGapY);
+        ctx.fillStyle = '#000'; ctx.fillText(reportData.likes, rx + adj.likeValueOffsetX, bY + adj.iconsGapY);
+        ctx.fillStyle = '#64748b'; ctx.fillText('💬', rx + adj.commentIconOffsetX, bY + adj.iconsGapY);
+        ctx.fillStyle = '#000'; ctx.fillText(reportData.comments, rx + adj.commentValueOffsetX, bY + adj.iconsGapY);
+        ctx.fillStyle = '#032b69'; ctx.fillText('🔁', rx + adj.shareIconOffsetX, bY + adj.iconsGapY);
+        ctx.fillStyle = '#000'; ctx.fillText(reportData.shares, rx + adj.shareValueOffsetX, bY + adj.iconsGapY);
+
+        ctx.fillStyle = '#dc2626'; ctx.font = `800 ${adj.viralidadLabelFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText('NIVEL DE VIRALIDAD', rx + adj.viralidadLabelOffsetX, bY);
+        ctx.fillStyle = '#032b69'; ctx.font = `900 ${adj.viralidadValueFont}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText(reportData.viralidad.toUpperCase(), rx + adj.viralidadValueOffsetX, bY + adj.viralidadValueGapY);
+
+        // Decorations
+        ctx.fillStyle = '#032b69'; ctx.beginPath();
+        ctx.moveTo(0, adj.decoLeftY1); ctx.lineTo(adj.decoLeftX2, adj.decoLeftY1); ctx.lineTo(adj.decoLeftX3, adj.canvasH); ctx.lineTo(0, adj.canvasH);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#dc2626'; ctx.beginPath();
+        ctx.moveTo(adj.decoRightX1, adj.canvasH); ctx.lineTo(adj.decoRightX2, adj.decoRightY1); ctx.lineTo(adj.canvasW, adj.decoRightY1); ctx.lineTo(adj.canvasW, adj.canvasH);
+        ctx.closePath(); ctx.fill();
+      };
+
+      useEffect(() => {
+        if ((activeTab === 'forms' || activeTab === 'editor') && currentUser && currentUser.role !== 'Analista') {
+          drawCanvas();
+        }
+      }, [reportData, adj, activeTab, currentUser]);
+
+      const downloadImage = () => {
+        const canvas = canvasRef.current; if (!canvas) return;
+        const link = document.createElement('a');
+        link.download = `Reporte_Unico_${reportData.municipio.replace(/\s+/g, '_')}.png`;
+        link.href = canvas.toDataURL('image/png'); link.click();
+        setToastMsg('✅ Imagen descargada.'); setTimeout(() => setToastMsg(''), 4000);
+      };
+
+      // ======= STATS =======
+      const getStats = () => {
+        const mySubmissions = submissions.filter(s => s.analystId === currentUser?.id);
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay());
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const yearStart = new Date(now.getFullYear(), 0, 1);
+
+        return {
+          total: mySubmissions.length,
+          today: mySubmissions.filter(s => s.timestamp.split('T')[0] === today).length,
+          week: mySubmissions.filter(s => new Date(s.timestamp) >= weekStart).length,
+          month: mySubmissions.filter(s => new Date(s.timestamp) >= monthStart).length,
+          year: mySubmissions.filter(s => new Date(s.timestamp) >= yearStart).length,
+          recent: mySubmissions.slice(0, 15)
+        };
+      };
+
+      // ======= ROLE CHECKS =======
+      const role = currentUser?.role;
+      const isAdmin = role === 'Administrador';
+      const isAnalyst = role === 'Analista';
+      const isSupervisor = role === 'Supervisor';
+
+      // ======= FORM FIELDS COMPONENT =======
+      const FormFields = ({ data, setData, readOnly = false }) => (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-bold mb-1">1. Municipio *</label>
+            <select disabled={readOnly} value={data.municipio} onChange={(e) => setData({ ...data, municipio: e.target.value })} className="w-full px-3.5 py-2 rounded-xl text-xs executive-input font-bold">
+              <option value="">— Seleccionar —</option>
+              <option>JUAN GERMÁN ROSCIO</option><option>FRANCISCO DE MIRANDA</option><option>LEONARDO INFANTE</option>
+              <option>JOSÉ TÉLLEZ DE ALMANZA</option><option>MONAGAS</option><option>ZARAZA</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="block text-xs font-bold mb-1">Fecha *</label>
+              <input disabled={readOnly} type="text" value={data.fecha} onChange={(e) => setData({ ...data, fecha: e.target.value })} placeholder="DD/MM/AAAA" className="w-full px-3.5 py-2 rounded-xl text-xs executive-input" /></div>
+            <div><label className="block text-xs font-bold mb-1">Hora *</label>
+              <input disabled={readOnly} type="text" value={data.hora} onChange={(e) => setData({ ...data, hora: e.target.value })} placeholder="0:00PM" className="w-full px-3.5 py-2 rounded-xl text-xs executive-input" /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="block text-xs font-bold mb-1">Red Social</label>
+              <select disabled={readOnly} value={data.redSocial} onChange={(e) => setData({ ...data, redSocial: e.target.value })} className="w-full px-3.5 py-2 rounded-xl text-xs executive-input font-bold">
+                <option>INSTAGRAM</option><option>TWITTER / X</option><option>FACEBOOK</option><option>TIKTOK</option>
+              </select></div>
+            <div><label className="block text-xs font-bold mb-1">Usuario *</label>
+              <input disabled={readOnly} type="text" value={data.usuario} onChange={(e) => setData({ ...data, usuario: e.target.value })} className="w-full px-3.5 py-2 rounded-xl text-xs executive-input" /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="block text-xs font-bold mb-1">Post *</label>
+              <input disabled={readOnly} type="text" value={data.postTitle} onChange={(e) => setData({ ...data, postTitle: e.target.value })} className="w-full px-3.5 py-2 rounded-xl text-xs executive-input" /></div>
+            <div><label className="block text-xs font-bold mb-1">Área</label>
+              <select disabled={readOnly} value={data.area} onChange={(e) => setData({ ...data, area: e.target.value })} className="w-full px-3.5 py-2 rounded-xl text-xs executive-input font-bold">
+                <option>INFRAESTRUCTURA</option><option>SERVICIOS PÚBLICOS</option><option>SALUD</option><option>EDUCACIÓN</option><option>SEGURIDAD</option><option>ECONOMÍA</option>
+              </select></div>
+          </div>
+          <div><label className="block text-xs font-bold mb-1">Contexto *</label>
+            <textarea disabled={readOnly} rows="3" value={data.contexto} onChange={(e) => setData({ ...data, contexto: e.target.value })} className="w-full px-3.5 py-2 rounded-xl text-xs executive-input resize-none" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="block text-xs font-bold mb-1">Sentimiento</label>
+              <select disabled={readOnly} value={data.sentimiento} onChange={(e) => setData({ ...data, sentimiento: e.target.value })} className="w-full px-3.5 py-2 rounded-xl text-xs executive-input font-bold">
+                <option>NEGATIVO</option><option>NEUTRO</option><option>POSITIVO</option>
+              </select></div>
+            <div><label className="block text-xs font-bold mb-1">Viralidad</label>
+              <select disabled={readOnly} value={data.viralidad} onChange={(e) => setData({ ...data, viralidad: e.target.value })} className="w-full px-3.5 py-2 rounded-xl text-xs executive-input font-bold">
+                <option>BAJO</option><option>MEDIO</option><option>ALTO</option>
+              </select></div>
+          </div>
+          <div><label className="block text-xs font-bold mb-1">Enlace</label>
+            <input disabled={readOnly} type="text" value={data.enlace} onChange={(e) => setData({ ...data, enlace: e.target.value })} placeholder="https://..." className="w-full px-3.5 py-2 rounded-xl text-xs executive-input" /></div>
+          <div className="grid grid-cols-3 gap-3">
+            <div><label className="block text-xs font-bold mb-1">❤️ Likes</label>
+              <input disabled={readOnly} type="text" value={data.likes} onChange={(e) => setData({ ...data, likes: e.target.value })} className="w-full px-3.5 py-2 rounded-xl text-xs executive-input text-center" /></div>
+            <div><label className="block text-xs font-bold mb-1">💬 Comentarios</label>
+              <input disabled={readOnly} type="text" value={data.comments} onChange={(e) => setData({ ...data, comments: e.target.value })} className="w-full px-3.5 py-2 rounded-xl text-xs executive-input text-center" /></div>
+            <div><label className="block text-xs font-bold mb-1">🔁 Compartidos</label>
+              <input disabled={readOnly} type="text" value={data.shares} onChange={(e) => setData({ ...data, shares: e.target.value })} className="w-full px-3.5 py-2 rounded-xl text-xs executive-input text-center" /></div>
+          </div>
+          <div><label className="block text-xs font-bold mb-1">Subir Foto Evidencia</label>
+            <input disabled={readOnly} type="file" accept="image/*" onChange={handleImageUpload} className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-red-50 file:text-red-700 cursor-pointer" /></div>
+        </div>
+      );
+
+      // ======= ADJUSTMENT PANEL COMPONENT =======
+      const AdjustmentPanel = () => (
+        <div className="executive-card p-4 rounded-2xl space-y-1 border-2 border-red-500/30 max-h-[75vh] overflow-y-auto">
+          <div className="flex items-center justify-between pb-2 border-b sticky top-0 bg-white dark:bg-slate-900 z-10 -mx-4 px-4 -mt-4 pt-4 rounded-t-2xl">
+            <h4 className="text-xs font-black uppercase text-red-600 tracking-wider">🎛️ Ajustes Manuales de Imagen</h4>
+            <button onClick={resetAdjustments} className="text-[10px] font-bold text-slate-500 hover:text-red-600 underline cursor-pointer">Restablecer todo</button>
+          </div>
+
+          {ADJ_SECTIONS.map(section => (
+            <div key={section.key} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+              <button onClick={() => toggleSection(section.key)} className="w-full flex items-center justify-between py-2.5 section-toggle">
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                  {section.icon} {section.title} <span className="text-slate-400 font-normal">({section.fields.length})</span>
+                </span>
+                <span className="text-xs text-slate-400">{openSections[section.key] ? '▼' : '▶'}</span>
+              </button>
+
+              {openSections[section.key] && (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 pb-3 pl-2">
+                  {section.fields.map(f => (
+                    <div key={f.k} className="adj-row">
+                      <span className="adj-label">{f.label}</span>
+                      <input
+                        type="number"
+                        step={f.step || 1}
+                        value={adj[f.k]}
+                        onChange={(e) => updateAdj(f.k, e.target.value)}
+                        className="adj-input executive-input"
+                      />
+                      <span className="text-[9px] text-slate-400 w-5">{f.u}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+
+      // ========================
+      // LOGIN SCREEN
+      // ========================
+      if (!currentUser) {
+        return (
+          <div className="min-h-screen bg-origami-light flex flex-col justify-between p-4 sm:p-6 relative">
+            <div className="absolute top-6 right-6 z-20">
+              <button onClick={() => setDarkMode(!darkMode)} className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md flex items-center justify-center cursor-pointer">
+                {darkMode ? '☀️' : '🌙'}
+              </button>
+            </div>
+
+            <div className="flex-1 flex flex-col items-center justify-center py-8">
+              <div className="text-center mb-8 space-y-3">
+                <div className="w-20 h-20 mx-auto">
+                  <svg viewBox="0 0 100 100" className="w-full h-full">
+                    <path d="M 50 15 A 35 35 0 0 1 85 50 L 70 50 A 20 20 0 0 0 50 30 Z" fill="#dc2626" />
+                    <path d="M 85 50 A 35 35 0 0 1 50 85 L 50 70 A 20 20 0 0 0 70 50 Z" fill="#032b69" />
+                    <path d="M 50 85 A 35 35 0 0 1 15 50 L 30 50 A 20 20 0 0 0 50 70 Z" fill="#94a3b8" />
+                  </svg>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-widest uppercase">SALA DE MONITOREO</h1>
+                <p className="text-xs font-semibold uppercase tracking-widest text-red-600 dark:text-red-400">Consola Ejecutiva de Monitoreo</p>
+              </div>
+
+              <div className="w-full max-w-md executive-card p-8 sm:p-10 rounded-[2rem]">
+                <div className="text-center mb-8 border-b pb-6">
+                  <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Sis<span className="text-red-600">MON</span></h2>
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">Consola Ejecutiva — Inicio de Sesión</p>
+                </div>
+
+                {loginError && <div className="mb-6 p-3.5 rounded-xl bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-xs font-semibold text-center">⚠️ {loginError}</div>}
+
+                <form onSubmit={handleLogin} className="space-y-5">
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">👤</span>
+                    <input type="email" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="Correo electrónico" className="w-full pl-11 pr-4 py-3.5 rounded-full text-xs executive-input" />
+                  </div>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">🔒</span>
+                    <input type={showLoginPass ? 'text' : 'password'} required value={loginPass} onChange={(e) => setLoginPass(e.target.value)} placeholder="Contraseña" className="w-full pl-11 pr-11 py-3.5 rounded-full text-xs executive-input" />
+                    <button type="button" onClick={() => setShowLoginPass(!showLoginPass)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400">{showLoginPass ? '🙈' : '👁️'}</button>
+                  </div>
+                  <button type="submit" className="w-full py-4 px-6 rounded-full text-xs font-black uppercase tracking-wider text-white btn-corporate-red cursor-pointer">INICIAR SESIÓN</button>
+                </form>
+
+                <div className="mt-8 pt-6 border-t text-center">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-3">Credenciales de Prueba</span>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <button type="button" onClick={() => handleQuickFill('admin@monitoreo.com', 'admin123')} className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-red-600 border cursor-pointer">👑 Admin</button>
+                    <button type="button" onClick={() => handleQuickFill('analista@monitoreo.com', 'analista123')} className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-blue-600 border cursor-pointer">📊 Analista</button>
+                    <button type="button" onClick={() => handleQuickFill('supervisor@monitoreo.com', 'supervisor123')} className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-emerald-600 border cursor-pointer">🔍 Supervisor</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center py-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">© 2026 SALA DE MONITOREO • SISTEMA EJECUTIVO</p>
+            </div>
+          </div>
+        );
+      }
+
+      // ========================
+      // DASHBOARD TABS PER ROLE
+      // ========================
+      const tabs = [];
+      if (isAdmin) {
+        tabs.push({ id: 'forms', label: '📋 Formulario', icon: '📋' });
+        tabs.push({ id: 'inbox', label: '📥 Bandeja', icon: '📥' });
+        tabs.push({ id: 'editor', label: '🎛️ Editor', icon: '🎛️' });
+        tabs.push({ id: 'users', label: '👥 Usuarios', icon: '👥' });
+        tabs.push({ id: 'logs', label: '📜 Auditoría', icon: '📜' });
+      } else if (isAnalyst) {
+        tabs.push({ id: 'forms', label: '📋 Formulario', icon: '📋' });
+        tabs.push({ id: 'stats', label: '📊 Estadísticas', icon: '📊' });
+      } else if (isSupervisor) {
+        tabs.push({ id: 'inbox', label: '📥 Bandeja', icon: '📥' });
+        tabs.push({ id: 'editor', label: '🎛️ Editor', icon: '🎛️' });
+      }
+
+      const pendingCount = submissions.filter(s => s.status === 'pendiente').length;
+      const stats = isAnalyst ? getStats() : null;
+
+      const roleBadge = { Administrador: { color: 'text-red-600 bg-red-50 dark:bg-red-950 dark:text-red-400', icon: '👑' }, Analista: { color: 'text-blue-600 bg-blue-50 dark:bg-blue-950 dark:text-blue-400', icon: '📊' }, Supervisor: { color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400', icon: '🔍' } };
+      const badge = roleBadge[role] || roleBadge.Analista;
+
+      return (
+        <div className="min-h-screen bg-origami-light text-slate-800 dark:text-slate-100 flex flex-col">
+
+          {/* HEADER */}
+          <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-sm">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9">
+                  <svg viewBox="0 0 100 100" className="w-full h-full">
+                    <path d="M 50 15 A 35 35 0 0 1 85 50 L 70 50 A 20 20 0 0 0 50 30 Z" fill="#dc2626" />
+                    <path d="M 85 50 A 35 35 0 0 1 50 85 L 50 70 A 20 20 0 0 0 70 50 Z" fill="#032b69" />
+                    <path d="M 50 85 A 35 35 0 0 1 15 50 L 30 50 A 20 20 0 0 0 50 70 Z" fill="#94a3b8" />
+                  </svg>
+                </div>
+                <div>
+                  <span className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">SALA DE MONITOREO</span>
+                  <span className={`text-[10px] font-bold block -mt-0.5 uppercase tracking-widest ${badge.color} inline-block px-2 py-0.5 rounded-full`}>{badge.icon} {role}</span>
+                </div>
+              </div>
+
+              <nav className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-full border border-slate-200 dark:border-slate-700">
+                {tabs.map(t => (
+                  <button key={t.id} onClick={() => setActiveTab(t.id)}
+                    className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all relative ${activeTab === t.id ? 'bg-red-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'}`}>
+                    {t.label}
+                    {t.id === 'inbox' && pendingCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center">{pendingCount}</span>}
+                  </button>
+                ))}
+              </nav>
+
+              <div className="flex items-center gap-3">
+                <button onClick={() => setDarkMode(!darkMode)} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs cursor-pointer">{darkMode ? '☀️' : '🌙'}</button>
+                <div className="text-right text-xs hidden sm:block">
+                  <div className="font-bold text-slate-900 dark:text-white">{currentUser.name}</div>
+                  <div className={`font-bold text-[10px] ${badge.color.split(' ')[0]}`}>{role}</div>
+                </div>
+                <button onClick={handleLogout} className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border text-xs font-bold cursor-pointer">Salir 🚪</button>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+            {/* ========== FORMULARIO (Analista + Admin) ========== */}
+            {activeTab === 'forms' && (
+              <div className="space-y-5">
+                <div className="executive-card p-6 rounded-2xl">
+                  <div className="border-b pb-3 mb-4">
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white">📋 Formulario de Reporte</h3>
+                    <p className="text-xs text-slate-500">{isAnalyst ? 'Completa los campos y envía al Supervisor para revisión.' : 'Completa los campos del reporte.'}</p>
+                  </div>
+                  <FormFields data={reportData} setData={setReportData} />
+                  {isAnalyst && (
+                    <div className="mt-6 pt-4 border-t">
+                      <button onClick={handleSubmitForm} className="w-full py-3.5 px-6 rounded-full text-xs font-black uppercase tracking-wider text-white btn-corporate-red cursor-pointer">
+                        📤 ENVIAR FORMULARIO AL SUPERVISOR
+                      </button>
+                    </div>
+                  )}
+                  {isAdmin && (
+                    <div className="mt-6 pt-4 border-t flex gap-3">
+                      <button onClick={handleSubmitForm} className="flex-1 py-3 px-6 rounded-full text-xs font-bold uppercase text-white btn-corporate-red cursor-pointer">📤 Enviar como Admin</button>
+                      <button onClick={() => { setActiveTab('editor'); }} className="flex-1 py-3 px-6 rounded-full text-xs font-bold uppercase bg-slate-800 text-white cursor-pointer">🎛️ Ir al Editor de Imagen</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ========== ESTADÍSTICAS (Solo Analista) ========== */}
+            {activeTab === 'stats' && isAnalyst && stats && (
+              <div className="space-y-6">
+                <div className="executive-card p-6 rounded-2xl">
+                  <h3 className="text-lg font-black border-b pb-3 mb-5">📊 Mis Estadísticas de Envío</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {[{ label: 'Hoy', value: stats.today, icon: '📅' }, { label: 'Esta Semana', value: stats.week, icon: '📆' }, { label: 'Este Mes', value: stats.month, icon: '🗓️' }, { label: 'Este Año', value: stats.year, icon: '📈' }].map(s => (
+                      <div key={s.label} className="stat-card p-5 rounded-2xl text-center">
+                        <div className="text-3xl font-black text-red-600 dark:text-red-400">{s.value}</div>
+                        <div className="text-xs font-bold text-slate-600 dark:text-slate-400 mt-1">{s.icon} {s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-center"><span className="text-xs text-slate-400 font-bold">Total histórico: <span className="text-red-600">{stats.total}</span> formularios</span></div>
+                </div>
+
+                <div className="executive-card p-6 rounded-2xl">
+                  <h4 className="text-sm font-black border-b pb-3 mb-4">📋 Últimos Envíos</h4>
+                  {stats.recent.length === 0 ? (
+                    <p className="text-center text-xs text-slate-400 py-8">No has enviado formularios aún.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs text-left">
+                        <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold"><tr>
+                          <th className="py-3 px-4">Fecha</th><th className="py-3 px-4">Municipio</th><th className="py-3 px-4">Red Social</th><th className="py-3 px-4">Estado</th>
+                        </tr></thead>
+                        <tbody className="divide-y">
+                          {stats.recent.map(s => (
+                            <tr key={s.id}>
+                              <td className="py-3 px-4 text-slate-500 font-mono">{new Date(s.timestamp).toLocaleDateString('es-ES')}</td>
+                              <td className="py-3 px-4 font-bold">{s.reportData.municipio}</td>
+                              <td className="py-3 px-4">{s.reportData.redSocial}</td>
+                              <td className="py-3 px-4"><span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${s.status === 'pendiente' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>{s.status === 'pendiente' ? '⏳ Pendiente' : '✅ Revisado'}</span></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ========== BANDEJA DE ENTRADA (Supervisor + Admin) ========== */}
+            {activeTab === 'inbox' && (isSupervisor || isAdmin) && (
+              <div className="space-y-5">
+                <div className="executive-card p-6 rounded-2xl">
+                  <div className="flex items-center justify-between border-b pb-3 mb-4">
+                    <div>
+                      <h3 className="text-lg font-black">📥 Bandeja de Formularios</h3>
+                      <p className="text-xs text-slate-500">Formularios enviados por los Analistas</p>
+                    </div>
+                    <div className="flex gap-2">
+                      {['Todos', 'pendiente', 'revisado'].map(f => (
+                        <button key={f} onClick={() => setInboxFilter(f)} className={`px-3 py-1.5 rounded-full text-[10px] font-bold border cursor-pointer ${inboxFilter === f ? 'bg-red-600 text-white border-red-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                          {f === 'Todos' ? '📋 Todos' : f === 'pendiente' ? '⏳ Pendientes' : '✅ Revisados'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {submissions.filter(s => inboxFilter === 'Todos' || s.status === inboxFilter).length === 0 ? (
+                    <p className="text-center text-sm text-slate-400 py-12">No hay formularios en esta categoría.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {submissions.filter(s => inboxFilter === 'Todos' || s.status === inboxFilter).map(sub => (
+                        <div key={sub.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-800 transition-all">
+                          <div className="flex items-center gap-4">
+                            <span className={`w-3 h-3 rounded-full ${sub.status === 'pendiente' ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
+                            <div>
+                              <div className="text-xs font-bold">{sub.reportData.municipio} — {sub.reportData.redSocial}</div>
+                              <div className="text-[10px] text-slate-500">Por: <span className="font-bold">{sub.analystName}</span> • {new Date(sub.timestamp).toLocaleDateString('es-ES')} {new Date(sub.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold ${sub.status === 'pendiente' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'}`}>
+                              {sub.status === 'pendiente' ? '⏳ PENDIENTE' : '✅ REVISADO'}
+                            </span>
+                            <button onClick={() => openSubmissionForReview(sub)} className="px-3 py-1.5 rounded-full text-[10px] font-bold text-white btn-corporate-red cursor-pointer">
+                              🎛️ Abrir en Editor
+                            </button>
+                            {sub.status === 'pendiente' && (
+                              <button onClick={() => markAsReviewed(sub.id)} className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border cursor-pointer">✅ Marcar Revisado</button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ========== EDITOR DE IMAGEN (Supervisor + Admin) ========== */}
+            {activeTab === 'editor' && (isSupervisor || isAdmin) && (
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+                {/* LEFT: Form Data + Manual Adjustments */}
+                <div className="xl:col-span-5 space-y-4">
+                  {selectedSubmission && (
+                    <div className="executive-card p-4 rounded-2xl">
+                      <div className="flex items-center justify-between border-b pb-2 mb-3">
+                        <span className="text-xs font-black text-red-600">📌 Editando: {selectedSubmission.reportData.municipio}</span>
+                        <span className="text-[10px] text-slate-500">Analista: {selectedSubmission.analystName}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="executive-card p-4 rounded-2xl">
+                    <h4 className="text-xs font-black border-b pb-2 mb-3">📋 Datos del Formulario (Editable)</h4>
+                    <FormFields data={reportData} setData={setReportData} />
+                  </div>
+
+                  <AdjustmentPanel />
+                </div>
+
+                {/* RIGHT: Canvas */}
+                <div className="xl:col-span-7">
+                  <div className="executive-card p-5 rounded-2xl space-y-4 sticky top-20">
+                    <div className="flex items-center justify-between border-b pb-3">
+                      <div>
+                        <h3 className="text-base font-black text-slate-900 dark:text-white">🖼️ Imagen Resultante</h3>
+                        <p className="text-[10px] text-slate-500">Ajustes manuales reflejados en tiempo real</p>
+                      </div>
+                      <div className="flex gap-2">
+                        {selectedSubmission && selectedSubmission.status === 'pendiente' && (
+                          <button onClick={() => markAsReviewed(selectedSubmission.id)} className="py-2 px-4 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border cursor-pointer">✅ Revisado</button>
+                        )}
+                        <button onClick={downloadImage} className="py-2.5 px-5 rounded-full text-xs font-black uppercase text-white btn-corporate-red cursor-pointer">⬇️ Descargar PNG</button>
+                      </div>
+                    </div>
+                    <div className="bg-slate-200 dark:bg-slate-950 p-2 rounded-xl border flex justify-center shadow-inner">
+                      <canvas ref={canvasRef} className="w-full h-auto max-h-[580px] rounded object-contain shadow-2xl" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ========== USUARIOS (Solo Admin) ========== */}
+            {activeTab === 'users' && isAdmin && (
+              <div className="space-y-5">
+                <div className="executive-card p-6 rounded-2xl flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-black">👥 Gestión de Usuarios</h2>
+                    <p className="text-xs text-slate-500">Administra Analistas, Supervisores y Administradores</p>
+                  </div>
+                  <button onClick={() => setShowCreateModal(true)} className="py-3 px-6 rounded-full text-xs font-bold text-white btn-corporate-red cursor-pointer">+ Crear Usuario</button>
+                </div>
+
+                <div className="executive-card rounded-2xl overflow-hidden">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold border-b"><tr>
+                      <th className="py-4 px-6">Usuario</th><th className="py-4 px-4">Departamento</th><th className="py-4 px-4">Rol</th><th className="py-4 px-4">Estado</th><th className="py-4 px-6 text-right">Acciones</th>
+                    </tr></thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                      {users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase())).map(u => (
+                        <tr key={u.id}>
+                          <td className="py-4 px-6"><div className="font-bold">{u.name}</div><div className="text-slate-500 text-[10px]">{u.email}</div></td>
+                          <td className="py-4 px-4">{u.department}</td>
+                          <td className="py-4 px-4">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${u.role === 'Administrador' ? 'bg-red-100 text-red-700' : u.role === 'Supervisor' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{u.role}</span>
+                          </td>
+                          <td className="py-4 px-4"><span className={`font-bold ${u.status === 'Activo' ? 'text-emerald-600' : 'text-slate-400'}`}>● {u.status}</span></td>
+                          <td className="py-4 px-6 text-right space-x-2">
+                            <button onClick={() => toggleStatus(u.id)} disabled={u.id === currentUser.id} className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold cursor-pointer disabled:opacity-40">{u.status === 'Activo' ? 'Desactivar' : 'Activar'}</button>
+                            <button onClick={() => deleteUser(u.id, u.name)} disabled={u.id === currentUser.id} className="px-3 py-1 rounded-full bg-red-100 text-xs font-bold text-red-700 cursor-pointer disabled:opacity-40">🗑️</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ========== AUDITORÍA (Solo Admin) ========== */}
+            {activeTab === 'logs' && isAdmin && (
+              <div className="executive-card p-6 rounded-2xl">
+                <h2 className="text-xl font-black border-b pb-3 mb-4">📜 Historial de Auditoría</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs font-mono">
+                    <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase"><tr>
+                      <th className="py-3 px-4">Fecha/Hora</th><th className="py-3 px-4">Usuario</th><th className="py-3 px-4">Acción</th><th className="py-3 px-4">Detalles</th>
+                    </tr></thead>
+                    <tbody className="divide-y">{auditLogs.map(l => (
+                      <tr key={l.id}>
+                        <td className="py-3 px-4 text-slate-500">{l.timestamp}</td>
+                        <td className="py-3 px-4 text-red-600 font-bold">{l.user}</td>
+                        <td className="py-3 px-4 font-sans font-semibold">{l.action}</td>
+                        <td className="py-3 px-4 text-slate-500 font-sans">{l.details}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+          </main>
+
+          {/* CREATE USER MODAL */}
+          {showCreateModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+              <div className="executive-card w-full max-w-lg p-6 sm:p-8 rounded-3xl space-y-4">
+                <div className="flex items-center justify-between border-b pb-3">
+                  <h3 className="text-lg font-black">Crear Nuevo Usuario</h3>
+                  <button onClick={() => setShowCreateModal(false)} className="text-slate-400 cursor-pointer">✕</button>
+                </div>
+                {modalError && <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl font-bold">⚠️ {modalError}</div>}
+                <form onSubmit={handleCreateUser} className="space-y-4">
+                  <div><label className="block text-xs font-bold mb-1">Nombre Completo</label>
+                    <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-2.5 rounded-full text-xs executive-input" /></div>
+                  <div><label className="block text-xs font-bold mb-1">Correo Electrónico</label>
+                    <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-2.5 rounded-full text-xs executive-input" /></div>
+                  <div><label className="block text-xs font-bold mb-1">Contraseña Inicial</label>
+                    <input type="text" required value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full px-4 py-2.5 rounded-full text-xs executive-input" /></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-xs font-bold mb-1">Departamento</label>
+                      <input type="text" value={formData.department} onChange={(e) => setFormData({ ...formData, department: e.target.value })} className="w-full px-4 py-2.5 rounded-full text-xs executive-input" /></div>
+                    <div><label className="block text-xs font-bold mb-1">Rol</label>
+                      <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} className="w-full text-xs py-2.5 px-3 rounded-full border executive-input">
+                        <option value="Analista">Analista</option>
+                        <option value="Supervisor">Supervisor</option>
+                        <option value="Administrador">Administrador</option>
+                      </select></div>
+                  </div>
+                  <div className="pt-4 flex justify-end gap-3 border-t">
+                    <button type="button" onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 cursor-pointer">Cancelar</button>
+                    <button type="submit" className="px-6 py-2.5 rounded-full text-xs font-bold text-white btn-corporate-red cursor-pointer">Guardar Usuario</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* TOAST */}
+          {toastMsg && (
+            <div className="fixed bottom-6 right-6 z-50 toast-slide-in">
+              <div className="executive-card px-6 py-4 rounded-2xl shadow-2xl border-l-4 border-red-600 flex items-center gap-3 min-w-[280px]">
+                <span className="text-sm">{toastMsg}</span>
+                <button onClick={() => setToastMsg('')} className="text-slate-400 hover:text-red-600 text-xs font-bold ml-auto cursor-pointer">✕</button>
+              </div>
+            </div>
+          )}
+
+          {/* FOOTER */}
+          <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 py-4 text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+            <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-1">
+              <span>© 2026 SALA DE MONITOREO • SISTEMA EJECUTIVO</span>
+              <span className="font-mono text-slate-500">{currentUser.email} ({role})</span>
+            </div>
+          </footer>
+
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
