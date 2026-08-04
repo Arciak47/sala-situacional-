@@ -22,6 +22,7 @@ export default function AdministradorView({
   auditLogs,
   reportData,
   setReportData,
+  goToEditor,
   handleSubmitForm,
   submissions,
   inboxFilter,
@@ -79,7 +80,7 @@ export default function AdministradorView({
                 📤 Enviar Reporte
               </button>
               <button
-                onClick={() => setActiveTab('editor')}
+                onClick={goToEditor}
                 className="flex-1 py-3 px-6 rounded-full text-xs font-bold uppercase bg-slate-800 text-white cursor-pointer hover:bg-slate-700"
               >
                 🎨 Ir al Editor

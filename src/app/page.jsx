@@ -207,14 +207,8 @@ export default function Home() {
     }
   }, [darkMode]);
 
-  // ── Init elements when entering editor tab ──
-  useEffect(() => {
-    if (activeTab === 'editor') {
-      setElements(buildElements(reportData));
-      setSelId(null);
-      setEditingId(null);
-    }
-  }, [activeTab]);
+  // Removed the activeTab useEffect that built elements to avoid race conditions.
+  // Elements are now built synchronously when navigating to the editor.
 
   // ── Audit log helper ──
   const addLog = (user, action, details, type = 'info') => {
@@ -416,13 +410,29 @@ export default function Home() {
       'success'
     );
     setReportData({ ...EMPTY_REPORT });
+    // Reset file input visually
+    if (typeof document !== 'undefined') {
+      const fileInput = document.getElementById('foto-evidencia');
+      if (fileInput) fileInput.value = '';
+    }
     setToastMsg('✅ Reporte enviado al Supervisor.');
     setTimeout(() => setToastMsg(''), 4000);
   };
 
   const openSubmissionForReview = (sub) => {
     setSelectedSubmission(sub);
-    setReportData({ ...sub.reportData });
+    const newReportData = { ...sub.reportData };
+    setReportData(newReportData);
+    setElements(buildElements(newReportData));
+    setSelId(null);
+    setEditingId(null);
+    setActiveTab('editor');
+  };
+
+  const goToEditor = () => {
+    setElements(buildElements(reportData));
+    setSelId(null);
+    setEditingId(null);
     setActiveTab('editor');
   };
 

@@ -13,6 +13,7 @@ export default function AnalistaView({
   activeTab,
   reportData,
   setReportData,
+  goToEditor,
   handleImageUpload,
   handleSubmitForm,
   stats,

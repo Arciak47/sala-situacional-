@@ -268,6 +268,7 @@ export default function FormFields({ data, setData, readOnly = false, onImageUpl
         <div>
           <label className="block text-xs font-bold mb-1">Subir Foto Evidencia</label>
           <input
+            id="foto-evidencia"
             type="file"
             accept="image/*"
             onChange={onImageUpload}
