@@ -5,7 +5,10 @@ import {
   setDoc, 
   deleteDoc,
   writeBatch,
-  getDocs
+  getDocs,
+  query,
+  orderBy,
+  limit
 } from 'firebase/firestore';
 import { ref, uploadString, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
@@ -170,7 +173,8 @@ export async function saveUsersBatchToFirestore(users) {
 export function subscribeSubmissions(onUpdate) {
   try {
     const colRef = collection(db, 'submissions');
-    const unsubscribe = onSnapshot(colRef, (snapshot) => {
+    const q = query(colRef, orderBy('timestamp', 'desc'), limit(50));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const remoteSubs = snapshot.empty
         ? []
         : snapshot.docs.map((d) => ({
@@ -239,7 +243,8 @@ export async function deleteSubmissionFromFirestore(subId) {
 export function subscribeMessages(onUpdate) {
   try {
     const colRef = collection(db, 'messages');
-    const unsubscribe = onSnapshot(colRef, (snapshot) => {
+    const q = query(colRef, orderBy('timestamp', 'desc'), limit(50));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const remoteMsgs = snapshot.empty ? [] : snapshot.docs.map((d) => ({
         ...d.data(),
         firestoreId: d.id,
@@ -328,7 +333,8 @@ export async function updateMessageInFirestore(messageId, fieldsToUpdate) {
 export function subscribeAuditLogs(onUpdate) {
   try {
     const colRef = collection(db, 'audit_logs');
-    const unsubscribe = onSnapshot(colRef, (snapshot) => {
+    const q = query(colRef, orderBy('timestamp', 'desc'), limit(100));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const remoteLogs = snapshot.empty ? [] : snapshot.docs.map((d) => d.data());
 
       remoteLogs.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
