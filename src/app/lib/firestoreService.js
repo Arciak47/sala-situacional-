@@ -79,49 +79,25 @@ export function subscribeUsers(onUpdate) {
   try {
     const colRef = collection(db, 'users');
     const unsubscribe = onSnapshot(colRef, async (snapshot) => {
-      const localUsers = getStoredUsers() || [];
-      const remoteUsers = snapshot.empty ? [] : snapshot.docs.map((d) => d.data());
+      let remoteUsers = snapshot.empty ? [] : snapshot.docs.map((d) => d.data());
 
-      // MERGE: local-first, then overlay remote data (remote wins on conflict)
-      const userMap = new Map();
-      
-      // 1. Start with INITIAL_USERS as baseline
-      INITIAL_USERS.forEach((u) => {
-        if (u && u.id) userMap.set(String(u.id), u);
-      });
-      
-      // 2. Layer local users on top
-      localUsers.forEach((u) => {
-        if (u && u.id) userMap.set(String(u.id), u);
-      });
-      
-      // 3. Layer remote users on top (remote is latest truth for cross-browser)
-      remoteUsers.forEach((u) => {
-        if (u && u.id) userMap.set(String(u.id), u);
-      });
-
-      const merged = Array.from(userMap.values());
-
-      saveStoredUsers(merged);
-      onUpdate(merged);
-
-      // Auto-sync local-only users to Firestore
-      if (remoteUsers.length < merged.length) {
-        const remoteIds = new Set(remoteUsers.map((u) => String(u.id)));
-        const localOnly = merged.filter((u) => !remoteIds.has(String(u.id)));
-        if (localOnly.length > 0) {
-          try {
-            const batch = writeBatch(db);
-            localOnly.forEach((user) => {
-              const userRef = doc(db, 'users', String(user.id));
-              batch.set(userRef, sanitize(user), { merge: true });
-            });
-            await batch.commit();
-          } catch (e) {
-            console.warn('Firestore sync users warning:', e);
-          }
+      // Seeding INITIAL_USERS to Firestore if the collection is completely empty
+      if (remoteUsers.length === 0) {
+        try {
+          const batch = writeBatch(db);
+          INITIAL_USERS.forEach((user) => {
+            const userRef = doc(db, 'users', String(user.id));
+            batch.set(userRef, sanitize(user));
+          });
+          await batch.commit();
+          return; // Snapshot listener will refire with seeded data
+        } catch (e) {
+          console.warn('Failed to seed initial users to Firestore:', e);
         }
       }
+
+      saveStoredUsers(remoteUsers);
+      onUpdate(remoteUsers);
     }, (err) => {
       console.warn('Firestore users subscription warning, using local cache:', err);
       const localUsers = getStoredUsers();
@@ -195,7 +171,6 @@ export function subscribeSubmissions(onUpdate) {
   try {
     const colRef = collection(db, 'submissions');
     const unsubscribe = onSnapshot(colRef, (snapshot) => {
-      const localSubs = getStoredSubmissions() || [];
       const remoteSubs = snapshot.empty
         ? []
         : snapshot.docs.map((d) => ({
@@ -203,23 +178,11 @@ export function subscribeSubmissions(onUpdate) {
             firestoreId: d.id,
           }));
 
-      // MERGE: Local-first strategy. Local submissions that don't exist
-      // remotely yet (race condition during upload) are preserved.
-      const subMap = new Map();
-      // 1. Start with local submissions (preserves pending ones)
-      localSubs.forEach((s) => {
-        if (s && s.id) subMap.set(String(s.id), s);
-      });
-      // 2. Remote wins for docs that exist in both (they have the latest Firestore state)
-      remoteSubs.forEach((s) => {
-        if (s && s.id) subMap.set(String(s.id), s);
-      });
+      // Sort by timestamp or fechaHora descending
+      remoteSubs.sort((a, b) => new Date(b.timestamp || b.fechaHora || 0) - new Date(a.timestamp || a.fechaHora || 0));
 
-      const merged = Array.from(subMap.values());
-      merged.sort((a, b) => new Date(b.timestamp || b.fechaHora || 0) - new Date(a.timestamp || a.fechaHora || 0));
-
-      saveStoredSubmissions(merged);
-      onUpdate(merged);
+      saveStoredSubmissions(remoteSubs);
+      onUpdate(remoteSubs);
     }, (err) => {
       console.warn('Firestore submissions subscription warning, using local cache:', err);
       const localSubs = getStoredSubmissions();
@@ -293,21 +256,15 @@ export function subscribeMessages(onUpdate) {
   try {
     const colRef = collection(db, 'messages');
     const unsubscribe = onSnapshot(colRef, (snapshot) => {
-      const localMsgs = getStoredMessages() || [];
       const remoteMsgs = snapshot.empty ? [] : snapshot.docs.map((d) => ({
         ...d.data(),
         firestoreId: d.id,
       }));
 
-      const msgMap = new Map();
-      localMsgs.forEach((m) => { if (m && m.id) msgMap.set(String(m.id), m); });
-      remoteMsgs.forEach((m) => { if (m && m.id) msgMap.set(String(m.id), m); });
+      remoteMsgs.sort((a, b) => new Date(a.fecha || a.timestamp || 0) - new Date(b.fecha || b.timestamp || 0));
 
-      const merged = Array.from(msgMap.values());
-      merged.sort((a, b) => new Date(a.fecha || a.timestamp || 0) - new Date(b.fecha || b.timestamp || 0));
-
-      saveStoredMessages(merged);
-      onUpdate(merged);
+      saveStoredMessages(remoteMsgs);
+      onUpdate(remoteMsgs);
     }, (err) => {
       console.warn('Firestore messages subscription warning, falling back to local cache:', err);
       const localMsgs = getStoredMessages();
@@ -379,18 +336,12 @@ export function subscribeAuditLogs(onUpdate) {
   try {
     const colRef = collection(db, 'audit_logs');
     const unsubscribe = onSnapshot(colRef, (snapshot) => {
-      const localLogs = getStoredAuditLogs() || [];
       const remoteLogs = snapshot.empty ? [] : snapshot.docs.map((d) => d.data());
 
-      const logMap = new Map();
-      localLogs.forEach((l) => { if (l && l.id) logMap.set(String(l.id), l); });
-      remoteLogs.forEach((l) => { if (l && l.id) logMap.set(String(l.id), l); });
+      remoteLogs.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
 
-      const merged = Array.from(logMap.values());
-      merged.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
-
-      saveStoredAuditLogs(merged);
-      onUpdate(merged);
+      saveStoredAuditLogs(remoteLogs);
+      onUpdate(remoteLogs);
     }, (err) => {
       console.warn('Firestore audit logs subscription warning, using local cache:', err);
       const localLogs = getStoredAuditLogs();

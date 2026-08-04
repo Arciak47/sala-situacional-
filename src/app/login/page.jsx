@@ -48,12 +48,20 @@ export default function LoginPage({
         console.warn('Could not fetch users from Firestore for login, using cached data:', err);
       }
       
-      // Merge all sources — Firestore data wins on conflicts (most up-to-date)
+      // Merge all sources — Firestore data is the absolute source of truth when online.
+      // Offline fallback merges local storage cached data.
       const userMap = new Map();
-      (INITIAL_USERS || []).forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
-      (storedUsers || []).forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
-      (users || []).forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
-      (firestoreUsers || []).forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
+      if (firestoreUsers && firestoreUsers.length > 0) {
+        // Online: Firestore is source of truth
+        firestoreUsers.forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
+        // Ensure INITIAL_USERS are included (e.g. baseline admin)
+        (INITIAL_USERS || []).forEach((u) => { if (u && u.id && !userMap.has(String(u.id))) userMap.set(String(u.id), u); });
+      } else {
+        // Offline or Firestore query failed: fallback to merged local cache
+        (INITIAL_USERS || []).forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
+        (storedUsers || []).forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
+        (users || []).forEach((u) => { if (u && u.id) userMap.set(String(u.id), u); });
+      }
 
       const availableUsers = Array.from(userMap.values());
 
