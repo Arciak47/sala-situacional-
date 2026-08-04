@@ -211,31 +211,45 @@ export async function addSubmissionToFirestore(submission) {
 
     // Save initially so it arrives instantly
     let initialSub = JSON.parse(JSON.stringify(updatedSub));
-    if (initialSub.reportData?.evidenceImageSrc && initialSub.reportData.evidenceImageSrc.startsWith('data:')) {
-      initialSub.reportData.evidenceImageSrc = '__pending_upload__';
+    const uploadPromises = [];
+
+    if (initialSub.reportData) {
+      for (const key of Object.keys(initialSub.reportData)) {
+        const val = initialSub.reportData[key];
+        if (typeof val === 'string' && val.startsWith('data:image/')) {
+          initialSub.reportData[key] = '__pending_upload__';
+          const p = uploadImageToStorage(val, `reports/${key}_${subId}_${Date.now()}`)
+            .then((imgUrl) => {
+              if (imgUrl) {
+                updatedSub.reportData[key] = imgUrl;
+              }
+            })
+            .catch((err) => console.warn(`Background image upload failed for ${key}`, err));
+          uploadPromises.push(p);
+        }
+      }
     }
+
     const subRef = doc(db, 'submissions', subId);
     await setDoc(subRef, sanitize(initialSub), { merge: true });
 
-    // Upload base64 evidence image to Firebase Storage asynchronously
-    if (updatedSub.reportData?.evidenceImageSrc && updatedSub.reportData.evidenceImageSrc.startsWith('data:')) {
-      uploadImageToStorage(
-        updatedSub.reportData.evidenceImageSrc, 
-        `reports/evidence_${subId}_${Date.now()}`
-      ).then(async (imgUrl) => {
-        if (imgUrl) {
-          updatedSub.reportData.evidenceImageSrc = imgUrl;
-          await setDoc(subRef, sanitize(updatedSub), { merge: true });
+    if (uploadPromises.length > 0) {
+      // Run uploads in background and update Firestore after
+      Promise.all(uploadPromises).then(async () => {
+        for (const key in updatedSub.reportData) {
+          const val = updatedSub.reportData[key];
+          if (val === '__pending_upload__' || (typeof val === 'string' && val.startsWith('data:image/'))) {
+            delete updatedSub.reportData[key];
+          }
         }
-      }).catch((err) => console.warn('Background image upload failed', err));
+        await setDoc(subRef, sanitize(updatedSub), { merge: true });
+        const latestLocal = getStoredSubmissions();
+        saveStoredSubmissions([updatedSub, ...latestLocal.filter((s) => String(s.id) !== String(updatedSub.id))]);
+      });
+    } else {
+      const latestLocal = getStoredSubmissions();
+      saveStoredSubmissions([updatedSub, ...latestLocal.filter((s) => String(s.id) !== String(updatedSub.id))]);
     }
-
-    if (updatedSub.reportData?.evidenceImageSrc === '__pending_upload__') {
-      delete updatedSub.reportData.evidenceImageSrc;
-    }
-
-    const latestLocal = getStoredSubmissions();
-    saveStoredSubmissions([updatedSub, ...latestLocal.filter((s) => String(s.id) !== String(updatedSub.id))]);
   } catch (err) {
     console.warn('Firestore addSubmissionToFirestore warning (saved locally):', err);
   }
