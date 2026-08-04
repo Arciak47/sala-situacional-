@@ -494,8 +494,32 @@ export default function Home() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const src = ev.target.result;
-      setReportData((prev) => ({ ...prev, evidenceImageSrc: src }));
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const max_size = 800;
+        if (width > height) {
+          if (width > max_size) {
+            height *= max_size / width;
+            width = max_size;
+          }
+        } else {
+          if (height > max_size) {
+            width *= max_size / height;
+            height = max_size;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        // Compress as JPEG
+        const compressedSrc = canvas.toDataURL('image/jpeg', 0.6);
+        setReportData((prev) => ({ ...prev, evidenceImageSrc: compressedSrc }));
+      };
+      img.src = ev.target.result;
     };
     reader.readAsDataURL(file);
   };

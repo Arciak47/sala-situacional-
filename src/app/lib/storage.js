@@ -86,35 +86,16 @@ export function getStoredSubmissions() {
 export function saveStoredSubmissions(submissions) {
   if (typeof window === 'undefined') return;
   if (Array.isArray(submissions)) {
-    const stripBase64 = (obj) => {
-      if (!obj) return obj;
-      const stripped = { ...obj };
-      for (const key in stripped) {
-        if (typeof stripped[key] === 'string' && stripped[key].startsWith('data:')) {
-          stripped[key] = '__pending_upload__';
-        }
-      }
-      return stripped;
-    };
-
     try {
-      // Strip large base64 data URLs to prevent localStorage quota overflow.
-      const lightweight = submissions.map((s) => ({
-        ...s,
-        reportData: stripBase64(s.reportData),
-      }));
-      localStorage.setItem('sdm_submissions', JSON.stringify(lightweight));
+      localStorage.setItem('sdm_submissions', JSON.stringify(submissions));
     } catch (e) {
       console.warn('localStorage quota exceeded for submissions, trimming old entries:', e);
       try {
         // Fallback: keep only the last 50 submissions
-        const trimmed = submissions.slice(0, 50).map((s) => ({
-          ...s,
-          reportData: stripBase64(s.reportData),
-        }));
+        const trimmed = submissions.slice(0, 50);
         localStorage.setItem('sdm_submissions', JSON.stringify(trimmed));
       } catch (e2) {
-        console.error('Failed to save submissions to localStorage even after trimming:', e2);
+        console.error('Failed to save even trimmed submissions:', e2);
       }
     }
   }

@@ -204,52 +204,16 @@ export async function addSubmissionToFirestore(submission) {
   const updatedList = [submission, ...localSubs.filter((s) => String(s.id) !== String(submission.id))];
   saveStoredSubmissions(updatedList);
 
-  // 2. Then save to Firestore in background
+  // 2. Save to Firestore
   try {
     const subId = String(submission.id || `sub-${Date.now()}`);
     let updatedSub = JSON.parse(JSON.stringify(submission));
-
-    // Save initially so it arrives instantly
-    let initialSub = JSON.parse(JSON.stringify(updatedSub));
-    const uploadPromises = [];
-
-    if (initialSub.reportData) {
-      for (const key of Object.keys(initialSub.reportData)) {
-        const val = initialSub.reportData[key];
-        if (typeof val === 'string' && val.startsWith('data:')) {
-          initialSub.reportData[key] = '__pending_upload__';
-          const p = uploadImageToStorage(val, `reports/${key}_${subId}_${Date.now()}`)
-            .then((imgUrl) => {
-              if (imgUrl) {
-                updatedSub.reportData[key] = imgUrl;
-              }
-            })
-            .catch((err) => console.warn(`Background image upload failed for ${key}`, err));
-          uploadPromises.push(p);
-        }
-      }
-    }
-
     const subRef = doc(db, 'submissions', subId);
-    await setDoc(subRef, sanitize(initialSub), { merge: true });
-
-    if (uploadPromises.length > 0) {
-      // Run uploads in background and update Firestore after
-      Promise.all(uploadPromises).then(async () => {
-        for (const key in updatedSub.reportData) {
-          const val = updatedSub.reportData[key];
-          if (val === '__pending_upload__' || (typeof val === 'string' && val.startsWith('data:'))) {
-            delete updatedSub.reportData[key];
-          }
-        }
-        await setDoc(subRef, sanitize(updatedSub), { merge: true });
-        const latestLocal = getStoredSubmissions();
-        saveStoredSubmissions([updatedSub, ...latestLocal.filter((s) => String(s.id) !== String(updatedSub.id))]);
-      });
-    } else {
-      const latestLocal = getStoredSubmissions();
-      saveStoredSubmissions([updatedSub, ...latestLocal.filter((s) => String(s.id) !== String(updatedSub.id))]);
-    }
+    await setDoc(subRef, sanitize(updatedSub), { merge: true });
+    
+    // Update local with the final sanitized version
+    const latestLocal = getStoredSubmissions();
+    saveStoredSubmissions([updatedSub, ...latestLocal.filter((s) => String(s.id) !== String(updatedSub.id))]);
   } catch (err) {
     console.warn('Firestore addSubmissionToFirestore warning (saved locally):', err);
   }

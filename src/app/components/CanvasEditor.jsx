@@ -360,16 +360,42 @@ export default function CanvasEditor({
     const reader = new FileReader();
     reader.onload = (ev) => {
       const src = ev.target.result;
-      setElements((prev) =>
-        prev.map((el) => (el.id === elId ? { ...el, src } : el))
-      );
-      const img = new Image();
-      img.onload = () => setImageCache((prev) => ({ ...prev, [elId]: img }));
-      img.src = src;
-      const target = elements.find((el) => el.id === elId);
-      if (target?.sync === 'evidenceImageSrc') {
-        setReportData((prev) => ({ ...prev, evidenceImageSrc: src }));
-      }
+      const originalImg = new Image();
+      originalImg.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = originalImg.width;
+        let height = originalImg.height;
+        const max_size = 1200; // slightly higher quality for canvas
+        if (width > height) {
+          if (width > max_size) {
+            height *= max_size / width;
+            width = max_size;
+          }
+        } else {
+          if (height > max_size) {
+            width *= max_size / height;
+            height = max_size;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(originalImg, 0, 0, width, height);
+        // Compress as JPEG
+        const compressedSrc = canvas.toDataURL('image/jpeg', 0.6);
+
+        setElements((prev) =>
+          prev.map((el) => (el.id === elId ? { ...el, src: compressedSrc } : el))
+        );
+        const img = new Image();
+        img.onload = () => setImageCache((prev) => ({ ...prev, [elId]: img }));
+        img.src = compressedSrc;
+        const target = elements.find((el) => el.id === elId);
+        if (target?.sync === 'evidenceImageSrc') {
+          setReportData((prev) => ({ ...prev, evidenceImageSrc: compressedSrc }));
+        }
+      };
+      originalImg.src = src;
     };
     reader.readAsDataURL(file);
   };
