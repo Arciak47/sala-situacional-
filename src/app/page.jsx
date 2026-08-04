@@ -41,6 +41,7 @@ import {
   addMessageToFirestore,
   updateMessageInFirestore,
   addAuditLogToFirestore,
+  getSubmissionImage,
 } from './lib/firestoreService';
 
 export default function Home() {
@@ -419,9 +420,18 @@ export default function Home() {
     setTimeout(() => setToastMsg(''), 4000);
   };
 
-  const openSubmissionForReview = (sub) => {
+  const openSubmissionForReview = async (sub) => {
     setSelectedSubmission(sub);
     const newReportData = { ...sub.reportData };
+    
+    // Fetch image from secondary collection if it was separated to save bandwidth
+    if (newReportData.evidenceImageId && !newReportData.evidenceImageSrc) {
+      const src = await getSubmissionImage(newReportData.evidenceImageId);
+      if (src) {
+        newReportData.evidenceImageSrc = src;
+      }
+    }
+    
     setReportData(newReportData);
     setElements(buildElements(newReportData));
     setSelId(null);

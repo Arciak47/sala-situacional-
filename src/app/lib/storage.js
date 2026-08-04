@@ -3,7 +3,7 @@ import { INITIAL_USERS, INITIAL_LOGS, INITIAL_MESSAGES } from './constants';
 export function initializeStorage() {
   if (typeof window === 'undefined') return;
   
-  const currentVersion = 'sdm-v11-sync-fixed';
+  const currentVersion = 'sdm-v12-fast-mobile';
   const savedVersion = localStorage.getItem('sdm_version');
   
   if (savedVersion !== currentVersion) {

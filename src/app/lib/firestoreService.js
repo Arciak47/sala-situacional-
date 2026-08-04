@@ -213,15 +213,17 @@ export async function addSubmissionToFirestore(submission) {
     const subId = String(submission.id || `sub-${Date.now()}`);
     let updatedSub = JSON.parse(JSON.stringify(submission));
     
-    // Upload image to Storage if it's a base64 string
+    // Move image to separate Firestore collection to prevent massive main payload
     if (updatedSub.reportData?.evidenceImageSrc?.startsWith('data:')) {
-      const imgUrl = await uploadImageToStorage(
-        updatedSub.reportData.evidenceImageSrc,
-        `submissions/img_${subId}_${Date.now()}`
-      );
-      if (imgUrl) {
-        updatedSub.reportData.evidenceImageSrc = imgUrl;
-      }
+      const imageId = `img_${subId}`;
+      const imgRef = doc(db, 'submission_images', imageId);
+      await setDoc(imgRef, {
+        subId: subId,
+        evidenceImageSrc: updatedSub.reportData.evidenceImageSrc
+      });
+      
+      updatedSub.reportData.evidenceImageSrc = null; // Clear massive payload
+      updatedSub.reportData.evidenceImageId = imageId; // Save reference
     }
 
     const subRef = doc(db, 'submissions', subId);
@@ -244,9 +246,25 @@ export async function deleteSubmissionFromFirestore(subId) {
   try {
     const subRef = doc(db, 'submissions', String(subId));
     await deleteDoc(subRef);
+    // Also try to delete image if exists
+    const imgRef = doc(db, 'submission_images', `img_${subId}`);
+    await deleteDoc(imgRef).catch(() => {});
   } catch (err) {
-    console.warn('Error deleting submission from Firestore:', err);
+    console.warn('Firestore deleteSubmissionFromFirestore warning:', err);
   }
+}
+
+export async function getSubmissionImage(imageId) {
+  try {
+    const imgRef = doc(db, 'submission_images', imageId);
+    const snap = await getDoc(imgRef);
+    if (snap.exists()) {
+      return snap.data().evidenceImageSrc;
+    }
+  } catch (e) {
+    console.error('Error fetching image:', e);
+  }
+  return null;
 }
 
 // ----------------------------------------------------
