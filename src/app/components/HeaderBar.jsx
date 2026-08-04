@@ -57,10 +57,18 @@ export default function HeaderBar({
 
       {/* RIGHT: SYSTEM & ROLE STATUS BADGES */}
       <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 self-start sm:self-center">
-        {/* LIVE SYSTEM STATUS */}
+        {/* LIVE SYSTEM STATUS & SYNC BUTTON */}
         <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60 text-[11px] font-bold text-slate-600 dark:text-slate-300">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span className="capitalize">{formattedDate}</span>
+          <div className="w-px h-3 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+            title="Forzar sincronización con la base de datos"
+          >
+            <span>🔄</span> Sincronizar
+          </button>
         </div>
 
         {/* PENDING NOTIFICATION BADGE */}
