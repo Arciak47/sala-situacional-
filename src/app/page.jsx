@@ -104,8 +104,13 @@ export default function Home() {
     } else {
       setActiveTab('forms');
     }
+  }, []);
 
-    // Subscribe to Firestore collections in real-time
+  // ── Database Subscriptions ──
+  useEffect(() => {
+    // Only subscribe to heavy data if the user is actually logged in
+    if (!currentUser) return;
+    
     const unsubUsers = subscribeUsers((data) => {
       if (Array.isArray(data) && data.length > 0) {
         setUsers(data);
@@ -127,7 +132,7 @@ export default function Home() {
       unsubMsgs();
       unsubLogs();
     };
-  }, []);
+  }, [currentUser]);
 
   // ── State persistence & sync ──
   useEffect(() => {
