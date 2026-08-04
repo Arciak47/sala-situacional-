@@ -31,6 +31,7 @@ export default function CanvasEditor({
   selectedSubmission,
   saveSubmissionEdits,
   markAsReviewed,
+  markAsRepeated,
   handleImageUpload,
 }) {
   const isDragging = useRef(false);
@@ -548,12 +549,20 @@ export default function CanvasEditor({
                 💾 Guardar Cambios
               </button>
               {selectedSubmission.status === 'pendiente' && (
-                <button
-                  onClick={() => markAsReviewed(selectedSubmission.id)}
-                  className="flex-1 py-2 rounded-lg text-[10px] font-bold bg-emerald-100 text-emerald-700 cursor-pointer hover:bg-emerald-200"
-                >
-                  ✅ Revisado
-                </button>
+                <>
+                  <button
+                    onClick={() => markAsReviewed(selectedSubmission.id)}
+                    className="flex-1 py-2 rounded-lg text-[10px] font-bold bg-emerald-100 text-emerald-700 cursor-pointer hover:bg-emerald-200 border border-emerald-200"
+                  >
+                    ✅ Revisado
+                  </button>
+                  <button
+                    onClick={() => markAsRepeated && markAsRepeated(selectedSubmission.id)}
+                    className="flex-1 py-2 rounded-lg text-[10px] font-bold bg-orange-100 text-orange-700 cursor-pointer hover:bg-orange-200 border border-orange-200"
+                  >
+                    ⚠️ Repetido
+                  </button>
+                </>
               )}
             </div>
           </div>

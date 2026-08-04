@@ -9,6 +9,7 @@ export default function SubmissionInboxView({
   setInboxFilter,
   openSubmissionForReview,
   markAsReviewed,
+  markAsRepeated,
   deleteSubmission,
 }) {
   const [selectedIds, setSelectedIds] = useState([]);
@@ -79,7 +80,7 @@ export default function SubmissionInboxView({
 
             {/* FILTER BUTTONS */}
             <div className="flex gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
-              {['Todos', 'pendiente', 'revisado'].map((f) => (
+              {['Todos', 'pendiente', 'revisado', 'repetido'].map((f) => (
                 <button
                   key={f}
                   onClick={() => setInboxFilter(f)}
@@ -93,7 +94,9 @@ export default function SubmissionInboxView({
                     ? '📋 Todos'
                     : f === 'pendiente'
                     ? '⏳ Pendientes'
-                    : '✅ Revisados'}
+                    : f === 'revisado'
+                    ? '✅ Revisados'
+                    : '⚠️ Repetidos'}
                 </button>
               ))}
             </div>
@@ -195,10 +198,12 @@ export default function SubmissionInboxView({
                       className={`px-2.5 py-1 rounded-full text-[9px] font-bold ${
                         sub.status === 'pendiente'
                           ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                          : sub.status === 'repetido'
+                          ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
                           : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                       }`}
                     >
-                      {sub.status === 'pendiente' ? '⏳ PENDIENTE' : '✅ REVISADO'}
+                      {sub.status === 'pendiente' ? '⏳ PENDIENTE' : sub.status === 'repetido' ? '⚠️ REPETIDO' : '✅ REVISADO'}
                     </span>
                     <button
                       onClick={() => openSubmissionForReview(sub)}
@@ -207,12 +212,20 @@ export default function SubmissionInboxView({
                       🎨 Editar en Canvas
                     </button>
                     {sub.status === 'pendiente' && (
-                      <button
-                        onClick={() => markAsReviewed(sub.id)}
-                        className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border dark:border-emerald-900 cursor-pointer"
-                      >
-                        ✅ Revisado
-                      </button>
+                      <>
+                        <button
+                          onClick={() => markAsReviewed(sub.id)}
+                          className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border dark:border-emerald-900 cursor-pointer"
+                        >
+                          ✅ Revisado
+                        </button>
+                        <button
+                          onClick={() => markAsRepeated && markAsRepeated(sub.id)}
+                          className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 border dark:border-orange-900 cursor-pointer"
+                        >
+                          ⚠️ Repetido
+                        </button>
+                      </>
                     )}
                     <button
                       onClick={() => deleteSubmission && deleteSubmission(sub.id)}

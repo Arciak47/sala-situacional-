@@ -18,6 +18,7 @@ export default function SupervisorView({
   setInboxFilter,
   openSubmissionForReview,
   markAsReviewed,
+  markAsRepeated,
   deleteSubmission,
   reportData,
   setReportData,
@@ -70,6 +71,7 @@ export default function SupervisorView({
           setInboxFilter={setInboxFilter}
           openSubmissionForReview={openSubmissionForReview}
           markAsReviewed={markAsReviewed}
+          markAsRepeated={markAsRepeated}
           deleteSubmission={deleteSubmission}
         />
       )}
@@ -94,6 +96,7 @@ export default function SupervisorView({
           selectedSubmission={selectedSubmission}
           saveSubmissionEdits={saveSubmissionEdits}
           markAsReviewed={markAsReviewed}
+          markAsRepeated={markAsRepeated}
           handleImageUpload={handleImageUpload}
         />
       )}

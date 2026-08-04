@@ -29,6 +29,7 @@ export default function AdministradorView({
   setInboxFilter,
   openSubmissionForReview,
   markAsReviewed,
+  markAsRepeated,
   deleteSubmission,
   elements,
   setElements,
@@ -98,6 +99,7 @@ export default function AdministradorView({
           setInboxFilter={setInboxFilter}
           openSubmissionForReview={openSubmissionForReview}
           markAsReviewed={markAsReviewed}
+          markAsRepeated={markAsRepeated}
           deleteSubmission={deleteSubmission}
         />
       )}
@@ -122,6 +124,7 @@ export default function AdministradorView({
           selectedSubmission={selectedSubmission}
           saveSubmissionEdits={saveSubmissionEdits}
           markAsReviewed={markAsReviewed}
+          markAsRepeated={markAsRepeated}
           handleImageUpload={handleImageUpload}
         />
       )}

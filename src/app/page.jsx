@@ -451,7 +451,7 @@ export default function Home() {
     setActiveTab('editor');
   };
 
-  const saveSubmissionEdits = () => {
+  const saveSubmissionEdits = (newStatus = null) => {
     if (!selectedSubmission) return;
     const updatedReport = { ...reportData };
     elements.forEach((el) => {
@@ -470,34 +470,61 @@ export default function Home() {
       reportData: updatedReport,
       editedBy: currentUser.name,
       editedAt: new Date().toISOString(),
+      ...(newStatus ? { status: newStatus } : {}),
     };
     setSubmissions((prev) =>
       prev.map((s) => (s.id === selectedSubmission.id ? updatedSub : s))
     );
     addSubmissionToFirestore(updatedSub);
-    addLog(
-      currentUser.email,
-      'Reporte Editado',
-      `ID: ${selectedSubmission.id}`,
-      'success'
-    );
-    setToastMsg('💾 Cambios guardados en la bandeja.');
-    setTimeout(() => setToastMsg(''), 4000);
+    if (!newStatus) {
+      addLog(
+        currentUser.email,
+        'Reporte Editado',
+        `ID: ${selectedSubmission.id}`,
+        'success'
+      );
+      setToastMsg('💾 Cambios guardados en la bandeja.');
+      setTimeout(() => setToastMsg(''), 4000);
+    }
   };
 
   const markAsReviewed = (subId) => {
-    setSubmissions((prev) =>
-      prev.map((s) => {
-        if (s.id === subId) {
-          const updated = { ...s, status: 'revisado' };
-          addSubmissionToFirestore(updated);
-          return updated;
-        }
-        return s;
-      })
-    );
+    if (selectedSubmission && selectedSubmission.id === subId) {
+      saveSubmissionEdits('revisado');
+    } else {
+      setSubmissions((prev) =>
+        prev.map((s) => {
+          if (s.id === subId) {
+            const updated = { ...s, status: 'revisado' };
+            addSubmissionToFirestore(updated);
+            return updated;
+          }
+          return s;
+        })
+      );
+    }
     addLog(currentUser.email, 'Reporte Revisado', `ID: ${subId}`, 'success');
     setToastMsg('✅ Marcado como revisado.');
+    setTimeout(() => setToastMsg(''), 4000);
+  };
+
+  const markAsRepeated = (subId) => {
+    if (selectedSubmission && selectedSubmission.id === subId) {
+      saveSubmissionEdits('repetido');
+    } else {
+      setSubmissions((prev) =>
+        prev.map((s) => {
+          if (s.id === subId) {
+            const updated = { ...s, status: 'repetido' };
+            addSubmissionToFirestore(updated);
+            return updated;
+          }
+          return s;
+        })
+      );
+    }
+    addLog(currentUser.email, 'Reporte Repetido', `ID: ${subId}`, 'warning');
+    setToastMsg('⚠️ Marcado como repetido.');
     setTimeout(() => setToastMsg(''), 4000);
   };
 
@@ -804,6 +831,7 @@ export default function Home() {
             setInboxFilter={setInboxFilter}
             openSubmissionForReview={openSubmissionForReview}
             markAsReviewed={markAsReviewed}
+            markAsRepeated={markAsRepeated}
             deleteSubmission={deleteSubmission}
             elements={elements}
             setElements={setElements}
@@ -838,6 +866,7 @@ export default function Home() {
             setInboxFilter={setInboxFilter}
             openSubmissionForReview={openSubmissionForReview}
             markAsReviewed={markAsReviewed}
+            markAsRepeated={markAsRepeated}
             deleteSubmission={deleteSubmission}
             reportData={reportData}
             setReportData={setReportData}
