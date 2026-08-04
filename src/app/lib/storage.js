@@ -90,7 +90,7 @@ export function saveStoredSubmissions(submissions) {
       if (!obj) return obj;
       const stripped = { ...obj };
       for (const key in stripped) {
-        if (typeof stripped[key] === 'string' && stripped[key].startsWith('data:image/')) {
+        if (typeof stripped[key] === 'string' && stripped[key].startsWith('data:')) {
           stripped[key] = '__pending_upload__';
         }
       }

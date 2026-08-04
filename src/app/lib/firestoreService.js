@@ -216,7 +216,7 @@ export async function addSubmissionToFirestore(submission) {
     if (initialSub.reportData) {
       for (const key of Object.keys(initialSub.reportData)) {
         const val = initialSub.reportData[key];
-        if (typeof val === 'string' && val.startsWith('data:image/')) {
+        if (typeof val === 'string' && val.startsWith('data:')) {
           initialSub.reportData[key] = '__pending_upload__';
           const p = uploadImageToStorage(val, `reports/${key}_${subId}_${Date.now()}`)
             .then((imgUrl) => {
@@ -238,7 +238,7 @@ export async function addSubmissionToFirestore(submission) {
       Promise.all(uploadPromises).then(async () => {
         for (const key in updatedSub.reportData) {
           const val = updatedSub.reportData[key];
-          if (val === '__pending_upload__' || (typeof val === 'string' && val.startsWith('data:image/'))) {
+          if (val === '__pending_upload__' || (typeof val === 'string' && val.startsWith('data:'))) {
             delete updatedSub.reportData[key];
           }
         }
