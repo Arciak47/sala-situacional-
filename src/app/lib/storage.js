@@ -2,9 +2,21 @@ import { INITIAL_USERS, INITIAL_LOGS, INITIAL_MESSAGES } from './constants';
 
 export function initializeStorage() {
   if (typeof window === 'undefined') return;
-  // Ensure basic keys are set without wiping user-created content
-  if (!localStorage.getItem('sdm_version')) {
-    localStorage.setItem('sdm_version', 'sdm-v10-production-stable');
+  
+  const currentVersion = 'sdm-v11-sync-fixed';
+  const savedVersion = localStorage.getItem('sdm_version');
+  
+  if (savedVersion !== currentVersion) {
+    // Clear out legacy local storage caches and active session
+    localStorage.removeItem('sdm_users');
+    localStorage.removeItem('sdm_session');
+    localStorage.removeItem('sdm_submissions');
+    localStorage.removeItem('sdm_messages');
+    localStorage.removeItem('sdm_audit');
+    localStorage.setItem('sdm_version', currentVersion);
+    
+    // Force reload to clear memory state and apply changes cleanly
+    window.location.reload();
   }
 }
 
