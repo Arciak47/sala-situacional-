@@ -173,7 +173,7 @@ export async function saveUsersBatchToFirestore(users) {
 export function subscribeSubmissions(onUpdate) {
   try {
     const colRef = collection(db, 'submissions');
-    const q = query(colRef, orderBy('timestamp', 'desc'), limit(50));
+    const q = query(colRef, orderBy('timestamp', 'desc'), limit(15));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const remoteSubs = snapshot.empty
         ? []
@@ -212,6 +212,18 @@ export async function addSubmissionToFirestore(submission) {
   try {
     const subId = String(submission.id || `sub-${Date.now()}`);
     let updatedSub = JSON.parse(JSON.stringify(submission));
+    
+    // Upload image to Storage if it's a base64 string
+    if (updatedSub.reportData?.evidenceImageSrc?.startsWith('data:')) {
+      const imgUrl = await uploadImageToStorage(
+        updatedSub.reportData.evidenceImageSrc,
+        `submissions/img_${subId}_${Date.now()}`
+      );
+      if (imgUrl) {
+        updatedSub.reportData.evidenceImageSrc = imgUrl;
+      }
+    }
+
     const subRef = doc(db, 'submissions', subId);
     await setDoc(subRef, sanitize(updatedSub), { merge: true });
     
