@@ -209,24 +209,30 @@ export async function addSubmissionToFirestore(submission) {
     const subId = String(submission.id || `sub-${Date.now()}`);
     let updatedSub = JSON.parse(JSON.stringify(submission));
 
-    // Upload base64 evidence image to Firebase Storage
+    // Save initially so it arrives instantly
+    let initialSub = JSON.parse(JSON.stringify(updatedSub));
+    if (initialSub.reportData?.evidenceImageSrc && initialSub.reportData.evidenceImageSrc.startsWith('data:')) {
+      initialSub.reportData.evidenceImageSrc = '__pending_upload__';
+    }
+    const subRef = doc(db, 'submissions', subId);
+    await setDoc(subRef, sanitize(initialSub), { merge: true });
+
+    // Upload base64 evidence image to Firebase Storage asynchronously
     if (updatedSub.reportData?.evidenceImageSrc && updatedSub.reportData.evidenceImageSrc.startsWith('data:')) {
-      const imgUrl = await uploadImageToStorage(
+      uploadImageToStorage(
         updatedSub.reportData.evidenceImageSrc, 
         `reports/evidence_${subId}_${Date.now()}`
-      );
-      if (imgUrl) {
-        updatedSub.reportData.evidenceImageSrc = imgUrl;
-      }
+      ).then(async (imgUrl) => {
+        if (imgUrl) {
+          updatedSub.reportData.evidenceImageSrc = imgUrl;
+          await setDoc(subRef, sanitize(updatedSub), { merge: true });
+        }
+      }).catch((err) => console.warn('Background image upload failed', err));
     }
 
-    // Don't send the localStorage placeholder to Firestore
     if (updatedSub.reportData?.evidenceImageSrc === '__pending_upload__') {
       delete updatedSub.reportData.evidenceImageSrc;
     }
-
-    const subRef = doc(db, 'submissions', subId);
-    await setDoc(subRef, sanitize(updatedSub), { merge: true });
 
     const latestLocal = getStoredSubmissions();
     saveStoredSubmissions([updatedSub, ...latestLocal.filter((s) => String(s.id) !== String(updatedSub.id))]);
@@ -288,16 +294,25 @@ export async function addMessageToFirestore(message) {
     const msgId = String(message.id || `msg-${Date.now()}`);
     let updatedMsg = JSON.parse(JSON.stringify(message));
 
-    if (updatedMsg.imagen && typeof updatedMsg.imagen === 'string' && updatedMsg.imagen.startsWith('data:')) {
-      const imgUrl = await uploadImageToStorage(
-        updatedMsg.imagen,
-        `messages/chat_${msgId}_${Date.now()}`
-      );
-      if (imgUrl) updatedMsg.imagen = imgUrl;
+    let initialMsg = JSON.parse(JSON.stringify(updatedMsg));
+    if (initialMsg.imagen && typeof initialMsg.imagen === 'string' && initialMsg.imagen.startsWith('data:')) {
+      initialMsg.imagen = '__pending_upload__';
     }
 
     const msgRef = doc(db, 'messages', msgId);
-    await setDoc(msgRef, sanitize(updatedMsg), { merge: true });
+    await setDoc(msgRef, sanitize(initialMsg), { merge: true });
+
+    if (updatedMsg.imagen && typeof updatedMsg.imagen === 'string' && updatedMsg.imagen.startsWith('data:')) {
+      uploadImageToStorage(
+        updatedMsg.imagen,
+        `messages/chat_${msgId}_${Date.now()}`
+      ).then(async (imgUrl) => {
+        if (imgUrl) {
+          updatedMsg.imagen = imgUrl;
+          await setDoc(msgRef, sanitize(updatedMsg), { merge: true });
+        }
+      }).catch((err) => console.warn('Message image upload failed:', err));
+    }
   } catch (err) {
     console.warn('Error adding message to Firestore:', err);
   }
