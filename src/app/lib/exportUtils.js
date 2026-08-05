@@ -514,8 +514,8 @@ export async function exportSubmissionsToHDPDF(selectedSubmissions = [], docTitl
 
   const cardsHtml = pagesData
     .map(
-      ({ imgData, linkUrl, hasLink }) => `
-      <div class="canvas-pdf-page" style="page-break-after: always; page-break-inside: avoid; width: 100%; max-width: 1100px; margin: 0 auto 20px auto; text-align: center;">
+      ({ imgData, linkUrl, hasLink }, index, arr) => `
+      <div class="canvas-pdf-page" style="page-break-after: ${index === arr.length - 1 ? 'auto' : 'always'}; page-break-inside: avoid; width: 100%; max-width: 1100px; margin: 0 auto 20px auto; text-align: center;">
         <div style="position: relative; display: inline-block; width: 100%;">
           <img src="${imgData}" style="width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 4px;" alt="Ficha Canvas Oficial" />
           ${
@@ -539,7 +539,7 @@ export async function exportSubmissionsToHDPDF(selectedSubmissions = [], docTitl
           @media print {
             html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #ffffff !important; }
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .canvas-pdf-page { page-break-after: always; page-break-inside: avoid; max-width: 100% !important; margin: 0 auto !important; }
+            .canvas-pdf-page { page-break-inside: avoid; max-width: 100% !important; margin: 0 auto !important; }
             .pdf-link-overlay { text-decoration: none !important; border: none !important; outline: none !important; background: transparent !important; color: transparent !important; }
           }
           body { font-family: Arial, Helvetica, sans-serif; background: #ffffff; padding: 10px; margin: 0; }
@@ -575,7 +575,7 @@ export async function exportCombinedReportAndFichasHDPDF(shiftCanvas, selectedSu
   // 1. Get shift report image
   const shiftImgData = shiftCanvas ? shiftCanvas.toDataURL('image/png', 1.0) : null;
   const shiftHtml = shiftImgData ? `
-    <div class="canvas-pdf-page shift-page" style="page-break-after: always; page-break-inside: avoid; width: 100%; text-align: center;">
+    <div class="canvas-pdf-page shift-page" style="page-break-after: ${!selectedSubmissions || selectedSubmissions.length === 0 ? 'auto' : 'always'}; page-break-inside: avoid; width: 100%; text-align: center;">
       <img src="${shiftImgData}" style="width: 100%; max-height: 100vh; object-fit: contain; display: block; margin: 0 auto;" alt="Reporte Diario Oficial" />
     </div>
   ` : '';
@@ -594,8 +594,8 @@ export async function exportCombinedReportAndFichasHDPDF(shiftCanvas, selectedSu
 
     fichasHtml = pagesData
       .map(
-        ({ imgData, linkUrl, hasLink }) => `
-        <div class="canvas-pdf-page" style="page-break-after: always; page-break-inside: avoid; width: 100%; height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center;">
+        ({ imgData, linkUrl, hasLink }, index, arr) => `
+        <div class="canvas-pdf-page" style="page-break-after: ${index === arr.length - 1 ? 'auto' : 'always'}; page-break-inside: avoid; width: 100%; height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center;">
           <div style="position: relative; display: inline-block; width: 100%; max-height: 100vh;">
             <img src="${imgData}" style="width: 100%; max-height: 100vh; object-fit: contain; display: block; margin: 0 auto;" alt="Ficha Canvas Oficial" />
             ${
@@ -621,7 +621,7 @@ export async function exportCombinedReportAndFichasHDPDF(shiftCanvas, selectedSu
           @media print {
             html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #ffffff !important; }
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .canvas-pdf-page { page-break-after: always; page-break-inside: avoid; width: 100%; height: 100vh; margin: 0 !important; display: flex; align-items: center; justify-content: center; }
+            .canvas-pdf-page { page-break-inside: avoid; width: 100%; height: 100vh; margin: 0 !important; display: flex; align-items: center; justify-content: center; }
             .shift-page { max-width: 100% !important; }
             .pdf-link-overlay { text-decoration: none !important; border: none !important; outline: none !important; background: transparent !important; color: transparent !important; }
           }
