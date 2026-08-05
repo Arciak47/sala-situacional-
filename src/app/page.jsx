@@ -483,7 +483,7 @@ export default function Home() {
     setActiveTab('editor');
   };
 
-  const saveSubmissionEdits = (newStatus = null, currentElements = null) => {
+  const saveSubmissionEdits = async (newStatus = null, currentElements = null) => {
     if (!selectedSubmission) return;
     const updatedReport = { ...reportData };
     const elementsToUse = currentElements || elements;
@@ -506,22 +506,33 @@ export default function Home() {
       editedAt: new Date().toISOString(),
       ...(newStatus && typeof newStatus === 'string' ? { status: newStatus } : {}),
     };
+    
+    // Optimistic local update
     setSubmissions((prev) =>
       prev.map((s) => (s.id === selectedSubmission.id ? updatedSub : s))
     );
     setSelectedSubmission(updatedSub);
-    addSubmissionToFirestore(updatedSub);
-    if (!newStatus || typeof newStatus !== 'string') {
-      addLog(
-        currentUser.email,
-        'Reporte Editado',
-        `ID: ${selectedSubmission.id} - DATA: ${JSON.stringify(updatedReport).substring(0, 100)}`,
-        'success'
-      );
-      setToastMsg('💾 Cambios guardados en la bandeja.');
-      setTimeout(() => setToastMsg(''), 4000);
-    } else {
-      setActiveTab('inbox');
+    
+    try {
+      await addSubmissionToFirestore(updatedSub);
+      if (!newStatus || typeof newStatus !== 'string') {
+        addLog(
+          currentUser.email,
+          'Reporte Editado',
+          `ID: ${selectedSubmission.id} - DATA: ${JSON.stringify(updatedReport).substring(0, 100)}`,
+          'success'
+        );
+        setToastMsg('💾 Cambios guardados en la bandeja.');
+        setTimeout(() => setToastMsg(''), 4000);
+      } else {
+        setToastMsg(`✅ Reporte movido a estado: ${newStatus.toUpperCase()}`);
+        setTimeout(() => setToastMsg(''), 4000);
+        setActiveTab('inbox');
+      }
+    } catch (err) {
+      console.error(err);
+      setToastMsg(`❌ Error al guardar: ${err.message || 'Intente nuevamente'}`);
+      setTimeout(() => setToastMsg(''), 6000);
     }
   };
 

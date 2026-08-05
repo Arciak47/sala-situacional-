@@ -267,8 +267,10 @@ export async function addSubmissionToFirestore(submission) {
     // Update local with the final sanitized version
     const latestLocal = getStoredSubmissions();
     saveStoredSubmissions([updatedSub, ...latestLocal.filter((s) => String(s.id) !== String(updatedSub.id))]);
+    return true;
   } catch (err) {
-    console.warn('Firestore addSubmissionToFirestore warning (saved locally):', err);
+    console.warn('Firestore addSubmissionToFirestore error:', err);
+    throw err;
   }
 }
 
