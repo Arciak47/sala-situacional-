@@ -575,8 +575,8 @@ export async function exportCombinedReportAndFichasHDPDF(shiftCanvas, selectedSu
   // 1. Get shift report image
   const shiftImgData = shiftCanvas ? shiftCanvas.toDataURL('image/png', 1.0) : null;
   const shiftHtml = shiftImgData ? `
-    <div class="canvas-pdf-page shift-page" style="page-break-after: ${!selectedSubmissions || selectedSubmissions.length === 0 ? 'auto' : 'always'}; page-break-inside: avoid; width: 100%; text-align: center;">
-      <img src="${shiftImgData}" style="width: 100%; max-height: 100vh; object-fit: contain; display: block; margin: 0 auto;" alt="Reporte Diario Oficial" />
+    <div class="canvas-pdf-page shift-page" style="page-break-after: ${!selectedSubmissions || selectedSubmissions.length === 0 ? 'auto' : 'always'};">
+      <img src="${shiftImgData}" alt="Reporte Diario Oficial" />
     </div>
   ` : '';
 
@@ -595,12 +595,12 @@ export async function exportCombinedReportAndFichasHDPDF(shiftCanvas, selectedSu
     fichasHtml = pagesData
       .map(
         ({ imgData, linkUrl, hasLink }, index, arr) => `
-        <div class="canvas-pdf-page" style="page-break-after: ${index === arr.length - 1 ? 'auto' : 'always'}; page-break-inside: avoid; width: 100%; height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center;">
-          <div style="position: relative; display: inline-block; width: 100%; max-height: 100vh;">
-            <img src="${imgData}" style="width: 100%; max-height: 100vh; object-fit: contain; display: block; margin: 0 auto;" alt="Ficha Canvas Oficial" />
+        <div class="canvas-pdf-page" style="page-break-after: ${index === arr.length - 1 ? 'auto' : 'always'};">
+          <div style="position: relative; display: inline-block; width: 100%; height: 100%;">
+            <img src="${imgData}" alt="Ficha Canvas Oficial" />
             ${
               hasLink
-                ? `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="pdf-link-overlay" title="Abrir enlace" style="position: absolute; left: 2.5%; top: 83.2%; width: 29.16%; height: 10%; display: block; z-index: 100; cursor: pointer; text-decoration: none !important; border: none !important; outline: none !important; background: transparent !important;"></a>`
+                ? `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="pdf-link-overlay" title="Abrir enlace"></a>`
                 : ''
             }
           </div>
@@ -616,16 +616,19 @@ export async function exportCombinedReportAndFichasHDPDF(shiftCanvas, selectedSu
         <meta charset="utf-8" />
         <title>${docTitle}</title>
         <style>
-          /* Imprimir en horizontal, un reporte por hoja, sin márgenes */
+          * { box-sizing: border-box; }
           @page { size: landscape; margin: 0; }
           @media print {
-            html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #ffffff !important; }
+            html, body { width: 100%; height: 100%; margin: 0 !important; padding: 0 !important; background: #ffffff !important; overflow: hidden; }
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .canvas-pdf-page { page-break-inside: avoid; width: 100%; height: 100vh; margin: 0 !important; display: flex; align-items: center; justify-content: center; }
+            .canvas-pdf-page { page-break-inside: avoid; width: 100vw; height: 100vh; margin: 0 !important; padding: 0 !important; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+            .canvas-pdf-page img { max-width: 100%; max-height: 100vh; object-fit: contain; display: block; margin: 0 auto; }
             .shift-page { max-width: 100% !important; }
             .pdf-link-overlay { text-decoration: none !important; border: none !important; outline: none !important; background: transparent !important; color: transparent !important; }
           }
-          body { font-family: Arial, Helvetica, sans-serif; background: #ffffff; padding: 10px; margin: 0; }
+          body { font-family: Arial, Helvetica, sans-serif; background: #ffffff; padding: 0; margin: 0; }
+          .canvas-pdf-page { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+          .canvas-pdf-page img { max-width: 100%; max-height: 100vh; object-fit: contain; }
           .pdf-link-overlay { position: absolute; left: 2.5%; top: 83.2%; width: 29.16%; height: 10%; display: block; z-index: 100; cursor: pointer; text-decoration: none !important; border: none !important; outline: none !important; background: transparent !important; }
         </style>
       </head>
