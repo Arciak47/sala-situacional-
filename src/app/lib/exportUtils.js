@@ -619,16 +619,16 @@ export async function exportCombinedReportAndFichasHDPDF(shiftCanvas, selectedSu
           * { box-sizing: border-box; }
           @page { size: landscape; margin: 0; }
           @media print {
-            html, body { width: 100%; height: 100%; margin: 0 !important; padding: 0 !important; background: #ffffff !important; overflow: hidden; }
+            html, body { width: 100%; margin: 0 !important; padding: 0 !important; background: #ffffff !important; }
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .canvas-pdf-page { page-break-inside: avoid; width: 100vw; height: 100vh; margin: 0 !important; padding: 0 !important; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-            .canvas-pdf-page img { max-width: 100%; max-height: 100vh; object-fit: contain; display: block; margin: 0 auto; }
+            .canvas-pdf-page { page-break-inside: avoid; width: 100%; height: 99vh; margin: 0 !important; padding: 0 !important; display: flex; align-items: center; justify-content: center; }
+            .canvas-pdf-page img { max-width: 100%; max-height: 99vh; object-fit: contain; display: block; margin: 0 auto; }
             .shift-page { max-width: 100% !important; }
             .pdf-link-overlay { text-decoration: none !important; border: none !important; outline: none !important; background: transparent !important; color: transparent !important; }
           }
           body { font-family: Arial, Helvetica, sans-serif; background: #ffffff; padding: 0; margin: 0; }
-          .canvas-pdf-page { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-          .canvas-pdf-page img { max-width: 100%; max-height: 100vh; object-fit: contain; }
+          .canvas-pdf-page { width: 100vw; height: 99vh; display: flex; align-items: center; justify-content: center; }
+          .canvas-pdf-page img { max-width: 100%; max-height: 99vh; object-fit: contain; }
           .pdf-link-overlay { position: absolute; left: 2.5%; top: 83.2%; width: 29.16%; height: 10%; display: block; z-index: 100; cursor: pointer; text-decoration: none !important; border: none !important; outline: none !important; background: transparent !important; }
         </style>
       </head>
