@@ -379,6 +379,7 @@ export function exportStatsToPDF(title = 'Informe Estadístico - Sala Situaciona
  */
 import { CW, CH } from './constants';
 import { buildElements, drawWrapped } from './canvasHelpers';
+import { getSubmissionImage } from './firestoreService';
 
 /**
  * Renders a submission object onto an off-screen HTML5 Canvas matching the exact Canvas Editor ficha,
@@ -391,7 +392,19 @@ async function renderCanvasFichaImage(sub) {
   canvas.width = CW; // 1200
   canvas.height = CH; // 750
   const ctx = canvas.getContext('2d');
-  const elements = buildElements(sub.reportData || {});
+  
+  const reportData = { ...(sub.reportData || {}) };
+  
+  if (!reportData.evidenceImageSrc && reportData.evidenceImageId) {
+    try {
+      const imgSrc = await getSubmissionImage(reportData.evidenceImageId);
+      if (imgSrc) reportData.evidenceImageSrc = imgSrc;
+    } catch (error) {
+      console.error('Failed to fetch submission image for export', error);
+    }
+  }
+
+  const elements = buildElements(reportData);
 
   // Preload images
   const imageCache = {};
