@@ -44,9 +44,20 @@ export default function SupervisorView({
   onSendMessage,
   onMarkAsRead,
   auditLogs = [],
+  handleBackupAndClear,
 }) {
   return (
     <div className="space-y-6">
+      {/* ── HEADER ACCIONES GLOBALES ── */}
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={handleBackupAndClear}
+          className="flex items-center gap-2 py-2 px-4 rounded-full text-xs font-bold text-white bg-red-600 hover:bg-red-700 shadow-md cursor-pointer"
+        >
+          📦 Cierre de Día (Respaldar y Limpiar)
+        </button>
+      </div>
+
       {/* ── REPORTE DE TURNO ── */}
       {activeTab === 'shift' && (
         <ShiftReportView submissions={submissions} users={users} />

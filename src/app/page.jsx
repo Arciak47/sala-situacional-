@@ -593,6 +593,64 @@ export default function Home() {
     }
   };
 
+  const handleBackupAndClear = async () => {
+    if (
+      typeof window !== 'undefined' &&
+      window.confirm('🧪 MODO PRUEBA: ¿Estás seguro de que deseas RESPALDAR los datos? Tranquilo, NO se borrará absolutamente nada de la base de datos en esta prueba.')
+    ) {
+      setToastMsg('📦 Generando respaldo, por favor espera...');
+      try {
+        const JSZip = (await import('jszip')).default;
+        const { saveAs } = (await import('file-saver')).default;
+        const { getExcelBlob, renderCanvasFichaImage } = await import('./lib/exportUtils');
+        
+        const zip = new JSZip();
+        
+        // Agregar Excel en vez de JSON
+        const excelBlob = getExcelBlob(submissions);
+        if (excelBlob) {
+          zip.file("Base_de_Datos.xls", excelBlob);
+        }
+        
+        const imgFolder = zip.folder("fichas");
+        
+        for (const sub of submissions) {
+          try {
+            // Genera la ficha completa oficial usando la utilidad
+            const dataUrl = await renderCanvasFichaImage(sub);
+            if (dataUrl) {
+              // Limpiar encabezado base64 (e.g. data:image/png;base64,...)
+              const base64Data = dataUrl.split(',')[1];
+              imgFolder.file(`ficha_${sub.id}.png`, base64Data, { base64: true });
+            }
+          } catch (e) {
+            console.warn(`No se pudo generar la ficha para el reporte ${sub.id}:`, e);
+          }
+        }
+        
+        const content = await zip.generateAsync({ type: "blob" });
+        const dateStr = new Date().toISOString().split('T')[0];
+        saveAs(content, `Respaldo_Sala_${dateStr}.zip`);
+        
+        setToastMsg('✅ Respaldo generado. (Modo prueba: sin borrar)');
+        
+        // BORRAR TODOS LOS REPORTES (LIBERA LA BASE DE DATOS Y FIREBASE STORAGE)
+        // DESACTIVADO TEMPORALMENTE PARA TUS PRUEBAS EN LOCALHOST:
+        // for (const sub of submissions) {
+        //   deleteSubmissionFromFirestore(sub.id);
+        // }
+        // setSubmissions([]);
+        
+        addLog(currentUser?.email, 'Prueba Cierre del Sistema', 'Se generó respaldo sin borrar', 'warning');
+        setToastMsg('🚀 Archivo ZIP de prueba generado correctamente.');
+        setTimeout(() => setToastMsg(''), 4000);
+      } catch (err) {
+        console.error('Error in backup:', err);
+        setToastMsg('❌ Hubo un error al generar el respaldo.');
+      }
+    }
+  };
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -603,7 +661,7 @@ export default function Home() {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const max_size = 800;
+        const max_size = 1920;
         if (width > height) {
           if (width > max_size) {
             height *= max_size / width;
@@ -620,7 +678,7 @@ export default function Home() {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
         // Compress as JPEG
-        const compressedSrc = canvas.toDataURL('image/jpeg', 0.6);
+        const compressedSrc = canvas.toDataURL('image/jpeg', 0.95);
         setReportData((prev) => ({ ...prev, evidenceImageSrc: compressedSrc }));
       };
       img.src = ev.target.result;
@@ -800,7 +858,6 @@ export default function Home() {
     tabs.push(
       { id: 'dashboard', label: '🏠 Dashboard' },
       { id: 'inbox', label: '📥 Bandeja' },
-      { id: 'shift', label: '📄 Reporte Turno' },
       { id: 'users', label: '👥 Usuarios' },
       { id: 'stats', label: '📊 Estadísticas' },
       { id: 'logs', label: '📜 Auditoría' },
@@ -947,6 +1004,7 @@ export default function Home() {
             onSendMessage={handleSendMessage}
             onMarkAsRead={handleMarkAsRead}
             auditLogs={auditLogs}
+            handleBackupAndClear={handleBackupAndClear}
           />
         )}
 

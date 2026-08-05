@@ -57,6 +57,9 @@ export default function AdministradorView({
 
   return (
     <div className="space-y-6">
+      {/* ── HEADER ACCIONES GLOBALES ── */}
+      <div className="flex justify-end mb-4">
+      </div>
       {/* ── FORMULARIO ── */}
       {activeTab === 'forms' && (
         <div className="max-w-3xl mx-auto space-y-5">

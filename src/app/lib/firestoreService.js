@@ -11,7 +11,7 @@ import {
   orderBy,
   limit
 } from 'firebase/firestore';
-import { ref, uploadString, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadString, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { INITIAL_USERS, INITIAL_LOGS, INITIAL_MESSAGES } from './constants';
 import {
@@ -213,18 +213,21 @@ export async function addSubmissionToFirestore(submission) {
   try {
     const subId = String(submission.id || `sub-${Date.now()}`);
     let updatedSub = JSON.parse(JSON.stringify(submission));
-    
-    // Move image to separate Firestore collection to prevent massive main payload
+    // Move image to Firebase Storage to prevent massive main payload
     if (updatedSub.reportData?.evidenceImageSrc?.startsWith('data:')) {
-      const imageId = `img_${subId}`;
-      const imgRef = doc(db, 'submission_images', imageId);
-      await setDoc(imgRef, {
-        subId: subId,
-        evidenceImageSrc: updatedSub.reportData.evidenceImageSrc
-      });
-      
-      updatedSub.reportData.evidenceImageSrc = null; // Clear massive payload
-      updatedSub.reportData.evidenceImageId = imageId; // Save reference
+      const imageId = `img_${subId}_${Date.now()}`;
+      try {
+        const imgUrl = await uploadImageToStorage(updatedSub.reportData.evidenceImageSrc, `submissions/${imageId}`);
+        if (imgUrl) {
+          updatedSub.reportData.evidenceImageSrc = imgUrl; // Save Storage URL
+          updatedSub.reportData.evidenceImageId = imageId;
+        } else {
+          updatedSub.reportData.evidenceImageSrc = null;
+        }
+      } catch (e) {
+        console.warn('Failed to upload evidence image to Storage:', e);
+        updatedSub.reportData.evidenceImageSrc = null;
+      }
     }
 
     const subRef = doc(db, 'submissions', subId);
@@ -241,15 +244,27 @@ export async function addSubmissionToFirestore(submission) {
 export async function deleteSubmissionFromFirestore(subId) {
   if (!subId) return;
   const localSubs = getStoredSubmissions();
+  const sub = localSubs.find((s) => String(s.id) === String(subId));
   const updatedList = localSubs.filter((s) => String(s.id) !== String(subId));
   saveStoredSubmissions(updatedList);
 
   try {
     const subRef = doc(db, 'submissions', String(subId));
     await deleteDoc(subRef);
-    // Also try to delete image if exists
+    
+    // Also try to delete image if exists from legacy Firestore images
     const imgRef = doc(db, 'submission_images', `img_${subId}`);
     await deleteDoc(imgRef).catch(() => {});
+    
+    // Delete image from Firebase Storage if evidenceImageId exists
+    if (sub?.reportData?.evidenceImageId) {
+      try {
+        const storageRef = ref(storage, `submissions/${sub.reportData.evidenceImageId}`);
+        await deleteObject(storageRef);
+      } catch (err) {
+        console.warn('Failed to delete image from Firebase Storage:', err);
+      }
+    }
   } catch (err) {
     console.warn('Firestore deleteSubmissionFromFirestore warning:', err);
   }

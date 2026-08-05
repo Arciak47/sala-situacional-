@@ -367,7 +367,7 @@ export default function CanvasEditor({
         const canvas = document.createElement('canvas');
         let width = originalImg.width;
         let height = originalImg.height;
-        const max_size = 1200; // slightly higher quality for canvas
+        const max_size = 1920; // Full HD quality
         if (width > height) {
           if (width > max_size) {
             height *= max_size / width;
@@ -384,7 +384,7 @@ export default function CanvasEditor({
         const ctx = canvas.getContext('2d');
         ctx.drawImage(originalImg, 0, 0, width, height);
         // Compress as JPEG
-        const compressedSrc = canvas.toDataURL('image/jpeg', 0.6);
+        const compressedSrc = canvas.toDataURL('image/jpeg', 0.95);
 
         setElements((prev) =>
           prev.map((el) => (el.id === elId ? { ...el, src: compressedSrc } : el))

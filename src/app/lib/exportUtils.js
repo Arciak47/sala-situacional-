@@ -141,6 +141,69 @@ export function exportSubmissionsToExcel(submissions = [], filenamePrefix = 'Bas
 }
 
 /**
+ * Returns an Excel Blob for submissions (used for Zipping)
+ */
+export function getExcelBlob(submissions = []) {
+  if (!submissions || submissions.length === 0) return null;
+
+  const tableHeaders = [
+    'ID Reporte', 'Fecha Envío', 'Estado', 'Sala de Pertenencia', 'Analista',
+    'Municipio', 'Fecha Evento', 'Hora Evento', 'Red Social', 'Título / Publicación',
+    'Usuario', 'Área', 'Sentimiento', 'Viralidad', 'Me Gusta', 'Comentarios', 'Compartidos', 'Visualizaciones (TikTok)',
+    'Enlace', 'Contexto'
+  ];
+
+  const rowsHtml = submissions.map((s, idx) => {
+    const rd = s.reportData || {};
+    const isEven = idx % 2 === 0;
+    const bg = isEven ? '#ffffff' : '#f8fafc';
+    return `
+      <tr style="background-color: ${bg};">
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${s.id || ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${s.timestamp ? new Date(s.timestamp).toLocaleString('es-ES') : ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${s.status || ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${s.analystSala || s.sala || 'Sala Comuna'}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${s.analystName || s.analystEmail || 'Analista'}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${rd.municipio || ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${rd.fecha || ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${rd.hora || ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${rd.redSocial || ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${rd.postTitle || ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${rd.usuario || ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${rd.area || ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${rd.sentimiento || ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${rd.viralidad || ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${rd.likes || '0'}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${rd.comments || '0'}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${rd.shares || '0'}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${rd.views || '—'}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${rd.enlace || ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${(rd.contexto || '').replace(/\n/g, ' ')}</td>
+      </tr>`;
+  }).join('');
+
+  const excelHtml = `
+  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+  <head>
+    <meta charset="utf-8"/>
+    <style>
+      body { font-family: Arial, sans-serif; }
+      table { border-collapse: collapse; width: 100%; }
+      th { background-color: #032b69; color: #ffffff; font-weight: bold; border: 1px solid #000000; padding: 10px; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <table>
+      <thead><tr>${tableHeaders.map((h) => `<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+  </body>
+  </html>`;
+
+  return new Blob(['\uFEFF' + excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+}
+
+/**
  * Exports statistics metrics breakdown to Excel spreadsheet (.xls).
  */
 export function exportStatsToExcel(allStats, filenamePrefix = 'Estadisticas_Sala_Situacional') {
@@ -385,7 +448,7 @@ import { getSubmissionImage } from './firestoreService';
  * Renders a submission object onto an off-screen HTML5 Canvas matching the exact Canvas Editor ficha,
  * returning high-resolution PNG data URL.
  */
-async function renderCanvasFichaImage(sub) {
+export async function renderCanvasFichaImage(sub) {
   if (typeof window === 'undefined') return null;
 
   const canvas = document.createElement('canvas');
@@ -405,6 +468,11 @@ async function renderCanvasFichaImage(sub) {
   }
 
   const elements = buildElements(reportData);
+
+  // Ensure fonts are loaded before calculating text width and rendering
+  if (document.fonts) {
+    await document.fonts.ready;
+  }
 
   // Preload images
   const imageCache = {};
@@ -465,7 +533,7 @@ async function renderCanvasFichaImage(sub) {
       }
     } else if (el.type === 'text') {
       ctx.fillStyle = el.color;
-      ctx.font = `${el.fw || 'normal'} ${el.fs || 16}px sans-serif`;
+      ctx.font = `${el.fw || 'normal'} ${el.fs || 16}px "Plus Jakarta Sans", sans-serif`;
       ctx.textAlign = el.align || 'left';
       ctx.textBaseline = 'top';
       const tx =
