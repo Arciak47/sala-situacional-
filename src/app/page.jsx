@@ -507,6 +507,7 @@ export default function Home() {
     setSubmissions((prev) =>
       prev.map((s) => (s.id === selectedSubmission.id ? updatedSub : s))
     );
+    setSelectedSubmission(updatedSub);
     addSubmissionToFirestore(updatedSub);
     if (!newStatus) {
       addLog(
@@ -517,6 +518,8 @@ export default function Home() {
       );
       setToastMsg('💾 Cambios guardados en la bandeja.');
       setTimeout(() => setToastMsg(''), 4000);
+    } else {
+      setActiveTab('inbox');
     }
   };
 
