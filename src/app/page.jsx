@@ -760,7 +760,7 @@ export default function Home() {
         today: mine.filter((s) => s.timestamp.split('T')[0] === today).length,
         week: mine.filter((s) => new Date(s.timestamp) >= weekStart).length,
         pending: mine.filter((s) => s.status === 'pendiente').length,
-        reviewed: mine.filter((s) => s.status === 'revisado').length,
+        reviewed: mine.filter((s) => ['revisado', 'reportar', 'repetido'].includes(s.status)).length,
       };
     });
 
