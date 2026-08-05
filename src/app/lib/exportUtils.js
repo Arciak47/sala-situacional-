@@ -455,6 +455,8 @@ export async function renderCanvasFichaImage(sub) {
   canvas.width = CW; // 1200
   canvas.height = CH; // 750
   const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   
   const reportData = { ...(sub.reportData || {}) };
   
