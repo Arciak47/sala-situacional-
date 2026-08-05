@@ -18,7 +18,14 @@ export default function SubmissionInboxView({
 
   const filteredSubmissions = submissions.filter(
     (s) => {
-      const matchStatus = inboxFilter === 'Todos' || s.status === inboxFilter;
+      let matchStatus = false;
+      if (inboxFilter === 'Todos') {
+        matchStatus = true;
+      } else if (inboxFilter === 'revisado') {
+        matchStatus = ['revisado', 'reportar', 'repetido'].includes(s.status);
+      } else {
+        matchStatus = s.status === inboxFilter;
+      }
       const matchSentiment = sentimentFilter === 'Todos' || s.reportData?.sentimiento === sentimentFilter;
       return matchStatus && matchSentiment;
     }
