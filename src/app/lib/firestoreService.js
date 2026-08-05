@@ -221,13 +221,44 @@ export async function addSubmissionToFirestore(submission) {
         if (imgUrl) {
           updatedSub.reportData.evidenceImageSrc = imgUrl; // Save Storage URL
           updatedSub.reportData.evidenceImageId = imageId;
+          
+          if (updatedSub.canvasElements) {
+            updatedSub.canvasElements.forEach(el => {
+              if (el.type === 'image' && el.src?.startsWith('data:')) {
+                el.src = imgUrl;
+              }
+            });
+          }
         } else {
           updatedSub.reportData.evidenceImageSrc = null;
+          if (updatedSub.canvasElements) {
+            updatedSub.canvasElements.forEach(el => {
+              if (el.type === 'image' && el.src?.startsWith('data:')) {
+                el.src = null;
+              }
+            });
+          }
         }
       } catch (e) {
         console.warn('Failed to upload evidence image to Storage:', e);
         updatedSub.reportData.evidenceImageSrc = null;
+        if (updatedSub.canvasElements) {
+          updatedSub.canvasElements.forEach(el => {
+            if (el.type === 'image' && el.src?.startsWith('data:')) {
+              el.src = null;
+            }
+          });
+        }
       }
+    }
+    
+    // Safety check: remove any remaining base64 strings from canvasElements to prevent Firestore 1MB limit error
+    if (updatedSub.canvasElements) {
+      updatedSub.canvasElements.forEach(el => {
+        if (el.type === 'image' && el.src?.startsWith('data:')) {
+          el.src = null;
+        }
+      });
     }
 
     const subRef = doc(db, 'submissions', subId);
