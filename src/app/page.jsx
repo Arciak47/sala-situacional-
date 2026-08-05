@@ -514,7 +514,7 @@ export default function Home() {
       addLog(
         currentUser.email,
         'Reporte Editado',
-        `ID: ${selectedSubmission.id}`,
+        `ID: ${selectedSubmission.id} - DATA: ${JSON.stringify(updatedReport).substring(0, 100)}`,
         'success'
       );
       setToastMsg('💾 Cambios guardados en la bandeja.');
