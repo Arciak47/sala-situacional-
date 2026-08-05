@@ -135,10 +135,39 @@ export default function Home() {
     };
   }, [currentUser]);
 
-  // ── State persistence & sync ──
   useEffect(() => {
     saveStoredSession(currentUser);
   }, [currentUser]);
+
+  // ── Auto-logout after 5 minutes of inactivity ──
+  useEffect(() => {
+    if (!currentUser) return;
+
+    let timeoutId;
+    const INACTIVITY_LIMIT = 5 * 60 * 1000; // 5 minutes
+
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        handleLogout();
+        setToastMsg('⚠️ Tu sesión se ha cerrado por inactividad.');
+        setTimeout(() => setToastMsg(''), 5000);
+      }, INACTIVITY_LIMIT);
+    };
+
+    // Activity event listeners
+    const events = ['mousemove', 'keydown', 'mousedown', 'scroll', 'touchstart'];
+    events.forEach((event) => window.addEventListener(event, resetTimer));
+
+    // Initialize timer
+    resetTimer();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      events.forEach((event) => window.removeEventListener(event, resetTimer));
+    };
+  }, [currentUser]);
+
 
   // ── Persist activeTab so F5 restores the same section and handle Back Button ──
   useEffect(() => {
