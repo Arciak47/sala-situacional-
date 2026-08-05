@@ -367,7 +367,7 @@ export default function CanvasEditor({
         const canvas = document.createElement('canvas');
         let width = originalImg.width;
         let height = originalImg.height;
-        const max_size = 1920; // Full HD quality
+        const max_size = 1024; // Lower resolution to prevent massive payloads
         if (width > height) {
           if (width > max_size) {
             height *= max_size / width;
@@ -384,7 +384,7 @@ export default function CanvasEditor({
         const ctx = canvas.getContext('2d');
         ctx.drawImage(originalImg, 0, 0, width, height);
         // Compress as JPEG
-        const compressedSrc = canvas.toDataURL('image/jpeg', 0.95);
+        const compressedSrc = canvas.toDataURL('image/jpeg', 0.6);
 
         setElements((prev) =>
           prev.map((el) => (el.id === elId ? { ...el, src: compressedSrc } : el))
@@ -410,12 +410,35 @@ export default function CanvasEditor({
     setSelId(id);
   };
 
-  const getLatestElements = () => {
+  const getLatestElementsAndReport = () => {
+    let latestElems = elements;
+    let latestReport = { ...reportData };
     if (editingId) {
+      const targetEl = elements.find((e) => e.id === editingId);
+      if (targetEl && targetEl.sync) {
+        let val = targetEl.tpl ? editText.replace(targetEl.tpl, '') : editText;
+        if (targetEl.sync === 'fecha') {
+          if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
+            const [d, m, y] = val.split('/');
+            val = `${y}-${m}-${d}`;
+          }
+        }
+        if (targetEl.sync === 'hora') {
+          const match = val.match(/^(\d{2}):(\d{2})\s(AM|PM)$/i);
+          if (match) {
+            let [ , h, m, ampm ] = match;
+            h = parseInt(h, 10);
+            if (ampm.toUpperCase() === 'PM' && h < 12) h += 12;
+            if (ampm.toUpperCase() === 'AM' && h === 12) h = 0;
+            val = `${h.toString().padStart(2, '0')}:${m}`;
+          }
+        }
+        latestReport[targetEl.sync] = val;
+      }
+      latestElems = elements.map((el) => (el.id === editingId ? { ...el, text: editText } : el));
       commitTextEdit();
-      return elements.map((el) => (el.id === editingId ? { ...el, text: editText } : el));
     }
-    return elements;
+    return { latestElems, latestReport };
   };
 
   // ── Download PNG ──
@@ -553,7 +576,10 @@ export default function CanvasEditor({
             </div>
             <div className="flex gap-2 mt-2">
               <button
-                onClick={() => saveSubmissionEdits(null, getLatestElements())}
+                onClick={() => {
+                  const { latestElems, latestReport } = getLatestElementsAndReport();
+                  saveSubmissionEdits(null, latestElems, latestReport);
+                }}
                 className="flex-1 py-2 rounded-lg text-[10px] font-black uppercase text-white bg-blue-600 hover:bg-blue-700 cursor-pointer"
               >
                 💾 Guardar Cambios
@@ -561,13 +587,23 @@ export default function CanvasEditor({
               {selectedSubmission.status === 'pendiente' && (
                 <>
                   <button
-                    onClick={() => markAsReviewed && markAsReviewed(selectedSubmission.id, getLatestElements())}
+                    onClick={() => {
+                      if (markAsReviewed) {
+                        const { latestElems, latestReport } = getLatestElementsAndReport();
+                        markAsReviewed(selectedSubmission.id, latestElems, latestReport);
+                      }
+                    }}
                     className="flex-1 py-3 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold rounded-xl transition shadow text-xs sm:text-sm"
                   >
                     ✅ Marcar Revisado
                   </button>
                   <button
-                    onClick={() => markAsRepeated && markAsRepeated(selectedSubmission.id, getLatestElements())}
+                    onClick={() => {
+                      if (markAsRepeated) {
+                        const { latestElems, latestReport } = getLatestElementsAndReport();
+                        markAsRepeated(selectedSubmission.id, latestElems, latestReport);
+                      }
+                    }}
                     className="flex-1 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold rounded-xl transition shadow text-xs sm:text-sm"
                   >
                     ⚠️ Marcar Repetido
@@ -578,7 +614,8 @@ export default function CanvasEditor({
                   <button
                     onClick={() => {
                       if (markAsReported) {
-                         markAsReported(selectedSubmission.id, getLatestElements());
+                         const { latestElems, latestReport } = getLatestElementsAndReport();
+                         markAsReported(selectedSubmission.id, latestElems, latestReport);
                       }
                     }}
                     className="flex-1 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold rounded-xl transition shadow text-xs sm:text-sm"

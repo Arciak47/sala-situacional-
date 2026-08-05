@@ -483,21 +483,11 @@ export default function Home() {
     setActiveTab('editor');
   };
 
-  const saveSubmissionEdits = async (newStatus = null, currentElements = null) => {
+  const saveSubmissionEdits = async (newStatus = null, currentElements = null, currentReport = null) => {
     if (!selectedSubmission) return;
-    const updatedReport = { ...reportData };
+    const updatedReport = currentReport || { ...reportData };
     const elementsToUse = currentElements || elements;
-    elementsToUse.forEach((el) => {
-      if (!el.sync) return;
-      if (el.type === 'image' && el.src) {
-        updatedReport[el.sync] = el.src;
-        return;
-      }
-      if (el.type === 'text') {
-        const val = el.tpl ? el.text.replace(el.tpl, '') : el.text;
-        updatedReport[el.sync] = val;
-      }
-    });
+    
     const updatedSub = {
       ...selectedSubmission,
       reportData: updatedReport,
@@ -523,7 +513,7 @@ export default function Home() {
           `ID: ${selectedSubmission.id} - DATA: ${JSON.stringify(updatedReport).substring(0, 100)}`,
           'success'
         );
-        setToastMsg('💾 Cambios guardados en la bandeja.');
+        setToastMsg('✅ Guardado correctamente');
         setTimeout(() => setToastMsg(''), 4000);
       } else {
         setToastMsg(`✅ Reporte movido a estado: ${newStatus.toUpperCase()}`);
@@ -537,9 +527,9 @@ export default function Home() {
     }
   };
 
-  const markAsReviewed = (subId, currentElements = null) => {
+  const markAsReviewed = (subId, currentElements = null, currentReport = null) => {
     if (selectedSubmission && selectedSubmission.id === subId) {
-      saveSubmissionEdits('revisado', currentElements);
+      saveSubmissionEdits('revisado', currentElements, currentReport);
     } else {
       setSubmissions((prev) =>
         prev.map((s) => {
@@ -557,9 +547,9 @@ export default function Home() {
     setTimeout(() => setToastMsg(''), 4000);
   };
 
-  const markAsRepeated = (subId, currentElements = null) => {
+  const markAsRepeated = (subId, currentElements = null, currentReport = null) => {
     if (selectedSubmission && selectedSubmission.id === subId) {
-      saveSubmissionEdits('repetido', currentElements);
+      saveSubmissionEdits('repetido', currentElements, currentReport);
     } else {
       setSubmissions((prev) =>
         prev.map((s) => {
@@ -577,9 +567,9 @@ export default function Home() {
     setTimeout(() => setToastMsg(''), 4000);
   };
 
-  const markAsReported = (subId, currentElements = null) => {
+  const markAsReported = (subId, currentElements = null, currentReport = null) => {
     if (selectedSubmission && selectedSubmission.id === subId) {
-      saveSubmissionEdits('reportar', currentElements);
+      saveSubmissionEdits('reportado', currentElements, currentReport);
     } else {
       setSubmissions((prev) =>
         prev.map((s) => {
@@ -678,7 +668,7 @@ export default function Home() {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const max_size = 1920;
+        const max_size = 1024;
         if (width > height) {
           if (width > max_size) {
             height *= max_size / width;
@@ -695,7 +685,7 @@ export default function Home() {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
         // Compress as JPEG
-        const compressedSrc = canvas.toDataURL('image/jpeg', 0.95);
+        const compressedSrc = canvas.toDataURL('image/jpeg', 0.6);
         setReportData((prev) => ({ ...prev, evidenceImageSrc: compressedSrc }));
       };
       img.src = ev.target.result;
@@ -705,6 +695,30 @@ export default function Home() {
 
   const commitTextEdit = () => {
     if (!editingId) return;
+    
+    // Reverse sync canvas edits back to reportData
+    const targetEl = elements.find((e) => e.id === editingId);
+    if (targetEl && targetEl.sync) {
+      let val = targetEl.tpl ? editText.replace(targetEl.tpl, '') : editText;
+      if (targetEl.sync === 'fecha') {
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
+          const [d, m, y] = val.split('/');
+          val = `${y}-${m}-${d}`;
+        }
+      }
+      if (targetEl.sync === 'hora') {
+        const match = val.match(/^(\d{2}):(\d{2})\s(AM|PM)$/i);
+        if (match) {
+          let [ , h, m, ampm ] = match;
+          h = parseInt(h, 10);
+          if (ampm.toUpperCase() === 'PM' && h < 12) h += 12;
+          if (ampm.toUpperCase() === 'AM' && h === 12) h = 0;
+          val = `${h.toString().padStart(2, '0')}:${m}`;
+        }
+      }
+      setReportData((prev) => ({ ...prev, [targetEl.sync]: val }));
+    }
+
     setElements((prev) =>
       prev.map((el) => (el.id === editingId ? { ...el, text: editText } : el))
     );
