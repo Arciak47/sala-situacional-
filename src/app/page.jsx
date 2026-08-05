@@ -502,14 +502,14 @@ export default function Home() {
       reportData: updatedReport,
       editedBy: currentUser.name,
       editedAt: new Date().toISOString(),
-      ...(newStatus ? { status: newStatus } : {}),
+      ...(newStatus && typeof newStatus === 'string' ? { status: newStatus } : {}),
     };
     setSubmissions((prev) =>
       prev.map((s) => (s.id === selectedSubmission.id ? updatedSub : s))
     );
     setSelectedSubmission(updatedSub);
     addSubmissionToFirestore(updatedSub);
-    if (!newStatus) {
+    if (!newStatus || typeof newStatus !== 'string') {
       addLog(
         currentUser.email,
         'Reporte Editado',
