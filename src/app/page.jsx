@@ -740,7 +740,7 @@ export default function Home() {
       (s) => s.status === 'pendiente'
     ).length;
     const reviewedGlobal = submissions.filter(
-      (s) => s.status === 'revisado'
+      (s) => ['revisado', 'reportar', 'repetido'].includes(s.status)
     ).length;
 
     const perAnalyst = analysts.map((a) => {

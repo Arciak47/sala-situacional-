@@ -70,7 +70,7 @@ export default function AdminDashboard({
 
   const totalSubmissions = filteredSubmissions.length;
   const pendingCount = filteredSubmissions.filter((s) => s.status === 'pendiente').length;
-  const reviewedCount = filteredSubmissions.filter((s) => s.status === 'revisado').length;
+  const reviewedCount = filteredSubmissions.filter((s) => ['revisado', 'reportar', 'repetido'].includes(s.status)).length;
 
   const pendingPct =
     totalSubmissions > 0 ? Math.round((pendingCount / totalSubmissions) * 100) : 0;
