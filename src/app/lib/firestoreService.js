@@ -174,7 +174,7 @@ export async function saveUsersBatchToFirestore(users) {
 export function subscribeSubmissions(onUpdate) {
   try {
     const colRef = collection(db, 'submissions');
-    const q = query(colRef, orderBy('timestamp', 'desc'));
+    const q = query(colRef);
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const remoteSubs = snapshot.empty
         ? []
@@ -252,13 +252,19 @@ export async function addSubmissionToFirestore(submission) {
       }
     }
     
-    // Safety check: remove any remaining base64 strings from canvasElements to prevent Firestore 1MB limit error
+    // Upload any remaining base64 strings from canvasElements
     if (updatedSub.canvasElements) {
-      updatedSub.canvasElements.forEach(el => {
+      for (const el of updatedSub.canvasElements) {
         if (el.type === 'image' && el.src?.startsWith('data:')) {
-          el.src = null;
+          try {
+            const elImgUrl = await uploadImageToStorage(el.src, `submissions/cvs_${subId}_${el.id}_${Date.now()}`);
+            if (elImgUrl) el.src = elImgUrl;
+          } catch (e) {
+            console.warn('Failed to upload canvas element image:', e);
+            el.src = null;
+          }
         }
-      });
+      }
     }
 
     const subRef = doc(db, 'submissions', subId);

@@ -508,6 +508,7 @@ export default function Home() {
     };
     
     // Optimistic local update
+    setReportData(updatedReport); // Ensure form inputs reflect canvas edits
     setSubmissions((prev) =>
       prev.map((s) => (s.id === selectedSubmission.id ? updatedSub : s))
     );
