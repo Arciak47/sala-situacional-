@@ -75,6 +75,7 @@ export default function Home() {
   const [toastMsg, setToastMsg] = useState('');
   const [inboxFilter, setInboxFilter] = useState('Todos');
   const [reportData, setReportData] = useState({ ...EMPTY_REPORT });
+  const [isSaving, setIsSaving] = useState(false);
 
   // Ref to track unread messages count for notifications
   const prevUnreadRef = useRef(0);
@@ -94,7 +95,8 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentUser(session);
     setUsers(getStoredUsers());
-    setSubmissions(getStoredSubmissions());
+    const storedSubs = getStoredSubmissions();
+    setSubmissions(storedSubs);
     setMessages(getStoredMessages());
     setAuditLogs(getStoredAuditLogs());
 
@@ -102,6 +104,15 @@ export default function Home() {
     if (session) {
       const savedTab = localStorage.getItem('sdm_activeTab');
       setActiveTab(savedTab || 'dashboard');
+      
+      const savedSubId = localStorage.getItem('sdm_selectedSubmissionId');
+      if (savedSubId && savedTab === 'editor') {
+        const found = storedSubs.find((s) => String(s.id) === String(savedSubId));
+        if (found) {
+          setSelectedSubmission(found);
+          setReportData({ ...found.reportData });
+        }
+      }
     } else {
       setActiveTab('forms');
     }
@@ -118,7 +129,18 @@ export default function Home() {
       }
     });
     const unsubSubs = subscribeSubmissions((data) => {
-      if (data) setSubmissions(data);
+      if (data) {
+        setSubmissions(data);
+        if (typeof window !== 'undefined') {
+          const savedSubId = localStorage.getItem('sdm_selectedSubmissionId');
+          if (savedSubId) {
+            const found = data.find((s) => String(s.id) === String(savedSubId));
+            if (found) {
+              setSelectedSubmission(found);
+            }
+          }
+        }
+      }
     });
     const unsubMsgs = subscribeMessages((data) => {
       if (data) setMessages(data);
@@ -173,6 +195,10 @@ export default function Home() {
   useEffect(() => {
     if (typeof window !== 'undefined' && activeTab) {
       localStorage.setItem('sdm_activeTab', activeTab);
+      if (activeTab !== 'editor') {
+        localStorage.removeItem('sdm_selectedSubmissionId');
+        setSelectedSubmission(null);
+      }
       
       // Update the URL hash without triggering a full reload, to support back button
       const currentHash = window.location.hash.replace('#', '');
@@ -307,6 +333,7 @@ export default function Home() {
     setSelectedSubmission(null);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('sdm_activeTab');
+      localStorage.removeItem('sdm_selectedSubmissionId');
     }
   };
 
@@ -441,7 +468,7 @@ export default function Home() {
   };
 
   // ── Submissions ──
-  const handleSubmitForm = () => {
+  const handleSubmitForm = async () => {
     const required = [
       'municipio',
       'fecha',
@@ -456,6 +483,7 @@ export default function Home() {
       setTimeout(() => setToastMsg(''), 4000);
       return;
     }
+    setIsSaving(true);
     const sub = {
       id: `sub-${Date.now()}`,
       analystId: currentUser.id,
@@ -468,26 +496,37 @@ export default function Home() {
       reportData: { ...reportData },
       status: 'pendiente',
     };
-    setSubmissions((prev) => [sub, ...prev]);
-    addSubmissionToFirestore(sub);
-    addLog(
-      currentUser.email,
-      'Reporte Enviado',
-      `Municipio: ${reportData.municipio}`,
-      'success'
-    );
-    setReportData({ ...EMPTY_REPORT });
-    // Reset file input visually
-    if (typeof document !== 'undefined') {
-      const fileInput = document.getElementById('foto-evidencia');
-      if (fileInput) fileInput.value = '';
+    try {
+      setSubmissions((prev) => [sub, ...prev]);
+      await addSubmissionToFirestore(sub);
+      addLog(
+        currentUser.email,
+        'Reporte Enviado',
+        `Municipio: ${reportData.municipio}`,
+        'success'
+      );
+      setReportData({ ...EMPTY_REPORT });
+      // Reset file input visually
+      if (typeof document !== 'undefined') {
+        const fileInput = document.getElementById('foto-evidencia');
+        if (fileInput) fileInput.value = '';
+      }
+      setToastMsg('✅ Reporte enviado al Supervisor.');
+      setTimeout(() => setToastMsg(''), 4000);
+    } catch (error) {
+      console.error(error);
+      setToastMsg(`❌ Error al enviar reporte: ${error.message || 'Intente nuevamente'}`);
+      setTimeout(() => setToastMsg(''), 6000);
+    } finally {
+      setIsSaving(false);
     }
-    setToastMsg('✅ Reporte enviado al Supervisor.');
-    setTimeout(() => setToastMsg(''), 4000);
   };
 
   const openSubmissionForReview = async (sub) => {
     setSelectedSubmission(sub);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sdm_selectedSubmissionId', String(sub.id));
+    }
     const newReportData = { ...sub.reportData };
     
     // Fetch image from secondary collection if it was separated to save bandwidth
@@ -514,6 +553,7 @@ export default function Home() {
 
   const saveSubmissionEdits = async (newStatus = null, currentElements = null, currentReport = null) => {
     if (!selectedSubmission) return;
+    setIsSaving(true);
     const updatedReport = currentReport || { ...reportData };
     const elementsToUse = currentElements || elements;
     
@@ -553,67 +593,105 @@ export default function Home() {
       console.error(err);
       setToastMsg(`❌ Error al guardar: ${err.message || 'Intente nuevamente'}`);
       setTimeout(() => setToastMsg(''), 6000);
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const markAsReviewed = (subId, currentElements = null, currentReport = null) => {
-    if (selectedSubmission && selectedSubmission.id === subId) {
-      saveSubmissionEdits('revisado', currentElements, currentReport);
-    } else {
-      setSubmissions((prev) =>
-        prev.map((s) => {
-          if (s.id === subId) {
-            const updated = { ...s, status: 'revisado' };
-            addSubmissionToFirestore(updated);
-            return updated;
-          }
-          return s;
-        })
-      );
+  const markAsReviewed = async (subId, currentElements = null, currentReport = null) => {
+    setIsSaving(true);
+    try {
+      if (selectedSubmission && selectedSubmission.id === subId) {
+        await saveSubmissionEdits('revisado', currentElements, currentReport);
+      } else {
+        let updatedSub = null;
+        setSubmissions((prev) =>
+          prev.map((s) => {
+            if (s.id === subId) {
+              updatedSub = { ...s, status: 'revisado' };
+              return updatedSub;
+            }
+            return s;
+          })
+        );
+        if (updatedSub) {
+          await addSubmissionToFirestore(updatedSub);
+        }
+      }
+      addLog(currentUser.email, 'Reporte Revisado', `ID: ${subId}`, 'success');
+      setToastMsg('✅ Marcado como revisado.');
+      setTimeout(() => setToastMsg(''), 4000);
+    } catch (err) {
+      console.error(err);
+      setToastMsg(`❌ Error al marcar como revisado: ${err.message}`);
+      setTimeout(() => setToastMsg(''), 6000);
+    } finally {
+      setIsSaving(false);
     }
-    addLog(currentUser.email, 'Reporte Revisado', `ID: ${subId}`, 'success');
-    setToastMsg('✅ Marcado como revisado.');
-    setTimeout(() => setToastMsg(''), 4000);
   };
 
-  const markAsRepeated = (subId, currentElements = null, currentReport = null) => {
-    if (selectedSubmission && selectedSubmission.id === subId) {
-      saveSubmissionEdits('repetido', currentElements, currentReport);
-    } else {
-      setSubmissions((prev) =>
-        prev.map((s) => {
-          if (s.id === subId) {
-            const updated = { ...s, status: 'repetido' };
-            addSubmissionToFirestore(updated);
-            return updated;
-          }
-          return s;
-        })
-      );
+  const markAsRepeated = async (subId, currentElements = null, currentReport = null) => {
+    setIsSaving(true);
+    try {
+      if (selectedSubmission && selectedSubmission.id === subId) {
+        await saveSubmissionEdits('repetido', currentElements, currentReport);
+      } else {
+        let updatedSub = null;
+        setSubmissions((prev) =>
+          prev.map((s) => {
+            if (s.id === subId) {
+              updatedSub = { ...s, status: 'repetido' };
+              return updatedSub;
+            }
+            return s;
+          })
+        );
+        if (updatedSub) {
+          await addSubmissionToFirestore(updatedSub);
+        }
+      }
+      addLog(currentUser.email, 'Reporte Repetido', `ID: ${subId}`, 'warning');
+      setToastMsg('⚠️ Marcado como repetido.');
+      setTimeout(() => setToastMsg(''), 4000);
+    } catch (err) {
+      console.error(err);
+      setToastMsg(`❌ Error al marcar como repetido: ${err.message}`);
+      setTimeout(() => setToastMsg(''), 6000);
+    } finally {
+      setIsSaving(false);
     }
-    addLog(currentUser.email, 'Reporte Repetido', `ID: ${subId}`, 'warning');
-    setToastMsg('⚠️ Marcado como repetido.');
-    setTimeout(() => setToastMsg(''), 4000);
   };
 
-  const markAsReported = (subId, currentElements = null, currentReport = null) => {
-    if (selectedSubmission && selectedSubmission.id === subId) {
-      saveSubmissionEdits('reportado', currentElements, currentReport);
-    } else {
-      setSubmissions((prev) =>
-        prev.map((s) => {
-          if (s.id === subId) {
-            const updated = { ...s, status: 'reportar' };
-            addSubmissionToFirestore(updated);
-            return updated;
-          }
-          return s;
-        })
-      );
+  const markAsReported = async (subId, currentElements = null, currentReport = null) => {
+    setIsSaving(true);
+    try {
+      if (selectedSubmission && selectedSubmission.id === subId) {
+        await saveSubmissionEdits('reportado', currentElements, currentReport);
+      } else {
+        let updatedSub = null;
+        setSubmissions((prev) =>
+          prev.map((s) => {
+            if (s.id === subId) {
+              updatedSub = { ...s, status: 'reportar' };
+              return updatedSub;
+            }
+            return s;
+          })
+        );
+        if (updatedSub) {
+          await addSubmissionToFirestore(updatedSub);
+        }
+      }
+      addLog(currentUser.email, 'Reporte para Reportar', `ID: ${subId}`, 'info');
+      setToastMsg('📢 Marcado para reportar.');
+      setTimeout(() => setToastMsg(''), 4000);
+    } catch (err) {
+      console.error(err);
+      setToastMsg(`❌ Error al marcar para reportar: ${err.message}`);
+      setTimeout(() => setToastMsg(''), 6000);
+    } finally {
+      setIsSaving(false);
     }
-    addLog(currentUser.email, 'Reporte para Reportar', `ID: ${subId}`, 'info');
-    setToastMsg('📢 Marcado para reportar.');
-    setTimeout(() => setToastMsg(''), 4000);
   };
 
   const deleteSubmission = (subId) => {
@@ -1117,6 +1195,20 @@ export default function Home() {
       />
 
       <Toast toastMsg={toastMsg} setToastMsg={setToastMsg} />
+
+      {isSaving && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 flex flex-col items-center gap-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+            <span className="text-sm font-black uppercase text-slate-800 dark:text-white tracking-widest animate-pulse">
+              Guardando Cambios...
+            </span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">
+              Por favor, espere un momento.
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
