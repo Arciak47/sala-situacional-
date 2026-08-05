@@ -32,6 +32,7 @@ export default function CanvasEditor({
   saveSubmissionEdits,
   markAsReviewed,
   markAsRepeated,
+  markAsReported,
   handleImageUpload,
 }) {
   const isDragging = useRef(false);
@@ -403,6 +404,7 @@ export default function CanvasEditor({
 
   // ── Add new elements ──
   const addEl = (el) => {
+    // eslint-disable-next-line react-hooks/purity
     const id = `${el.type}-${Date.now()}`;
     setElements((prev) => [...prev, { ...el, id }]);
     setSelId(id);
@@ -551,18 +553,26 @@ export default function CanvasEditor({
               {selectedSubmission.status === 'pendiente' && (
                 <>
                   <button
-                    onClick={() => markAsReviewed(selectedSubmission.id)}
-                    className="flex-1 py-2 rounded-lg text-[10px] font-bold bg-emerald-100 text-emerald-700 cursor-pointer hover:bg-emerald-200 border border-emerald-200"
+                    onClick={() => markAsReviewed && markAsReviewed(selectedSubmission.id)}
+                    className="flex-1 py-3 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold rounded-xl transition shadow text-xs sm:text-sm"
                   >
-                    ✅ Revisado
+                    ✅ Marcar Revisado
                   </button>
                   <button
                     onClick={() => markAsRepeated && markAsRepeated(selectedSubmission.id)}
-                    className="flex-1 py-2 rounded-lg text-[10px] font-bold bg-orange-100 text-orange-700 cursor-pointer hover:bg-orange-200 border border-orange-200"
+                    className="flex-1 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold rounded-xl transition shadow text-xs sm:text-sm"
                   >
-                    ⚠️ Repetido
+                    ⚠️ Marcar Repetido
                   </button>
                 </>
+              )}
+              {['pendiente', 'revisado'].includes(selectedSubmission.status) && (
+                  <button
+                    onClick={() => markAsReported && markAsReported(selectedSubmission.id)}
+                    className="flex-1 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold rounded-xl transition shadow text-xs sm:text-sm"
+                  >
+                    📢 Para Reportar
+                  </button>
               )}
             </div>
           </div>

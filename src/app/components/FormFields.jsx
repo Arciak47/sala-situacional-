@@ -265,7 +265,7 @@ export default function FormFields({ data, setData, readOnly = false, onImageUpl
       </div>
 
       {!readOnly && onImageUpload && (
-        <div>
+        <div className="space-y-2">
           <label className="block text-xs font-bold mb-1">Subir Foto Evidencia</label>
           <input
             id="foto-evidencia"
@@ -274,6 +274,15 @@ export default function FormFields({ data, setData, readOnly = false, onImageUpl
             onChange={onImageUpload}
             className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-red-50 file:text-red-700 cursor-pointer"
           />
+          {data.evidenceImageSrc && (
+            <div className="mt-3 relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm max-w-sm">
+              <img 
+                src={data.evidenceImageSrc} 
+                alt="Vista previa" 
+                className="w-full h-auto object-contain max-h-48"
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

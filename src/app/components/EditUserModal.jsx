@@ -37,6 +37,7 @@ export default function EditUserModal({
 
   useEffect(() => {
     if (editingUser) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUsername(editingUser.username || '');
       setNombres(editingUser.nombres || editingUser.name?.split(' ')[0] || '');
       setApellidos(editingUser.apellidos || editingUser.name?.split(' ').slice(1).join(' ') || '');

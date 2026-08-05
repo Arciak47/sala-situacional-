@@ -6,10 +6,10 @@ import Toast from './components/Toast';
 import UserModal from './components/UserModal';
 import EditUserModal from './components/EditUserModal';
 import TextOverlay from './components/TextOverlay';
-import LoginPage from './login/page.jsx';
-import AdministradorView from './administrador/page.jsx';
-import SupervisorView from './supervisor/page.jsx';
-import AnalistaView from './analista/page.jsx';
+import LoginPage from './components/LoginPage.jsx';
+import AdministradorView from './components/AdministradorView.jsx';
+import SupervisorView from './components/SupervisorView.jsx';
+import AnalistaView from './components/AnalistaView.jsx';
 import InteractiveBackground from './components/InteractiveBackground';
 import HeaderBar from './components/HeaderBar';
 
@@ -91,6 +91,7 @@ export default function Home() {
   useEffect(() => {
     initializeStorage();
     const session = getStoredSession();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentUser(session);
     setUsers(getStoredUsers());
     setSubmissions(getStoredSubmissions());
@@ -139,12 +140,42 @@ export default function Home() {
     saveStoredSession(currentUser);
   }, [currentUser]);
 
-  // ── Persist activeTab so F5 restores the same section ──
+  // ── Persist activeTab so F5 restores the same section and handle Back Button ──
   useEffect(() => {
     if (typeof window !== 'undefined' && activeTab) {
       localStorage.setItem('sdm_activeTab', activeTab);
+      
+      // Update the URL hash without triggering a full reload, to support back button
+      const currentHash = window.location.hash.replace('#', '');
+      if (currentHash !== activeTab) {
+        window.history.pushState({ tab: activeTab }, '', `#${activeTab}`);
+      }
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    const handlePopState = (e) => {
+      if (e.state && e.state.tab) {
+        setActiveTab(e.state.tab);
+      } else {
+        const hashTab = window.location.hash.replace('#', '');
+        if (hashTab) {
+          setActiveTab(hashTab);
+        }
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    
+    // Also read the hash on initial load if present
+    const hashTab = window.location.hash.replace('#', '');
+    if (hashTab && currentUser) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveTab(hashTab);
+    }
+
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [currentUser]);
 
   useEffect(() => {
     if (users && users.length > 0) saveStoredUsers(users);
@@ -197,6 +228,7 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('sdm_darkMode');
       if (saved !== null) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDarkMode(JSON.parse(saved));
       }
     }
@@ -528,6 +560,26 @@ export default function Home() {
     setTimeout(() => setToastMsg(''), 4000);
   };
 
+  const markAsReported = (subId) => {
+    if (selectedSubmission && selectedSubmission.id === subId) {
+      saveSubmissionEdits('reportar');
+    } else {
+      setSubmissions((prev) =>
+        prev.map((s) => {
+          if (s.id === subId) {
+            const updated = { ...s, status: 'reportar' };
+            addSubmissionToFirestore(updated);
+            return updated;
+          }
+          return s;
+        })
+      );
+    }
+    addLog(currentUser.email, 'Reporte para Reportar', `ID: ${subId}`, 'info');
+    setToastMsg('📢 Marcado para reportar.');
+    setTimeout(() => setToastMsg(''), 4000);
+  };
+
   const deleteSubmission = (subId) => {
     if (
       typeof window !== 'undefined' &&
@@ -747,6 +799,8 @@ export default function Home() {
   if (isAdmin) {
     tabs.push(
       { id: 'dashboard', label: '🏠 Dashboard' },
+      { id: 'inbox', label: '📥 Bandeja' },
+      { id: 'shift', label: '📄 Reporte Turno' },
       { id: 'users', label: '👥 Usuarios' },
       { id: 'stats', label: '📊 Estadísticas' },
       { id: 'logs', label: '📜 Auditoría' },
@@ -832,6 +886,7 @@ export default function Home() {
             openSubmissionForReview={openSubmissionForReview}
             markAsReviewed={markAsReviewed}
             markAsRepeated={markAsRepeated}
+            markAsReported={markAsReported}
             deleteSubmission={deleteSubmission}
             elements={elements}
             setElements={setElements}
@@ -867,6 +922,7 @@ export default function Home() {
             openSubmissionForReview={openSubmissionForReview}
             markAsReviewed={markAsReviewed}
             markAsRepeated={markAsRepeated}
+            markAsReported={markAsReported}
             deleteSubmission={deleteSubmission}
             reportData={reportData}
             setReportData={setReportData}

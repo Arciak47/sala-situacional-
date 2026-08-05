@@ -19,6 +19,7 @@ export default function SupervisorView({
   openSubmissionForReview,
   markAsReviewed,
   markAsRepeated,
+  markAsReported,
   deleteSubmission,
   reportData,
   setReportData,
@@ -72,6 +73,7 @@ export default function SupervisorView({
           openSubmissionForReview={openSubmissionForReview}
           markAsReviewed={markAsReviewed}
           markAsRepeated={markAsRepeated}
+          markAsReported={markAsReported}
           deleteSubmission={deleteSubmission}
         />
       )}
@@ -97,6 +99,7 @@ export default function SupervisorView({
           saveSubmissionEdits={saveSubmissionEdits}
           markAsReviewed={markAsReviewed}
           markAsRepeated={markAsRepeated}
+          markAsReported={markAsReported}
           handleImageUpload={handleImageUpload}
         />
       )}

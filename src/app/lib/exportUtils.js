@@ -547,3 +547,87 @@ export async function exportSubmissionsToHDPDF(selectedSubmissions = [], docTitl
   `);
   win.document.close();
 }
+
+/**
+ * Exports the Shift Report Canvas along with selected Submissions to an HD PDF
+ * It places the shift report as the first page, followed by each submission.
+ */
+export async function exportCombinedReportAndFichasHDPDF(shiftCanvas, selectedSubmissions = [], docTitle = 'Reporte_Completo_Sala_Situacional_HD') {
+  const win = window.open('', '_blank');
+  if (!win) {
+    alert('Por favor autoriza las ventanas emergentes para generar el PDF HD.');
+    return;
+  }
+
+  // 1. Get shift report image
+  const shiftImgData = shiftCanvas ? shiftCanvas.toDataURL('image/png', 1.0) : null;
+  const shiftHtml = shiftImgData ? `
+    <div class="canvas-pdf-page shift-page" style="page-break-after: always; page-break-inside: avoid; width: 100%; max-width: 1400px; margin: 0 auto 20px auto; text-align: center;">
+      <img src="${shiftImgData}" style="width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 4px;" alt="Reporte Diario Oficial" />
+    </div>
+  ` : '';
+
+  // 2. Get fichas images
+  let fichasHtml = '';
+  if (selectedSubmissions && selectedSubmissions.length > 0) {
+    const pagesData = await Promise.all(
+      selectedSubmissions.map(async (sub) => {
+        const imgData = await renderCanvasFichaImage(sub);
+        const linkUrl = (sub.reportData?.enlace || '').trim();
+        const hasLink = linkUrl.startsWith('http://') || linkUrl.startsWith('https://');
+        return { sub, imgData, linkUrl, hasLink };
+      })
+    );
+
+    fichasHtml = pagesData
+      .map(
+        ({ imgData, linkUrl, hasLink }) => `
+        <div class="canvas-pdf-page" style="page-break-after: always; page-break-inside: avoid; width: 100%; max-width: 1100px; margin: 0 auto 20px auto; text-align: center;">
+          <div style="position: relative; display: inline-block; width: 100%;">
+            <img src="${imgData}" style="width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 4px;" alt="Ficha Canvas Oficial" />
+            ${
+              hasLink
+                ? `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="pdf-link-overlay" title="Abrir enlace" style="position: absolute; left: 2.5%; top: 83.2%; width: 29.16%; height: 10%; display: block; z-index: 100; cursor: pointer; text-decoration: none !important; border: none !important; outline: none !important; background: transparent !important;"></a>`
+                : ''
+            }
+          </div>
+        </div>`
+      )
+      .join('');
+  }
+
+  win.document.write(`
+    <!DOCTYPE html>
+    <html lang="es">
+      <head>
+        <meta charset="utf-8" />
+        <title>${docTitle}</title>
+        <style>
+          /* mezclar tamaños de página funciona mejor delegándolo al navegador */
+          @page { size: auto; margin: 5mm; }
+          @media print {
+            html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #ffffff !important; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .canvas-pdf-page { page-break-after: always; page-break-inside: avoid; max-width: 100% !important; margin: 0 auto !important; }
+            .shift-page { max-width: 100% !important; }
+            .pdf-link-overlay { text-decoration: none !important; border: none !important; outline: none !important; background: transparent !important; color: transparent !important; }
+          }
+          body { font-family: Arial, Helvetica, sans-serif; background: #ffffff; padding: 10px; margin: 0; }
+          .pdf-link-overlay { position: absolute; left: 2.5%; top: 83.2%; width: 29.16%; height: 10%; display: block; z-index: 100; cursor: pointer; text-decoration: none !important; border: none !important; outline: none !important; background: transparent !important; }
+        </style>
+      </head>
+      <body>
+        ${shiftHtml}
+        ${fichasHtml}
+
+        <script>
+          setTimeout(() => {
+            window.print();
+            window.close();
+          }, 1000);
+        </script>
+      </body>
+    </html>
+  `);
+  win.document.close();
+}

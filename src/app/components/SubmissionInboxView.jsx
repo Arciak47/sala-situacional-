@@ -10,12 +10,18 @@ export default function SubmissionInboxView({
   openSubmissionForReview,
   markAsReviewed,
   markAsRepeated,
+  markAsReported,
   deleteSubmission,
 }) {
   const [selectedIds, setSelectedIds] = useState([]);
+  const [sentimentFilter, setSentimentFilter] = useState('Todos');
 
   const filteredSubmissions = submissions.filter(
-    (s) => inboxFilter === 'Todos' || s.status === inboxFilter
+    (s) => {
+      const matchStatus = inboxFilter === 'Todos' || s.status === inboxFilter;
+      const matchSentiment = sentimentFilter === 'Todos' || s.reportData?.sentimiento === sentimentFilter;
+      return matchStatus && matchSentiment;
+    }
   );
 
   const allSelected =
@@ -79,8 +85,8 @@ export default function SubmissionInboxView({
             )}
 
             {/* FILTER BUTTONS */}
-            <div className="flex gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
-              {['Todos', 'pendiente', 'revisado', 'repetido'].map((f) => (
+            <div className="flex gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl flex-wrap">
+              {['Todos', 'pendiente', 'revisado', 'repetido', 'reportar'].map((f) => (
                 <button
                   key={f}
                   onClick={() => setInboxFilter(f)}
@@ -96,7 +102,32 @@ export default function SubmissionInboxView({
                     ? '⏳ Pendientes'
                     : f === 'revisado'
                     ? '✅ Revisados'
+                    : f === 'reportar'
+                    ? '📢 Reportar'
                     : '⚠️ Repetidos'}
+                </button>
+              ))}
+            </div>
+            
+            {/* SENTIMENT FILTER BUTTONS */}
+            <div className="flex gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl flex-wrap">
+              {['Todos', 'POSITIVO', 'NEUTRO', 'NEGATIVO'].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setSentimentFilter(f)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                    sentimentFilter === f
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                      : 'bg-transparent border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {f === 'Todos'
+                    ? '🎭 Todos los Sentimientos'
+                    : f === 'POSITIVO'
+                    ? '🟢 Positivo'
+                    : f === 'NEUTRO'
+                    ? '⚪ Neutro'
+                    : '🔴 Negativo'}
                 </button>
               ))}
             </div>
@@ -194,16 +225,29 @@ export default function SubmissionInboxView({
                   </div>
 
                   <div className="flex items-center gap-2 self-end sm:self-center">
+                    {/* SENTIMENT BADGE */}
+                    {sub.reportData?.sentimiento && (
+                      <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${
+                        sub.reportData.sentimiento === 'POSITIVO' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400' :
+                        sub.reportData.sentimiento === 'NEGATIVO' ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400' :
+                        'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
+                      }`}>
+                        {sub.reportData.sentimiento === 'POSITIVO' ? '🟢 ' : sub.reportData.sentimiento === 'NEGATIVO' ? '🔴 ' : '⚪ '}
+                        {sub.reportData.sentimiento}
+                      </span>
+                    )}
                     <span
                       className={`px-2.5 py-1 rounded-full text-[9px] font-bold ${
                         sub.status === 'pendiente'
                           ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
                           : sub.status === 'repetido'
                           ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
+                          : sub.status === 'reportar'
+                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'
                           : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                       }`}
                     >
-                      {sub.status === 'pendiente' ? '⏳ PENDIENTE' : sub.status === 'repetido' ? '⚠️ REPETIDO' : '✅ REVISADO'}
+                      {sub.status === 'pendiente' ? '⏳ PENDIENTE' : sub.status === 'repetido' ? '⚠️ REPETIDO' : sub.status === 'reportar' ? '📢 REPORTAR' : '✅ REVISADO'}
                     </span>
                     <button
                       onClick={() => openSubmissionForReview(sub)}
@@ -226,6 +270,14 @@ export default function SubmissionInboxView({
                           ⚠️ Repetido
                         </button>
                       </>
+                    )}
+                    {['pendiente', 'revisado'].includes(sub.status) && (
+                        <button
+                          onClick={() => markAsReported && markAsReported(sub.id)}
+                          className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border dark:border-purple-900 cursor-pointer"
+                        >
+                          📢 Reportar
+                        </button>
                     )}
                     <button
                       onClick={() => deleteSubmission && deleteSubmission(sub.id)}
