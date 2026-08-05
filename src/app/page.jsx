@@ -468,6 +468,22 @@ export default function Home() {
   };
 
   // ── Submissions ──
+  const addSubmissionWithTimeout = async (sub, timeoutMs = 2500) => {
+    try {
+      const res = await Promise.race([
+        addSubmissionToFirestore(sub),
+        new Promise((resolve) => setTimeout(() => resolve('timeout'), timeoutMs))
+      ]);
+      if (res === 'timeout') {
+        console.warn('Firestore write timed out (queued offline):', sub.id);
+      }
+      return res;
+    } catch (err) {
+      console.error('addSubmissionWithTimeout error:', err);
+      throw err;
+    }
+  };
+
   const handleSubmitForm = async () => {
     const required = [
       'municipio',
@@ -498,7 +514,7 @@ export default function Home() {
     };
     try {
       setSubmissions((prev) => [sub, ...prev]);
-      await addSubmissionToFirestore(sub);
+      await addSubmissionWithTimeout(sub, 7000); // Allow longer timeout for uploads
       addLog(
         currentUser.email,
         'Reporte Enviado',
@@ -574,7 +590,7 @@ export default function Home() {
     setSelectedSubmission(updatedSub);
     
     try {
-      await addSubmissionToFirestore(updatedSub);
+      await addSubmissionWithTimeout(updatedSub, 3000);
       if (!newStatus || typeof newStatus !== 'string') {
         addLog(
           currentUser.email,
@@ -615,7 +631,7 @@ export default function Home() {
           })
         );
         if (updatedSub) {
-          await addSubmissionToFirestore(updatedSub);
+          await addSubmissionWithTimeout(updatedSub, 3000);
         }
       }
       addLog(currentUser.email, 'Reporte Revisado', `ID: ${subId}`, 'success');
@@ -647,7 +663,7 @@ export default function Home() {
           })
         );
         if (updatedSub) {
-          await addSubmissionToFirestore(updatedSub);
+          await addSubmissionWithTimeout(updatedSub, 3000);
         }
       }
       addLog(currentUser.email, 'Reporte Repetido', `ID: ${subId}`, 'warning');
@@ -679,7 +695,7 @@ export default function Home() {
           })
         );
         if (updatedSub) {
-          await addSubmissionToFirestore(updatedSub);
+          await addSubmissionWithTimeout(updatedSub, 3000);
         }
       }
       addLog(currentUser.email, 'Reporte para Reportar', `ID: ${subId}`, 'info');
