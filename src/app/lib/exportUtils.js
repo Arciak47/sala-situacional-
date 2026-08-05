@@ -400,6 +400,7 @@ export function exportStatsToPDF(title = 'Informe Estadístico - Sala Situaciona
             @page { size: A4 portrait; margin: 12mm; }
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #ffffff !important; }
             .no-pdf, button, select { display: none !important; }
+            .bg-white, .rounded-2xl, .rounded-xl, .grid > div { page-break-inside: avoid !important; break-inside: avoid !important; }
           }
           body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; padding: 20px; background: #ffffff; color: #0f172a; }
         </style>
