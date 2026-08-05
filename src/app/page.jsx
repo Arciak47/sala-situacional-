@@ -470,7 +470,7 @@ export default function Home() {
     }
     
     setReportData(newReportData);
-    setElements(buildElements(newReportData));
+    setElements(sub.canvasElements && sub.canvasElements.length > 0 ? sub.canvasElements : buildElements(newReportData));
     setSelId(null);
     setEditingId(null);
     setActiveTab('editor');
@@ -501,6 +501,7 @@ export default function Home() {
     const updatedSub = {
       ...selectedSubmission,
       reportData: updatedReport,
+      canvasElements: elementsToUse,
       editedBy: currentUser.name,
       editedAt: new Date().toISOString(),
       ...(newStatus && typeof newStatus === 'string' ? { status: newStatus } : {}),

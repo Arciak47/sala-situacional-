@@ -470,7 +470,9 @@ export async function renderCanvasFichaImage(sub) {
     }
   }
 
-  const elements = buildElements(reportData);
+  let finalElements = sub.canvasElements && sub.canvasElements.length > 0 
+    ? sub.canvasElements 
+    : buildElements(reportData);
 
   // Ensure fonts are loaded before calculating text width and rendering
   if (document.fonts) {
@@ -480,7 +482,7 @@ export async function renderCanvasFichaImage(sub) {
   // Preload images
   const imageCache = {};
   await Promise.all(
-    elements
+    finalElements
       .filter((el) => el.type === 'image' && el.src)
       .map(
         (el) =>
@@ -502,7 +504,7 @@ export async function renderCanvasFichaImage(sub) {
   ctx.fillRect(0, 0, CW, CH);
 
   // Draw elements
-  for (const el of elements) {
+  for (const el of finalElements) {
     ctx.save();
     if (el.type === 'rect') {
       ctx.fillStyle = el.fill || '#fff';
