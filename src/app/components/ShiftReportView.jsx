@@ -512,8 +512,8 @@ export default function ShiftReportView({ submissions = [], users = [] }) {
       <head>
         <title>Reporte_Informativo_Turno_${selectedDate}</title>
         <style>
-          body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; background: #fff; }
-          img { width: 100%; max-width: 1100px; height: auto; }
+          body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; background: #fff; height: 100vh; }
+          img { width: 100%; max-height: 100vh; object-fit: contain; }
           @page { size: landscape; margin: 0; }
         </style>
       </head>
