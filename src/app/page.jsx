@@ -483,10 +483,11 @@ export default function Home() {
     setActiveTab('editor');
   };
 
-  const saveSubmissionEdits = (newStatus = null) => {
+  const saveSubmissionEdits = (newStatus = null, currentElements = null) => {
     if (!selectedSubmission) return;
     const updatedReport = { ...reportData };
-    elements.forEach((el) => {
+    const elementsToUse = currentElements || elements;
+    elementsToUse.forEach((el) => {
       if (!el.sync) return;
       if (el.type === 'image' && el.src) {
         updatedReport[el.sync] = el.src;

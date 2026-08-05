@@ -410,6 +410,14 @@ export default function CanvasEditor({
     setSelId(id);
   };
 
+  const getLatestElements = () => {
+    if (editingId) {
+      commitTextEdit();
+      return elements.map((el) => (el.id === editingId ? { ...el, text: editText } : el));
+    }
+    return elements;
+  };
+
   // ── Download PNG ──
   const downloadImage = () => {
     const prevSel = selId;
@@ -545,7 +553,7 @@ export default function CanvasEditor({
             </div>
             <div className="flex gap-2 mt-2">
               <button
-                onClick={saveSubmissionEdits}
+                onClick={(e) => saveSubmissionEdits(e, getLatestElements())}
                 className="flex-1 py-2 rounded-lg text-[10px] font-black uppercase text-white bg-blue-600 hover:bg-blue-700 cursor-pointer"
               >
                 💾 Guardar Cambios
@@ -568,7 +576,15 @@ export default function CanvasEditor({
               )}
               {['pendiente', 'revisado'].includes(selectedSubmission.status) && (
                   <button
-                    onClick={() => markAsReported && markAsReported(selectedSubmission.id)}
+                    onClick={() => {
+                      if (markAsReported) {
+                         // When clicking 'Para Reportar', it triggers saveSubmissionEdits('reportar') inside page.jsx.
+                         // But we want to pass currentElements. So we'll pass it explicitly to saveSubmissionEdits instead.
+                         // Wait, markAsReported doesn't accept currentElements.
+                         // Let's call saveSubmissionEdits directly here!
+                         saveSubmissionEdits('reportar', getLatestElements());
+                      }
+                    }}
                     className="flex-1 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold rounded-xl transition shadow text-xs sm:text-sm"
                   >
                     📢 Para Reportar
