@@ -524,9 +524,9 @@ export default function Home() {
     }
   };
 
-  const markAsReviewed = (subId) => {
+  const markAsReviewed = (subId, currentElements = null) => {
     if (selectedSubmission && selectedSubmission.id === subId) {
-      saveSubmissionEdits('revisado');
+      saveSubmissionEdits('revisado', currentElements);
     } else {
       setSubmissions((prev) =>
         prev.map((s) => {
@@ -544,9 +544,9 @@ export default function Home() {
     setTimeout(() => setToastMsg(''), 4000);
   };
 
-  const markAsRepeated = (subId) => {
+  const markAsRepeated = (subId, currentElements = null) => {
     if (selectedSubmission && selectedSubmission.id === subId) {
-      saveSubmissionEdits('repetido');
+      saveSubmissionEdits('repetido', currentElements);
     } else {
       setSubmissions((prev) =>
         prev.map((s) => {
@@ -564,9 +564,9 @@ export default function Home() {
     setTimeout(() => setToastMsg(''), 4000);
   };
 
-  const markAsReported = (subId) => {
+  const markAsReported = (subId, currentElements = null) => {
     if (selectedSubmission && selectedSubmission.id === subId) {
-      saveSubmissionEdits('reportar');
+      saveSubmissionEdits('reportar', currentElements);
     } else {
       setSubmissions((prev) =>
         prev.map((s) => {

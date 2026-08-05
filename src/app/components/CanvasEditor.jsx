@@ -561,13 +561,13 @@ export default function CanvasEditor({
               {selectedSubmission.status === 'pendiente' && (
                 <>
                   <button
-                    onClick={() => markAsReviewed && markAsReviewed(selectedSubmission.id)}
+                    onClick={() => markAsReviewed && markAsReviewed(selectedSubmission.id, getLatestElements())}
                     className="flex-1 py-3 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold rounded-xl transition shadow text-xs sm:text-sm"
                   >
                     ✅ Marcar Revisado
                   </button>
                   <button
-                    onClick={() => markAsRepeated && markAsRepeated(selectedSubmission.id)}
+                    onClick={() => markAsRepeated && markAsRepeated(selectedSubmission.id, getLatestElements())}
                     className="flex-1 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold rounded-xl transition shadow text-xs sm:text-sm"
                   >
                     ⚠️ Marcar Repetido
@@ -578,11 +578,7 @@ export default function CanvasEditor({
                   <button
                     onClick={() => {
                       if (markAsReported) {
-                         // When clicking 'Para Reportar', it triggers saveSubmissionEdits('reportar') inside page.jsx.
-                         // But we want to pass currentElements. So we'll pass it explicitly to saveSubmissionEdits instead.
-                         // Wait, markAsReported doesn't accept currentElements.
-                         // Let's call saveSubmissionEdits directly here!
-                         saveSubmissionEdits('reportar', getLatestElements());
+                         markAsReported(selectedSubmission.id, getLatestElements());
                       }
                     }}
                     className="flex-1 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold rounded-xl transition shadow text-xs sm:text-sm"
