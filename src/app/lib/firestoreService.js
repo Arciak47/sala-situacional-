@@ -239,43 +239,9 @@ export async function addSubmissionToFirestore(submission) {
   try {
     const subId = String(submission.id || `sub-${Date.now()}`);
     let updatedSub = JSON.parse(JSON.stringify(submission));
-    // Move image to Firebase Storage to prevent massive main payload
-    if (updatedSub.reportData?.evidenceImageSrc?.startsWith('data:')) {
-      const imageId = `img_${subId}_${Date.now()}`;
-      try {
-        const imgUrl = await uploadImageToStorage(updatedSub.reportData.evidenceImageSrc, `submissions/${imageId}`);
-        if (imgUrl) {
-          updatedSub.reportData.evidenceImageSrc = imgUrl;
-          updatedSub.reportData.evidenceImageId = imageId;
-          
-          if (updatedSub.canvasElements) {
-            updatedSub.canvasElements.forEach(el => {
-              if (el.type === 'image' && el.id === 'evid-img' && el.src?.startsWith('data:')) {
-                el.src = imgUrl;
-              }
-            });
-          }
-        }
-      } catch (e) {
-        console.error('Failed to upload evidence image to Storage:', e);
-        throw new Error('Fallo al subir la imagen principal a Storage. ' + (e.message || ''));
-      }
-    }
-    
-    // Upload any remaining base64 strings from canvasElements
-    if (updatedSub.canvasElements) {
-      for (const el of updatedSub.canvasElements) {
-        if (el.type === 'image' && el.src?.startsWith('data:')) {
-          try {
-            const elImgUrl = await uploadImageToStorage(el.src, `submissions/cvs_${subId}_${el.id}_${Date.now()}`);
-            if (elImgUrl) el.src = elImgUrl;
-          } catch (e) {
-            console.error('Failed to upload canvas element image:', e);
-            throw new Error('Fallo al subir imágenes del canvas a Storage. ' + (e.message || ''));
-          }
-        }
-      }
-    }
+    // Use the base64 string directly in Firestore (Firebase Storage is disabled)
+    // The image was already compressed in CanvasEditor
+    // We don't need to do any uploading to Storage here anymore.
 
     const subRef = doc(db, 'submissions', subId);
     await setDoc(subRef, sanitize(updatedSub), { merge: true });
