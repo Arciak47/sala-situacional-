@@ -658,17 +658,10 @@ export default function Home() {
       if (selectedSubmission && selectedSubmission.id === subId) {
         await saveSubmissionEdits('revisado', currentElements, currentReport);
       } else {
-        let updatedSub = null;
-        setSubmissions((prev) =>
-          prev.map((s) => {
-            if (s.id === subId) {
-              updatedSub = { ...s, status: 'revisado' };
-              return updatedSub;
-            }
-            return s;
-          })
-        );
-        if (updatedSub) {
+        const existing = submissions.find(s => s.id === subId);
+        if (existing) {
+          const updatedSub = { ...existing, status: 'revisado' };
+          setSubmissions((prev) => prev.map((s) => (s.id === subId ? updatedSub : s)));
           await addSubmissionWithTimeout(updatedSub, 3000);
         }
       }
@@ -690,17 +683,10 @@ export default function Home() {
       if (selectedSubmission && selectedSubmission.id === subId) {
         await saveSubmissionEdits('repetido', currentElements, currentReport);
       } else {
-        let updatedSub = null;
-        setSubmissions((prev) =>
-          prev.map((s) => {
-            if (s.id === subId) {
-              updatedSub = { ...s, status: 'repetido' };
-              return updatedSub;
-            }
-            return s;
-          })
-        );
-        if (updatedSub) {
+        const existing = submissions.find(s => s.id === subId);
+        if (existing) {
+          const updatedSub = { ...existing, status: 'repetido' };
+          setSubmissions((prev) => prev.map((s) => (s.id === subId ? updatedSub : s)));
           await addSubmissionWithTimeout(updatedSub, 3000);
         }
       }
@@ -722,17 +708,10 @@ export default function Home() {
       if (selectedSubmission && selectedSubmission.id === subId) {
         await saveSubmissionEdits('reportado', currentElements, currentReport);
       } else {
-        let updatedSub = null;
-        setSubmissions((prev) =>
-          prev.map((s) => {
-            if (s.id === subId) {
-              updatedSub = { ...s, status: 'reportar' };
-              return updatedSub;
-            }
-            return s;
-          })
-        );
-        if (updatedSub) {
+        const existing = submissions.find(s => s.id === subId);
+        if (existing) {
+          const updatedSub = { ...existing, status: 'reportar' };
+          setSubmissions((prev) => prev.map((s) => (s.id === subId ? updatedSub : s)));
           await addSubmissionWithTimeout(updatedSub, 3000);
         }
       }
