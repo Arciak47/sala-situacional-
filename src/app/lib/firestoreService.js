@@ -11,7 +11,7 @@ import {
   orderBy,
   limit
 } from 'firebase/firestore';
-import { ref, uploadString, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { INITIAL_USERS, INITIAL_LOGS, INITIAL_MESSAGES } from './constants';
 import {
@@ -39,28 +39,50 @@ export async function uploadImageToStorage(fileOrDataUrl, path) {
     return fileOrDataUrl;
   }
   
-  const uploadWithTimeout = (promise, timeoutMs) => {
-    return Promise.race([
-      promise,
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Storage upload timeout')), timeoutMs))
-    ]);
-  };
+  return new Promise(async (resolve, reject) => {
+    try {
+      let fileBlob = fileOrDataUrl;
+      // Convert base64 to Blob for optimized upload and better CORS compatibility
+      if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('data:')) {
+        const response = await fetch(fileOrDataUrl);
+        fileBlob = await response.blob();
+      }
 
-  try {
-    const storageRef = ref(storage, path);
-    if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('data:')) {
-      await uploadWithTimeout(uploadString(storageRef, fileOrDataUrl, 'data_url'), 15000);
-    } else if (fileOrDataUrl instanceof File || fileOrDataUrl instanceof Blob) {
-      await uploadWithTimeout(uploadBytes(storageRef, fileOrDataUrl), 15000);
-    } else {
-      return fileOrDataUrl;
+      const storageRef = ref(storage, path);
+      
+      // Use uploadBytesResumable to track progress and handle network errors cleanly
+      const uploadTask = uploadBytesResumable(storageRef, fileBlob);
+
+      // Force a hard timeout so the UI doesn't hang indefinitely (15s)
+      const timeoutId = setTimeout(() => {
+        uploadTask.cancel();
+        reject(new Error('El servidor tardó demasiado en responder (timeout). Verifica tu conexión a internet o los permisos de Firebase.'));
+      }, 15000);
+
+      uploadTask.on(
+        'state_changed',
+        null,
+        (error) => {
+          clearTimeout(timeoutId);
+          console.error("Firebase Storage Upload Error:", error);
+          reject(error);
+        },
+        async () => {
+          clearTimeout(timeoutId);
+          try {
+            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(downloadUrl);
+          } catch (urlError) {
+            console.error("Error obteniendo la URL de descarga:", urlError);
+            reject(urlError);
+          }
+        }
+      );
+    } catch (err) {
+      console.error("Error procesando imagen para Storage:", err);
+      reject(err);
     }
-    const downloadUrl = await uploadWithTimeout(getDownloadURL(storageRef), 10000);
-    return downloadUrl;
-  } catch (err) {
-    console.warn('Firebase Storage upload warning (falling back to data string):', err);
-    return fileOrDataUrl; // Fallback to base64 immediately
-  }
+  });
 }
 
 // ----------------------------------------------------
@@ -223,7 +245,7 @@ export async function addSubmissionToFirestore(submission) {
       try {
         const imgUrl = await uploadImageToStorage(updatedSub.reportData.evidenceImageSrc, `submissions/${imageId}`);
         if (imgUrl) {
-          updatedSub.reportData.evidenceImageSrc = imgUrl; // Save Storage URL
+          updatedSub.reportData.evidenceImageSrc = imgUrl;
           updatedSub.reportData.evidenceImageId = imageId;
           
           if (updatedSub.canvasElements) {
@@ -233,26 +255,10 @@ export async function addSubmissionToFirestore(submission) {
               }
             });
           }
-        } else {
-          updatedSub.reportData.evidenceImageSrc = null;
-          if (updatedSub.canvasElements) {
-            updatedSub.canvasElements.forEach(el => {
-              if (el.type === 'image' && el.id === 'evid-img' && el.src?.startsWith('data:')) {
-                el.src = null;
-              }
-            });
-          }
         }
       } catch (e) {
-        console.warn('Failed to upload evidence image to Storage:', e);
-        updatedSub.reportData.evidenceImageSrc = null;
-        if (updatedSub.canvasElements) {
-          updatedSub.canvasElements.forEach(el => {
-            if (el.type === 'image' && el.id === 'evid-img' && el.src?.startsWith('data:')) {
-              el.src = null;
-            }
-          });
-        }
+        console.error('Failed to upload evidence image to Storage:', e);
+        throw new Error('Fallo al subir la imagen principal a Storage. ' + (e.message || ''));
       }
     }
     
@@ -264,8 +270,8 @@ export async function addSubmissionToFirestore(submission) {
             const elImgUrl = await uploadImageToStorage(el.src, `submissions/cvs_${subId}_${el.id}_${Date.now()}`);
             if (elImgUrl) el.src = elImgUrl;
           } catch (e) {
-            console.warn('Failed to upload canvas element image:', e);
-            el.src = null;
+            console.error('Failed to upload canvas element image:', e);
+            throw new Error('Fallo al subir imágenes del canvas a Storage. ' + (e.message || ''));
           }
         }
       }
