@@ -645,13 +645,7 @@ export default function Home() {
       }
       
       setTimeout(() => setToastMsg(''), 4000);
-      // Navigate to shift if marking as reportar, otherwise go to inbox
-      if (newStatus === 'reportar') {
-        setSelectedSubmission(null);
-        setActiveTab('shift');
-      } else {
-        setActiveTab('inbox');
-      }
+      // Do not auto-navigate – let the user stay on the current tab
       
     } catch (error) {
       console.error("Backend Error saving submission:", error);
@@ -725,12 +719,10 @@ export default function Home() {
           const updatedSub = { ...existing, status: 'reportar' };
           setSubmissions((prev) => prev.map((s) => (s.id === subId ? updatedSub : s)));
           await updateSubmissionStatus(subId, 'reportar');
-          setSelectedSubmission(null);
-          setActiveTab('shift');
         }
       }
       addLog(currentUser.email, 'Reporte para Reportar', `ID: ${subId}`, 'info');
-      setToastMsg('📢 Marcado para reportar — navegando a Reporte Turno...');
+      setToastMsg('📢 Marcado para reportar correctamente.');
       setTimeout(() => setToastMsg(''), 4000);
     } catch (err) {
       console.error(err);

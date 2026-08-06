@@ -52,7 +52,14 @@ export default function CanvasEditor({
         if (!el.sync) return el;
         if (el.type === 'image') return { ...el, src: reportData[el.sync] || null };
         const val = up(reportData[el.sync]);
-        return { ...el, text: el.tpl ? el.tpl + val : val || el.text };
+        let newEl = { ...el, text: el.tpl ? el.tpl + val : val };
+        
+        // Dynamically adjust font size for postTitle if length changes
+        if (el.sync === 'postTitle') {
+          newEl.fs = val.length > 65 ? 13 : val.length > 35 ? 17 : 22;
+        }
+        
+        return newEl;
       })
     );
   }, [reportData]); // eslint-disable-line
