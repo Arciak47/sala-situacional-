@@ -498,6 +498,7 @@ export default function Home() {
     ];
     const missing = required.filter((k) => !reportData[k]?.trim());
     if (missing.length > 0) {
+      console.error('Fallo de validación - Faltan campos obligatorios:', missing);
       setToastMsg('⚠️ Completa todos los campos obligatorios.');
       setTimeout(() => setToastMsg(''), 4000);
       return;
@@ -516,8 +517,8 @@ export default function Home() {
       status: 'pendiente',
     };
     try {
-      setSubmissions((prev) => [sub, ...prev]);
       await addSubmissionWithTimeout(sub, 7000); // Allow longer timeout for uploads
+      setSubmissions((prev) => [sub, ...prev]);
       addLog(
         currentUser.email,
         'Reporte Enviado',
@@ -533,7 +534,8 @@ export default function Home() {
       setToastMsg('✅ Reporte enviado al Supervisor.');
       setTimeout(() => setToastMsg(''), 4000);
     } catch (error) {
-      console.error(error);
+      console.error('Error estricto al enviar reporte:', error);
+      alert(`❌ Error al enviar reporte: ${error.message || 'Intente nuevamente'}`);
       setToastMsg(`❌ Error al enviar reporte: ${error.message || 'Intente nuevamente'}`);
       setTimeout(() => setToastMsg(''), 6000);
     } finally {
@@ -828,7 +830,7 @@ export default function Home() {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const max_size = 1024;
+        const max_size = 1200;
         if (width > height) {
           if (width > max_size) {
             height *= max_size / width;
