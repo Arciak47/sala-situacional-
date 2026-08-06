@@ -566,30 +566,46 @@ export default function ShiftReportView({ submissions = [], users = [] }) {
   };
 
   const reportablesDelTurno = submissions.filter(s => {
-    const st = (s.status || '').toLowerCase();
+    const st = (s.status || '').toLowerCase().trim();
     const isReportable = (st === 'reportar' || st === 'reportado');
     if (!isReportable) return false;
 
+    // Helper: convert any ISO/DD-MM-YYYY/timestamp to YYYY-MM-DD in LOCAL time
+    const toLocalDate = (raw) => {
+      if (!raw) return '';
+      if (raw.includes('T') || (raw.length > 10 && raw.includes('-'))) {
+        // ISO string → parse as Date and use local date parts
+        const d = new Date(raw);
+        if (!isNaN(d)) {
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          return `${yyyy}-${mm}-${dd}`;
+        }
+      }
+      if (raw.includes('/')) {
+        const parts = raw.split('/');
+        if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+      }
+      return raw.split('T')[0];
+    };
+
     let matchDate = false;
 
-    // 1. If it was marked as 'reportar' on a specific date, that's the date it belongs to in the shift report
+    // 1. Primary: use reportedAt (the exact moment it was marked 'Para Reportar')
     if (s.reportedAt) {
-      const repDate = s.reportedAt.split('T')[0];
-      if (repDate === selectedDate) matchDate = true;
+      if (toLocalDate(s.reportedAt) === selectedDate) matchDate = true;
     }
-    
-    // 2. Fallback to submission/form date if no reportedAt is present
+
+    // 2. Fallback: use the form date (reportData.fecha) or submission timestamp
     if (!matchDate) {
-      let subDate = s.reportData?.fechaRaw || s.reportData?.fecha || (s.timestamp ? s.timestamp.split('T')[0] : '');
-      if (subDate.includes('/')) {
-        const parts = subDate.split('/');
-        if (parts.length === 3) {
-          subDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-        }
-      } else if (subDate.includes('T')) {
-        subDate = subDate.split('T')[0];
-      }
-      if (subDate === selectedDate) matchDate = true;
+      const formDate = toLocalDate(s.reportData?.fechaRaw || s.reportData?.fecha || '');
+      if (formDate && formDate === selectedDate) matchDate = true;
+    }
+
+    // 3. Last resort: submission creation timestamp
+    if (!matchDate && s.timestamp) {
+      if (toLocalDate(s.timestamp) === selectedDate) matchDate = true;
     }
 
     return matchDate;

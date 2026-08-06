@@ -140,7 +140,12 @@ export default function Home() {
           if (savedSubId) {
             const found = data.find((s) => String(s.id) === String(savedSubId));
             if (found) {
+              // Update selectedSubmission so the badge/status badge stays current
               setSelectedSubmission(found);
+              // NOTE: do NOT overwrite reportData or elements here.
+              // saveSubmissionEdits already applied them optimistically and
+              // re-applies them after the await. Overwriting here would race
+              // against the user's current edit session.
             }
           }
         }
@@ -622,15 +627,33 @@ export default function Home() {
       } : {}),
     };
     
-    // Optimistic local update
-    setReportData(updatedReport); // Ensure form inputs reflect canvas edits
+    // ── Optimistic local update (instant visual feedback) ──
+    setReportData(updatedReport);
     setSubmissions((prev) =>
       prev.map((s) => (s.id === selectedSubmission.id ? updatedSub : s))
     );
     setSelectedSubmission(updatedSub);
+    // Also refresh canvas elements so synced text fields re-render immediately.
+    // We need to update the elements that have a 'sync' field to match updatedReport.
+    setElements((prev) =>
+      prev.map((el) => {
+        if (!el.sync) return el;
+        if (el.type === 'image') return { ...el, src: updatedReport[el.sync] || null };
+        const val = (updatedReport[el.sync] || '').toUpperCase();
+        let newEl = { ...el, text: el.tpl ? el.tpl + val : val };
+        if (el.sync === 'postTitle') {
+          newEl.fs = val.length > 65 ? 13 : val.length > 35 ? 17 : 22;
+        }
+        return newEl;
+      })
+    );
     
     try {
       await addSubmissionToFirestore(updatedSub);
+      
+      // Re-apply after successful persist to ensure consistency
+      setReportData(updatedReport);
+      setSelectedSubmission(updatedSub);
       
       if (!newStatus || typeof newStatus !== 'string') {
         addLog(
