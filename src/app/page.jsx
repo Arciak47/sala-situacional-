@@ -113,6 +113,7 @@ export default function Home() {
         if (found) {
           setSelectedSubmission(found);
           setReportData({ ...found.reportData });
+          setElements(found.canvasElements && found.canvasElements.length > 0 ? found.canvasElements : buildElements(found.reportData));
         }
       }
     } else {

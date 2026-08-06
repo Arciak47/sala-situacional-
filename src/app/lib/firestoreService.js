@@ -224,7 +224,7 @@ export async function addSubmissionToFirestore(submission) {
           
           if (updatedSub.canvasElements) {
             updatedSub.canvasElements.forEach(el => {
-              if (el.type === 'image' && el.src?.startsWith('data:')) {
+              if (el.type === 'image' && el.id === 'evid-img' && el.src?.startsWith('data:')) {
                 el.src = imgUrl;
               }
             });
@@ -233,7 +233,7 @@ export async function addSubmissionToFirestore(submission) {
           updatedSub.reportData.evidenceImageSrc = null;
           if (updatedSub.canvasElements) {
             updatedSub.canvasElements.forEach(el => {
-              if (el.type === 'image' && el.src?.startsWith('data:')) {
+              if (el.type === 'image' && el.id === 'evid-img' && el.src?.startsWith('data:')) {
                 el.src = null;
               }
             });
@@ -244,7 +244,7 @@ export async function addSubmissionToFirestore(submission) {
         updatedSub.reportData.evidenceImageSrc = null;
         if (updatedSub.canvasElements) {
           updatedSub.canvasElements.forEach(el => {
-            if (el.type === 'image' && el.src?.startsWith('data:')) {
+            if (el.type === 'image' && el.id === 'evid-img' && el.src?.startsWith('data:')) {
               el.src = null;
             }
           });
