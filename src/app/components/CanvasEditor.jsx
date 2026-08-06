@@ -580,7 +580,7 @@ export default function CanvasEditor({
                   const { latestElems, latestReport } = getLatestElementsAndReport();
                   saveSubmissionEdits(null, latestElems, latestReport);
                 }}
-                className="flex-1 py-2 rounded-lg text-[10px] font-black uppercase text-white bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
               >
                 💾 Guardar Cambios
               </button>
@@ -593,7 +593,7 @@ export default function CanvasEditor({
                         markAsReviewed(selectedSubmission.id, latestElems, latestReport);
                       }
                     }}
-                    className="flex-1 py-3 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold rounded-xl transition shadow text-xs sm:text-sm"
+                    className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
                   >
                     ✅ Marcar Revisado
                   </button>
@@ -604,7 +604,7 @@ export default function CanvasEditor({
                         markAsRepeated(selectedSubmission.id, latestElems, latestReport);
                       }
                     }}
-                    className="flex-1 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold rounded-xl transition shadow text-xs sm:text-sm"
+                    className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-orange-400 hover:bg-orange-500 text-white cursor-pointer"
                   >
                     ⚠️ Marcar Repetido
                   </button>
@@ -618,7 +618,7 @@ export default function CanvasEditor({
                          markAsReported(selectedSubmission.id, latestElems, latestReport);
                       }
                     }}
-                    className="flex-1 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold rounded-xl transition shadow text-xs sm:text-sm"
+                    className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-purple-500 hover:bg-purple-600 text-white cursor-pointer"
                   >
                     📢 Para Reportar
                   </button>
@@ -990,19 +990,19 @@ export default function CanvasEditor({
                   setEditingId(null);
                   setElements(buildElements(reportData));
                 }}
-                className="py-1.5 px-3 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700"
+                className="px-4 py-2 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 cursor-pointer"
               >
                 🔄 Reset
               </button>
               <button
                 onClick={downloadImage}
-                className="py-2 px-3.5 rounded-full text-xs font-black text-white bg-red-600 hover:bg-red-700 cursor-pointer shadow-md flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
               >
                 <span>🖼️</span> PNG
               </button>
               <button
                 onClick={downloadPDF}
-                className="py-2 px-3.5 rounded-full text-xs font-black text-white bg-blue-600 hover:bg-blue-700 cursor-pointer shadow-md flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
               >
                 <span>📄</span> PDF
               </button>

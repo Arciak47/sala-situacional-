@@ -374,7 +374,7 @@ export default function MessagingView({
               </div>
               <button
                 onClick={() => setAttachedImage(null)}
-                className="text-xs text-red-600 font-bold hover:underline cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 active:scale-95 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer"
               >
                 ✕ Quitar
               </button>
@@ -409,9 +409,9 @@ export default function MessagingView({
 
             <button
               type="submit"
-              className="px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center gap-1 sm:gap-1.5 transition-all flex-shrink-0"
+              className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white cursor-pointer flex-shrink-0"
             >
-              <span className="hidden sm:inline">Envio</span>
+              <span className="hidden sm:inline">Enviar</span>
               <span>📤</span>
             </button>
           </form>

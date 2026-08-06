@@ -279,21 +279,21 @@ export default function AdminDashboard({
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => exportSubmissionsToExcel(filteredSubmissions)}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
               title="Descargar base de datos filtrada en formato Excel (.xls)"
             >
               <span>📊</span> Base de Datos (Excel)
             </button>
             <button
               onClick={() => exportStatsToExcel(allStats)}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
               title="Descargar resumen de métricas en Excel"
             >
               <span>📈</span> Métricas (Excel)
             </button>
             <button
               onClick={() => exportStatsToPDF('Consola Ejecutiva - Sala Situacional', 'admin-dashboard-container')}
-              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-red-500 hover:bg-red-600 text-white cursor-pointer"
               title="Exportar informe del dashboard en PDF"
             >
               <span>📄</span> Exportar PDF

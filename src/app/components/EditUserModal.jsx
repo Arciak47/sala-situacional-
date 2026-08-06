@@ -355,13 +355,13 @@ export default function EditUserModal({
             <button
               type="button"
               onClick={() => setEditingUser(null)}
-              className="px-5 py-2.5 rounded-full text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-7 py-2.5 rounded-full text-xs font-black uppercase text-white bg-red-600 hover:bg-red-700 cursor-pointer shadow-lg shadow-red-600/30"
+              className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
             >
               💾 Guardar Cambios
             </button>

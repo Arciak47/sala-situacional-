@@ -258,7 +258,7 @@ export default function SupervisorUsersView({
 
                   <button
                     onClick={() => handleDownloadPDF(analyst)}
-                    className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-red-600 to-red-800 hover:opacity-95 shadow-md flex items-center gap-1.5 cursor-pointer"
+                    className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-red-600 hover:bg-red-700 text-white cursor-pointer"
                   >
                     📄 Exportar PDF
                   </button>
@@ -442,14 +442,14 @@ export default function SupervisorUsersView({
             <div className="flex items-center justify-end gap-3 pt-4 border-t dark:border-slate-800">
               <button
                 onClick={() => setSelectedAnalystModal(null)}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 cursor-pointer"
               >
                 Cerrar
               </button>
 
               <button
                 onClick={() => handleDownloadPDF(selectedAnalystModal)}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-red-600 to-red-800 hover:opacity-95 shadow-lg shadow-red-600/30 flex items-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-red-600 hover:bg-red-700 text-white cursor-pointer"
               >
                 📄 Descargar Reporte PDF
               </button>

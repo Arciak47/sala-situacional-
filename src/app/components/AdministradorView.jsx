@@ -80,13 +80,13 @@ export default function AdministradorView({
             <div className="mt-6 pt-4 border-t dark:border-slate-800 flex gap-3">
               <button
                 onClick={handleSubmitForm}
-                className="flex-1 py-3 px-6 rounded-full text-xs font-bold uppercase text-white bg-red-600 hover:bg-red-700 cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
               >
                 📤 Enviar Reporte
               </button>
               <button
                 onClick={goToEditor}
-                className="flex-1 py-3 px-6 rounded-full text-xs font-bold uppercase bg-slate-800 text-white cursor-pointer hover:bg-slate-700"
+                className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 cursor-pointer"
               >
                 🎨 Ir al Editor
               </button>
@@ -163,7 +163,7 @@ export default function AdministradorView({
               />
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="py-2.5 px-6 rounded-full text-xs font-bold text-white bg-red-600 hover:bg-red-700 shadow-md cursor-pointer whitespace-nowrap"
+                className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-blue-600 hover:bg-blue-700 text-white cursor-pointer whitespace-nowrap"
               >
                 + Crear Usuario
               </button>
@@ -232,21 +232,21 @@ export default function AdministradorView({
                       <td className="py-4 px-6 text-right space-x-2">
                         <button
                           onClick={() => setEditingUser(u)}
-                          className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold cursor-pointer hover:bg-blue-100"
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 inline-flex items-center gap-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 cursor-pointer disabled:opacity-50"
                         >
                           ✏️ Editar
                         </button>
                         <button
                           onClick={() => toggleStatus(u.id)}
                           disabled={u.id === currentUser.id}
-                          className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border dark:border-slate-700 text-xs font-bold cursor-pointer disabled:opacity-40"
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 cursor-pointer disabled:opacity-50"
                         >
                           {u.status === 'Activo' ? 'Desactivar' : 'Activar'}
                         </button>
                         <button
                           onClick={() => deleteUser(u.id, u.name)}
                           disabled={u.id === currentUser.id}
-                          className="px-3 py-1 rounded-full bg-red-50 text-xs font-bold text-red-700 cursor-pointer disabled:opacity-40 hover:bg-red-100"
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 inline-flex items-center gap-1.5 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 cursor-pointer disabled:opacity-50"
                         >
                           🗑️
                         </button>
