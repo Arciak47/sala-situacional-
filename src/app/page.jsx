@@ -624,7 +624,8 @@ export default function Home() {
     setSelectedSubmission(updatedSub);
     
     try {
-      await addSubmissionWithTimeout(updatedSub, 3000);
+      await addSubmissionToFirestore(updatedSub);
+      
       if (!newStatus || typeof newStatus !== 'string') {
         addLog(
           currentUser.email,
@@ -633,15 +634,16 @@ export default function Home() {
           'success'
         );
         setToastMsg('✅ Guardado correctamente');
-        setTimeout(() => setToastMsg(''), 4000);
       } else {
         setToastMsg(`✅ Reporte movido a estado: ${newStatus.toUpperCase()}`);
-        setTimeout(() => setToastMsg(''), 4000);
-        setActiveTab('inbox');
       }
-    } catch (err) {
-      console.error(err);
-      setToastMsg(`❌ Error al guardar: ${err.message || 'Intente nuevamente'}`);
+      
+      setTimeout(() => setToastMsg(''), 4000);
+      setActiveTab('inbox');
+      
+    } catch (error) {
+      console.error("Backend Error saving submission:", error);
+      setToastMsg(`❌ Error del backend al guardar: ${error.message || 'Intente nuevamente'}`);
       setTimeout(() => setToastMsg(''), 6000);
     } finally {
       setIsSaving(false);
