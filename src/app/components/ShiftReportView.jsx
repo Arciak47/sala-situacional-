@@ -174,7 +174,15 @@ export default function ShiftReportView({ submissions = [], users = [] }) {
 
   const handleAutoFillFromDB = () => {
     const filteredSubs = submissions.filter((s) => {
-      const subDate = s.reportData?.fechaRaw || (s.timestamp ? s.timestamp.split('T')[0] : '');
+      let subDate = s.reportData?.fechaRaw || s.reportData?.fecha || (s.timestamp ? s.timestamp.split('T')[0] : '');
+      if (subDate.includes('/')) {
+        const parts = subDate.split('/');
+        if (parts.length === 3) {
+          subDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+      } else if (subDate.includes('T')) {
+        subDate = subDate.split('T')[0];
+      }
       if (selectedDate && subDate && subDate !== selectedDate) return false;
       if (selectedShift === 'all') return true;
 
@@ -541,6 +549,20 @@ export default function ShiftReportView({ submissions = [], users = [] }) {
     await exportCombinedReportAndFichasHDPDF(canvas, selectedFichas, `Reporte_Completo_${selectedDate}`);
   };
 
+  const reportablesDelTurno = submissions.filter(s => {
+    let subDate = s.reportData?.fechaRaw || s.reportData?.fecha || (s.timestamp ? s.timestamp.split('T')[0] : '');
+    if (subDate.includes('/')) {
+      const parts = subDate.split('/');
+      if (parts.length === 3) {
+        subDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      }
+    } else if (subDate.includes('T')) {
+      subDate = subDate.split('T')[0];
+    }
+    const st = (s.status || '').toLowerCase();
+    return subDate === selectedDate && (st === 'reportar' || st === 'reportado');
+  });
+
   return (
     <div className="space-y-6">
       {/* ── HEADER & QUICK EXPORT ACTIONS ── */}
@@ -905,14 +927,10 @@ export default function ShiftReportView({ submissions = [], users = [] }) {
           <div className="flex gap-2">
             <button
               onClick={() => {
-                const shiftSubs = submissions.filter(s => {
-                  const subDate = s.reportData?.fechaRaw || (s.timestamp ? s.timestamp.split('T')[0] : '');
-                  return subDate === selectedDate && s.status === 'reportar';
-                });
-                if (selectedFichasIds.length === shiftSubs.length && shiftSubs.length > 0) {
+                if (selectedFichasIds.length === reportablesDelTurno.length && reportablesDelTurno.length > 0) {
                   setSelectedFichasIds([]);
                 } else {
-                  setSelectedFichasIds(shiftSubs.map(s => s.id));
+                  setSelectedFichasIds(reportablesDelTurno.map(s => s.id));
                 }
               }}
               className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
@@ -940,10 +958,7 @@ export default function ShiftReportView({ submissions = [], users = [] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {submissions.filter(s => {
-                  const subDate = s.reportData?.fechaRaw || (s.timestamp ? s.timestamp.split('T')[0] : '');
-                  return subDate === selectedDate && s.status === 'reportar';
-                }).map((sub) => (
+              {reportablesDelTurno.map((sub) => (
                 <tr 
                   key={sub.id} 
                   className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors ${selectedFichasIds.includes(sub.id) ? 'bg-red-50/50 dark:bg-red-900/10' : ''}`}
@@ -973,10 +988,7 @@ export default function ShiftReportView({ submissions = [], users = [] }) {
                   <td className="py-3 px-4 font-medium text-slate-600 dark:text-slate-400">@{sub.reportData?.usuario || 'anon'}</td>
                 </tr>
               ))}
-              {submissions.filter(s => {
-                  const subDate = s.reportData?.fechaRaw || (s.timestamp ? s.timestamp.split('T')[0] : '');
-                  return subDate === selectedDate && s.status === 'reportar';
-                }).length === 0 && (
+              {reportablesDelTurno.length === 0 && (
                 <tr>
                   <td colSpan="5" className="py-8 text-center text-slate-400 font-medium">
                     No hay formularios con estado &quot;Reportar&quot; para esta fecha.
