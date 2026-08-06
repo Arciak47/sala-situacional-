@@ -619,15 +619,12 @@ export default function Home() {
     // This guarantees that synced fields (postTitle, usuario, etc.) always
     // reflect the latest values from FormFields or TextOverlay edits,
     // regardless of whether React's useEffect([reportData]) has run yet.
+    // We only update 'text' and 'src' to preserve user's manual visual edits (fs, color, etc).
     const finalElements = elementsToUse.map((el) => {
       if (!el.sync) return el;
       if (el.type === 'image') return { ...el, src: updatedReport[el.sync] || null };
       const val = (updatedReport[el.sync] || '').toUpperCase();
-      let newEl = { ...el, text: el.tpl ? el.tpl + val : val };
-      if (el.sync === 'postTitle') {
-        newEl.fs = val.length > 65 ? 13 : val.length > 35 ? 17 : 22;
-      }
-      return newEl;
+      return { ...el, text: el.tpl ? el.tpl + val : val };
     });
 
     const updatedSub = {

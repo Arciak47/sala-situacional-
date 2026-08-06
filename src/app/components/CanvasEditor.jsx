@@ -65,11 +65,7 @@ export default function CanvasEditor({
         // Skip if already up-to-date (prevents loop from updateEl → setReportData → useEffect)
         if (el.text === expectedText) return el;
         changed = true;
-        let newEl = { ...el, text: expectedText };
-        if (el.sync === 'postTitle') {
-          newEl.fs = val.length > 65 ? 13 : val.length > 35 ? 17 : 22;
-        }
-        return newEl;
+        return { ...el, text: expectedText };
       });
       return changed ? next : prev; // return same reference if nothing changed
     });
