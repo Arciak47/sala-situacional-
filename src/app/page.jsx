@@ -726,7 +726,7 @@ export default function Home() {
   const handleBackupAndClear = async () => {
     if (
       typeof window !== 'undefined' &&
-      window.confirm('🧪 MODO PRUEBA: ¿Estás seguro de que deseas RESPALDAR los datos? Tranquilo, NO se borrará absolutamente nada de la base de datos en esta prueba.')
+      window.confirm('⚠️ ATENCIÓN: ¿Estás seguro de que deseas RESPALDAR los datos y LIMPIAR la base de datos? Esta acción borrará todos los reportes.')
     ) {
       setToastMsg('📦 Generando respaldo, por favor espera...');
       try {
@@ -762,17 +762,16 @@ export default function Home() {
         const dateStr = new Date().toISOString().split('T')[0];
         saveAs(content, `Respaldo_Sala_${dateStr}.zip`);
         
-        setToastMsg('✅ Respaldo generado. (Modo prueba: sin borrar)');
+        setToastMsg('✅ Respaldo generado. Limpiando base de datos...');
         
         // BORRAR TODOS LOS REPORTES (LIBERA LA BASE DE DATOS Y FIREBASE STORAGE)
-        // DESACTIVADO TEMPORALMENTE PARA TUS PRUEBAS EN LOCALHOST:
-        // for (const sub of submissions) {
-        //   deleteSubmissionFromFirestore(sub.id);
-        // }
-        // setSubmissions([]);
+        for (const sub of submissions) {
+          deleteSubmissionFromFirestore(sub.id);
+        }
+        setSubmissions([]);
         
-        addLog(currentUser?.email, 'Prueba Cierre del Sistema', 'Se generó respaldo sin borrar', 'warning');
-        setToastMsg('🚀 Archivo ZIP de prueba generado correctamente.');
+        addLog(currentUser?.email, 'Cierre del Sistema', 'Se generó respaldo y se limpió la base de datos', 'warning');
+        setToastMsg('🚀 Archivo ZIP generado y base de datos limpia.');
         setTimeout(() => setToastMsg(''), 4000);
       } catch (err) {
         console.error('Error in backup:', err);
