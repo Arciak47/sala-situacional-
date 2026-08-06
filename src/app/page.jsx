@@ -830,7 +830,7 @@ export default function Home() {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const max_size = 1200;
+        const max_size = 1920; // HD resolution cap — ImgBB supports up to 32MB
         if (width > height) {
           if (width > max_size) {
             height *= max_size / width;
@@ -846,9 +846,9 @@ export default function Home() {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        // Compress as JPEG
-        const compressedSrc = canvas.toDataURL('image/jpeg', 0.6);
-        setReportData((prev) => ({ ...prev, evidenceImageSrc: compressedSrc }));
+        // Use PNG at maximum quality to preserve text legibility
+        const hdSrc = canvas.toDataURL('image/png');
+        setReportData((prev) => ({ ...prev, evidenceImageSrc: hdSrc }));
       };
       img.src = ev.target.result;
     };

@@ -112,7 +112,7 @@ export default function MessagingView({
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const max_size = 800;
+        const max_size = 1920; // HD resolution cap — ImgBB supports up to 32MB
         if (width > height) {
           if (width > max_size) {
             height *= max_size / width;
@@ -128,8 +128,8 @@ export default function MessagingView({
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        // Compress as JPEG
-        setAttachedImage(canvas.toDataURL('image/jpeg', 0.6));
+        // Use PNG at maximum quality
+        setAttachedImage(canvas.toDataURL('image/png'));
       };
       img.src = ev.target.result;
     };

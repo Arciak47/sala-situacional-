@@ -367,7 +367,7 @@ export default function CanvasEditor({
         const canvas = document.createElement('canvas');
         let width = originalImg.width;
         let height = originalImg.height;
-        const max_size = 1024; // Lower resolution to prevent massive payloads
+        const max_size = 1920; // HD resolution cap — ImgBB supports up to 32MB
         if (width > height) {
           if (width > max_size) {
             height *= max_size / width;
@@ -383,18 +383,18 @@ export default function CanvasEditor({
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(originalImg, 0, 0, width, height);
-        // Compress as JPEG
-        const compressedSrc = canvas.toDataURL('image/jpeg', 0.6);
+        // Use PNG at maximum quality to preserve text and detail legibility
+        const hdSrc = canvas.toDataURL('image/png');
 
         setElements((prev) =>
-          prev.map((el) => (el.id === elId ? { ...el, src: compressedSrc } : el))
+          prev.map((el) => (el.id === elId ? { ...el, src: hdSrc } : el))
         );
         const img = new Image();
         img.onload = () => setImageCache((prev) => ({ ...prev, [elId]: img }));
-        img.src = compressedSrc;
+        img.src = hdSrc;
         const target = elements.find((el) => el.id === elId);
         if (target?.sync === 'evidenceImageSrc') {
-          setReportData((prev) => ({ ...prev, evidenceImageSrc: compressedSrc }));
+          setReportData((prev) => ({ ...prev, evidenceImageSrc: hdSrc }));
         }
       };
       originalImg.src = src;
@@ -441,7 +441,7 @@ export default function CanvasEditor({
     return { latestElems, latestReport };
   };
 
-  // ── Download PNG ──
+  // ── Download PNG (HD 2x) ──
   const downloadImage = () => {
     const prevSel = selId;
     setSelId(null);
@@ -449,12 +449,19 @@ export default function CanvasEditor({
     setTimeout(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
+      // Render at 2x resolution for HD quality
+      const offscreen = document.createElement('canvas');
+      offscreen.width = canvas.width * 2;
+      offscreen.height = canvas.height * 2;
+      const octx = offscreen.getContext('2d');
+      octx.scale(2, 2);
+      octx.drawImage(canvas, 0, 0);
       const link = document.createElement('a');
       link.download = `Reporte_${(reportData.municipio || 'Unico').replace(
         /\s+/g,
         '_'
       )}.png`;
-      link.href = canvas.toDataURL('image/png');
+      link.href = offscreen.toDataURL('image/png');
       link.click();
       setSelId(prevSel);
     }, 120);
