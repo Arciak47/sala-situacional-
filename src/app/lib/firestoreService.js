@@ -309,6 +309,37 @@ export async function deleteSubmissionFromFirestore(subId) {
   }
 }
 
+export async function archiveSubmissionInFirestore(subId) {
+  if (!subId) return;
+  const localSubs = getStoredSubmissions();
+  const sub = localSubs.find((s) => String(s.id) === String(subId));
+  if (sub) {
+    sub.archived = true;
+    saveStoredSubmissions(localSubs);
+  }
+
+  try {
+    const subRef = doc(db, 'submissions', String(subId));
+    await updateDoc(subRef, { archived: true });
+    
+    // Eliminar imagen legacy
+    const imgRef = doc(db, 'submission_images', `img_${subId}`);
+    await deleteDoc(imgRef).catch(() => {});
+    
+    // Eliminar imagen de Storage
+    if (sub?.reportData?.evidenceImageId) {
+      try {
+        const storageRef = ref(storage, `submissions/${sub.reportData.evidenceImageId}`);
+        await deleteObject(storageRef);
+      } catch (err) {
+        console.warn('Failed to delete image from Firebase Storage:', err);
+      }
+    }
+  } catch (err) {
+    console.warn('Firestore archiveSubmissionInFirestore warning:', err);
+  }
+}
+
 export async function getSubmissionImage(imageId) {
   try {
     const imgRef = doc(db, 'submission_images', imageId);

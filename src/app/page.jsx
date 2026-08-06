@@ -38,6 +38,8 @@ import {
   deleteUserFromFirestore,
   addSubmissionToFirestore,
   deleteSubmissionFromFirestore,
+  archiveSubmissionInFirestore,
+  onSnapshotSubmissions,
   addMessageToFirestore,
   updateMessageInFirestore,
   addAuditLogToFirestore,
@@ -764,11 +766,13 @@ export default function Home() {
         
         setToastMsg('✅ Respaldo generado. Limpiando base de datos...');
         
-        // BORRAR TODOS LOS REPORTES (LIBERA LA BASE DE DATOS Y FIREBASE STORAGE)
+        // ARCHIVAR TODOS LOS REPORTES (LIBERA LA BASE DE DATOS Y FIREBASE STORAGE PERO MANTIENE ESTADÍSTICAS)
         for (const sub of submissions) {
-          deleteSubmissionFromFirestore(sub.id);
+          if (!sub.archived) {
+            archiveSubmissionInFirestore(sub.id);
+          }
         }
-        setSubmissions([]);
+        setSubmissions(prev => prev.map(s => ({ ...s, archived: true })));
         
         addLog(currentUser?.email, 'Cierre del Sistema', 'Se generó respaldo y se limpió la base de datos', 'warning');
         setToastMsg('🚀 Archivo ZIP generado y base de datos limpia.');
@@ -1004,7 +1008,9 @@ export default function Home() {
   const isSupervisor = role === 'Supervisor';
   const stats = isAnalyst ? getStats() : null;
   const allStats = isAdmin || isSupervisor ? getAllStats() : null;
-  const pendingCount = submissions.filter((s) => s.status === 'pendiente').length;
+  const pendingCount = submissions.filter((s) => s.status === 'pendiente' && !s.archived).length;
+  
+  const activeSubmissions = submissions.filter(s => !s.archived);
 
   const tabs = [];
   if (isAdmin) {
@@ -1090,7 +1096,7 @@ export default function Home() {
             reportData={reportData}
             setReportData={setReportData}
             handleSubmitForm={handleSubmitForm}
-            submissions={submissions}
+            submissions={activeSubmissions}
             inboxFilter={inboxFilter}
             setInboxFilter={setInboxFilter}
             openSubmissionForReview={openSubmissionForReview}
@@ -1126,7 +1132,7 @@ export default function Home() {
             currentUser={currentUser}
             users={users}
             activeTab={activeTab}
-            submissions={submissions}
+            submissions={activeSubmissions}
             inboxFilter={inboxFilter}
             setInboxFilter={setInboxFilter}
             openSubmissionForReview={openSubmissionForReview}
@@ -1172,7 +1178,7 @@ export default function Home() {
             handleSubmitForm={handleSubmitForm}
             stats={stats}
             allStats={allStats}
-            submissions={submissions}
+            submissions={activeSubmissions}
             auditLogs={auditLogs}
             onUpdateProfile={handleUpdateProfile}
             messages={messages}
