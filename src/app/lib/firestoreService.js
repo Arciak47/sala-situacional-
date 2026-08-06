@@ -266,14 +266,18 @@ export async function addSubmissionToFirestore(submission) {
   try {
     const subId = String(submission.id || `sub-${Date.now()}`);
     let updatedSub = JSON.parse(JSON.stringify(submission));
-    
-    // Subir la imagen a ImgBB si es Base64
-    if (updatedSub.reportData?.evidenceImageSrc?.startsWith('data:')) {
-      try {
-        const imgUrl = await uploadToImgBB(updatedSub.reportData.evidenceImageSrc);
-        updatedSub.reportData.evidenceImageSrc = imgUrl;
-      } catch (err) {
-        throw new Error('Fallo al subir la imagen a ImgBB. ' + (err.message || ''));
+    // 3. Subir cualquier imagen Base64 a ImgBB
+    const imageFields = ['evidenceImageSrc', 'canvasBg', 'finalRender'];
+    if (updatedSub.reportData) {
+      for (const field of imageFields) {
+        if (updatedSub.reportData[field]?.startsWith('data:')) {
+          try {
+            const imgUrl = await uploadToImgBB(updatedSub.reportData[field]);
+            updatedSub.reportData[field] = imgUrl; // Reemplazar Base64 con URL
+          } catch (err) {
+            throw new Error(`Fallo al subir la imagen ${field} a ImgBB. ` + (err.message || ''));
+          }
+        }
       }
     }
 
