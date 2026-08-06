@@ -641,7 +641,13 @@ export default function Home() {
       }
       
       setTimeout(() => setToastMsg(''), 4000);
-      setActiveTab('inbox');
+      // Navigate to shift if marking as reportar, otherwise go to inbox
+      if (newStatus === 'reportar') {
+        setSelectedSubmission(null);
+        setActiveTab('shift');
+      } else {
+        setActiveTab('inbox');
+      }
       
     } catch (error) {
       console.error("Backend Error saving submission:", error);
@@ -706,17 +712,21 @@ export default function Home() {
     setIsSaving(true);
     try {
       if (selectedSubmission && selectedSubmission.id === subId) {
-        await saveSubmissionEdits('reportado', currentElements, currentReport);
+        // Save canvas edits WITH status 'reportar' so /shift can find it
+        await saveSubmissionEdits('reportar', currentElements, currentReport);
+        // saveSubmissionEdits already navigates to 'shift' when status is 'reportar'
       } else {
         const existing = submissions.find(s => s.id === subId);
         if (existing) {
           const updatedSub = { ...existing, status: 'reportar' };
           setSubmissions((prev) => prev.map((s) => (s.id === subId ? updatedSub : s)));
           await addSubmissionWithTimeout(updatedSub, 3000);
+          setSelectedSubmission(null);
+          setActiveTab('shift');
         }
       }
       addLog(currentUser.email, 'Reporte para Reportar', `ID: ${subId}`, 'info');
-      setToastMsg('📢 Marcado para reportar.');
+      setToastMsg('📢 Marcado para reportar — navegando a Reporte Turno...');
       setTimeout(() => setToastMsg(''), 4000);
     } catch (err) {
       console.error(err);
