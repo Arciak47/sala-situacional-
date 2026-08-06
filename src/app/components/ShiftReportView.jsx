@@ -566,17 +566,33 @@ export default function ShiftReportView({ submissions = [], users = [] }) {
   };
 
   const reportablesDelTurno = submissions.filter(s => {
-    let subDate = s.reportData?.fechaRaw || s.reportData?.fecha || (s.timestamp ? s.timestamp.split('T')[0] : '');
-    if (subDate.includes('/')) {
-      const parts = subDate.split('/');
-      if (parts.length === 3) {
-        subDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-      }
-    } else if (subDate.includes('T')) {
-      subDate = subDate.split('T')[0];
-    }
     const st = (s.status || '').toLowerCase();
-    return subDate === selectedDate && (st === 'reportar' || st === 'reportado');
+    const isReportable = (st === 'reportar' || st === 'reportado');
+    if (!isReportable) return false;
+
+    let matchDate = false;
+
+    // 1. If it was marked as 'reportar' on a specific date, that's the date it belongs to in the shift report
+    if (s.reportedAt) {
+      const repDate = s.reportedAt.split('T')[0];
+      if (repDate === selectedDate) matchDate = true;
+    }
+    
+    // 2. Fallback to submission/form date if no reportedAt is present
+    if (!matchDate) {
+      let subDate = s.reportData?.fechaRaw || s.reportData?.fecha || (s.timestamp ? s.timestamp.split('T')[0] : '');
+      if (subDate.includes('/')) {
+        const parts = subDate.split('/');
+        if (parts.length === 3) {
+          subDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+      } else if (subDate.includes('T')) {
+        subDate = subDate.split('T')[0];
+      }
+      if (subDate === selectedDate) matchDate = true;
+    }
+
+    return matchDate;
   });
 
   return (

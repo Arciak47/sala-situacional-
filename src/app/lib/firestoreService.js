@@ -302,17 +302,27 @@ export async function addSubmissionToFirestore(submission) {
  */
 export async function updateSubmissionStatus(subId, newStatus) {
   if (!subId || !newStatus) return;
+  const now = new Date().toISOString();
+  
   // 1. Update local cache immediately
   const localSubs = getStoredSubmissions();
   const updatedLocal = localSubs.map(s =>
-    String(s.id) === String(subId) ? { ...s, status: newStatus } : s
+    String(s.id) === String(subId) ? { 
+      ...s, 
+      status: newStatus,
+      ...(newStatus === 'reportar' ? { reportedAt: now } : {})
+    } : s
   );
   saveStoredSubmissions(updatedLocal);
 
   // 2. Use updateDoc (partial update) — only touches the status field, no image upload
   try {
     const subRef = doc(db, 'submissions', String(subId));
-    await updateDoc(subRef, { status: newStatus });
+    const updatePayload = { status: newStatus };
+    if (newStatus === 'reportar') {
+      updatePayload.reportedAt = now;
+    }
+    await updateDoc(subRef, updatePayload);
     console.log(`✅ Status de ${subId} actualizado a "${newStatus}" en Firestore`);
   } catch (err) {
     console.error('updateSubmissionStatus error:', err);

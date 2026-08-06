@@ -616,7 +616,10 @@ export default function Home() {
       canvasElements: elementsToUse,
       editedBy: currentUser.name,
       editedAt: new Date().toISOString(),
-      ...(newStatus && typeof newStatus === 'string' ? { status: newStatus } : {}),
+      ...(newStatus && typeof newStatus === 'string' ? { 
+        status: newStatus,
+        ...(newStatus === 'reportar' ? { reportedAt: new Date().toISOString() } : {})
+      } : {}),
     };
     
     // Optimistic local update
