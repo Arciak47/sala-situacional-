@@ -44,6 +44,7 @@ import {
   updateMessageInFirestore,
   addAuditLogToFirestore,
   getSubmissionImage,
+  updateSubmissionStatus,
 } from './lib/firestoreService';
 
 export default function Home() {
@@ -668,7 +669,7 @@ export default function Home() {
         if (existing) {
           const updatedSub = { ...existing, status: 'revisado' };
           setSubmissions((prev) => prev.map((s) => (s.id === subId ? updatedSub : s)));
-          await addSubmissionWithTimeout(updatedSub, 3000);
+          await updateSubmissionStatus(subId, 'revisado');
         }
       }
       addLog(currentUser.email, 'Reporte Revisado', `ID: ${subId}`, 'success');
@@ -693,7 +694,7 @@ export default function Home() {
         if (existing) {
           const updatedSub = { ...existing, status: 'repetido' };
           setSubmissions((prev) => prev.map((s) => (s.id === subId ? updatedSub : s)));
-          await addSubmissionWithTimeout(updatedSub, 3000);
+          await updateSubmissionStatus(subId, 'repetido');
         }
       }
       addLog(currentUser.email, 'Reporte Repetido', `ID: ${subId}`, 'warning');
@@ -720,7 +721,7 @@ export default function Home() {
         if (existing) {
           const updatedSub = { ...existing, status: 'reportar' };
           setSubmissions((prev) => prev.map((s) => (s.id === subId ? updatedSub : s)));
-          await addSubmissionWithTimeout(updatedSub, 3000);
+          await updateSubmissionStatus(subId, 'reportar');
           setSelectedSubmission(null);
           setActiveTab('shift');
         }
