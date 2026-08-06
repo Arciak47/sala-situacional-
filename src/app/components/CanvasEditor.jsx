@@ -44,25 +44,37 @@ export default function CanvasEditor({
   const canvasWrapRef = useRef(null);
 
   // ── Sync form → elements (only for synced fields) ──
+  // Runs when reportData changes (e.g. user types in FormFields panel).
+  // Skips elements whose computed text already matches to avoid loops when
+  // updateEl itself calls setReportData (Properties panel path).
   useEffect(() => {
     if (elements.length === 0) return;
     const up = (v) => (v || '').toUpperCase();
-    setElements((prev) =>
-      prev.map((el) => {
+    setElements((prev) => {
+      let changed = false;
+      const next = prev.map((el) => {
         if (!el.sync) return el;
-        if (el.type === 'image') return { ...el, src: reportData[el.sync] || null };
+        if (el.type === 'image') {
+          const newSrc = reportData[el.sync] || null;
+          if (el.src === newSrc) return el;
+          changed = true;
+          return { ...el, src: newSrc };
+        }
         const val = up(reportData[el.sync]);
-        let newEl = { ...el, text: el.tpl ? el.tpl + val : val };
-        
-        // Dynamically adjust font size for postTitle if length changes
+        const expectedText = el.tpl ? el.tpl + val : val;
+        // Skip if already up-to-date (prevents loop from updateEl → setReportData → useEffect)
+        if (el.text === expectedText) return el;
+        changed = true;
+        let newEl = { ...el, text: expectedText };
         if (el.sync === 'postTitle') {
           newEl.fs = val.length > 65 ? 13 : val.length > 35 ? 17 : 22;
         }
-        
         return newEl;
-      })
-    );
+      });
+      return changed ? next : prev; // return same reference if nothing changed
+    });
   }, [reportData]); // eslint-disable-line
+
 
   // ── Image cache: load/unload HTMLImageElement ──
   useEffect(() => {
@@ -356,11 +368,45 @@ export default function CanvasEditor({
     setSelId(hit.id);
   };
 
+
   // ── Update single element ──
-  const updateEl = (id, changes) =>
+  // When a synced text element's 'text' is changed via the Properties panel,
+  // we must also push the new value back into reportData so that
+  // saveSubmissionEdits (which reads reportData) picks up the change.
+  const updateEl = (id, changes) => {
     setElements((prev) =>
-      prev.map((el) => (el.id === id ? { ...el, ...changes } : el))
+      prev.map((el) => {
+        if (el.id !== id) return el;
+
+        // Back-sync: if the element is a text-synced field and 'text' changed,
+        // update the corresponding reportData key so saves are always consistent.
+        if (
+          el.sync &&
+          el.type === 'text' &&
+          Object.prototype.hasOwnProperty.call(changes, 'text')
+        ) {
+          // Strip the template prefix (tpl) if present to get the raw value.
+          // Store it in lowercase (as the user typed); the canvas always
+          // renders via up(), so the useEffect won't re-trigger unnecessarily.
+          const raw = el.tpl
+            ? changes.text.replace(el.tpl, '')
+            : changes.text;
+          setReportData((prev) => ({ ...prev, [el.sync]: raw }));
+
+          // Force the element text to uppercase so the useEffect sees
+          // el.text === up(raw) and skips the redundant update.
+          const upperText = el.tpl
+            ? el.tpl + raw.toUpperCase()
+            : raw.toUpperCase();
+          return { ...el, ...changes, text: upperText };
+        }
+
+        return { ...el, ...changes };
+      })
     );
+  };
+
+
 
   // ── Replace image for any image element ──
   const handleReplaceImage = (e, elId) => {
