@@ -573,8 +573,39 @@ export default function Home() {
   const saveSubmissionEdits = async (newStatus = null, currentElements = null, currentReport = null) => {
     if (!selectedSubmission) return;
     setIsSaving(true);
-    const updatedReport = currentReport || { ...reportData };
-    const elementsToUse = currentElements || elements;
+    
+    let updatedReport = currentReport || { ...reportData };
+    let elementsToUse = currentElements || elements;
+
+    // If saving from outside the canvas while a text box is active, capture that text!
+    if (!currentElements && editingId) {
+      const targetEl = elements.find((e) => e.id === editingId);
+      if (targetEl) {
+        if (targetEl.sync) {
+          let val = targetEl.tpl ? editText.replace(targetEl.tpl, '') : editText;
+          if (targetEl.sync === 'fecha') {
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
+              const [d, m, y] = val.split('/');
+              val = `${y}-${m}-${d}`;
+            }
+          }
+          if (targetEl.sync === 'hora') {
+            const match = val.match(/^(\d{2}):(\d{2})\s(AM|PM)$/i);
+            if (match) {
+              let [ , h, m, ampm ] = match;
+              h = parseInt(h, 10);
+              if (ampm.toUpperCase() === 'PM' && h < 12) h += 12;
+              if (ampm.toUpperCase() === 'AM' && h === 12) h = 0;
+              val = `${h.toString().padStart(2, '0')}:${m}`;
+            }
+          }
+          updatedReport[targetEl.sync] = val;
+        }
+        elementsToUse = elements.map((el) => (el.id === editingId ? { ...el, text: editText } : el));
+        // We call commitTextEdit asynchronously to update the UI state
+        setTimeout(commitTextEdit, 0); 
+      }
+    }
     
     const updatedSub = {
       ...selectedSubmission,

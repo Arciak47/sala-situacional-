@@ -32,30 +32,34 @@ function sanitize(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
-/**
- * Upload an image (data URL or File object) to Firebase Storage
- * Returns the public HTTP download URL
- */
 export async function uploadImageToStorage(fileOrDataUrl, path) {
   if (!fileOrDataUrl) return null;
   // If already hosted URL, return as-is
   if (typeof fileOrDataUrl === 'string' && (fileOrDataUrl.startsWith('http://') || fileOrDataUrl.startsWith('https://'))) {
     return fileOrDataUrl;
   }
+  
+  const uploadWithTimeout = (promise, timeoutMs) => {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Storage upload timeout')), timeoutMs))
+    ]);
+  };
+
   try {
     const storageRef = ref(storage, path);
     if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('data:')) {
-      await uploadString(storageRef, fileOrDataUrl, 'data_url');
+      await uploadWithTimeout(uploadString(storageRef, fileOrDataUrl, 'data_url'), 15000);
     } else if (fileOrDataUrl instanceof File || fileOrDataUrl instanceof Blob) {
-      await uploadBytes(storageRef, fileOrDataUrl);
+      await uploadWithTimeout(uploadBytes(storageRef, fileOrDataUrl), 15000);
     } else {
       return fileOrDataUrl;
     }
-    const downloadUrl = await getDownloadURL(storageRef);
+    const downloadUrl = await uploadWithTimeout(getDownloadURL(storageRef), 10000);
     return downloadUrl;
   } catch (err) {
     console.warn('Firebase Storage upload warning (falling back to data string):', err);
-    return fileOrDataUrl;
+    return fileOrDataUrl; // Fallback to base64 immediately
   }
 }
 
