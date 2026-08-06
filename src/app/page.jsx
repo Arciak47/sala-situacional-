@@ -615,10 +615,25 @@ export default function Home() {
       }
     }
     
+    // ── Build final canvas elements with a sync pass over updatedReport ──
+    // This guarantees that synced fields (postTitle, usuario, etc.) always
+    // reflect the latest values from FormFields or TextOverlay edits,
+    // regardless of whether React's useEffect([reportData]) has run yet.
+    const finalElements = elementsToUse.map((el) => {
+      if (!el.sync) return el;
+      if (el.type === 'image') return { ...el, src: updatedReport[el.sync] || null };
+      const val = (updatedReport[el.sync] || '').toUpperCase();
+      let newEl = { ...el, text: el.tpl ? el.tpl + val : val };
+      if (el.sync === 'postTitle') {
+        newEl.fs = val.length > 65 ? 13 : val.length > 35 ? 17 : 22;
+      }
+      return newEl;
+    });
+
     const updatedSub = {
       ...selectedSubmission,
       reportData: updatedReport,
-      canvasElements: elementsToUse,
+      canvasElements: finalElements,   // ← always uses the synced version
       editedBy: currentUser.name,
       editedAt: new Date().toISOString(),
       ...(newStatus && typeof newStatus === 'string' ? { 
@@ -633,20 +648,9 @@ export default function Home() {
       prev.map((s) => (s.id === selectedSubmission.id ? updatedSub : s))
     );
     setSelectedSubmission(updatedSub);
-    // Also refresh canvas elements so synced text fields re-render immediately.
-    // We need to update the elements that have a 'sync' field to match updatedReport.
-    setElements((prev) =>
-      prev.map((el) => {
-        if (!el.sync) return el;
-        if (el.type === 'image') return { ...el, src: updatedReport[el.sync] || null };
-        const val = (updatedReport[el.sync] || '').toUpperCase();
-        let newEl = { ...el, text: el.tpl ? el.tpl + val : val };
-        if (el.sync === 'postTitle') {
-          newEl.fs = val.length > 65 ? 13 : val.length > 35 ? 17 : 22;
-        }
-        return newEl;
-      })
-    );
+    // Apply the same synced elements to the live canvas state so the
+    // visual update is immediate — no waiting for useEffect([reportData]).
+    setElements(finalElements);
     
     try {
       await addSubmissionToFirestore(updatedSub);
