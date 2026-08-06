@@ -278,7 +278,7 @@ export default function SubmissionInboxView({
                         </button>
                       </>
                     )}
-                    {['pendiente', 'revisado'].includes(sub.status) && (
+                    {['pendiente', 'revisado', 'reportar'].includes(sub.status) && (
                         <button
                           onClick={() => markAsReported && markAsReported(sub.id)}
                           className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border dark:border-purple-900 cursor-pointer"

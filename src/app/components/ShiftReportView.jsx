@@ -151,6 +151,22 @@ export default function ShiftReportView({ submissions = [], users = [] }) {
     });
   }, []);
 
+  // DEBUG: log all submissions with their parsed date/status to diagnose filter issues
+  useEffect(() => {
+    console.group('[ShiftReportView] Submissions recibidas:', submissions.length);
+    submissions.forEach(s => {
+      let subDate = s.reportData?.fechaRaw || s.reportData?.fecha || (s.timestamp ? s.timestamp.split('T')[0] : 'SIN-FECHA');
+      if (subDate.includes('/')) {
+        const parts = subDate.split('/');
+        if (parts.length === 3) subDate = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+      } else if (subDate.includes('T')) {
+        subDate = subDate.split('T')[0];
+      }
+      console.log(`  ID: ${s.id} | status: "${s.status}" | fecha parseada: "${subDate}" | selectedDate: "${selectedDate}" | match: ${subDate === selectedDate}`);
+    });
+    console.groupEnd();
+  }, [submissions, selectedDate]);
+
   const handleAddRoom = () => {
     if (customRooms.length >= 14) {
       alert('Máximo 14 salas soportadas simultáneamente en el lienzo del reporte (2 columnas de 7 salas).');
