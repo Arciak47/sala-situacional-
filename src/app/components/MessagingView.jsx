@@ -87,7 +87,7 @@ export default function MessagingView({
 
   // Handle sending a message
   const handleSend = (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if ((!textInput.trim() && !attachedImage) || !activeContact) return;
 
     onSendMessage({
@@ -99,6 +99,14 @@ export default function MessagingView({
 
     setTextInput('');
     setAttachedImage(null);
+  };
+
+  // Send on Enter key (but not Shift+Enter)
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   // Handle file attachment upload
@@ -382,10 +390,7 @@ export default function MessagingView({
           )}
 
           {/* INPUT BAR */}
-          <form
-            onSubmit={handleSend}
-            className="p-2 sm:p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center gap-1.5 sm:gap-2"
-          >
+          <div className="p-2 sm:p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center gap-1.5 sm:gap-2">
             <label
               className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer text-sm transition-all"
               title="Adjuntar archivo o imagen"
@@ -404,17 +409,19 @@ export default function MessagingView({
               placeholder={`Escribir mensaje a ${activeContact.name}...`}
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
+              onKeyDown={handleKeyDown}
               className="flex-1 min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
             />
 
             <button
-              type="submit"
+              type="button"
+              onClick={handleSend}
               className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white cursor-pointer flex-shrink-0"
             >
               <span className="hidden sm:inline">Enviar</span>
               <span>📤</span>
             </button>
-          </form>
+          </div>
         </div>
       ) : (
         <div className="flex-1 hidden md:flex flex-col items-center justify-center p-8 text-center text-slate-400">
