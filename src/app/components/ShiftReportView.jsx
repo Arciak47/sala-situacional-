@@ -141,6 +141,13 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
   const canvasRef = useRef(null);
   const [loadedLogos, setLoadedLogos] = useState({});
 
+  // ── Refs para auto-llenado seguro sin closures obsoletos ──
+  // handleAutoFillRef siempre apunta a la versión más reciente de handleAutoFillFromDB
+  // para poder llamarla desde dentro de callbacks de Firestore sin stale closure.
+  const handleAutoFillRef = useRef(null);
+  // autoFillPendingRef se activa cuando el borrador no existe y hay que auto-llenar.
+  const autoFillPendingRef = useRef(false);
+
   useEffect(() => {
     const cache = {};
     let loadedCounter = 0;
@@ -233,6 +240,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
   // resetea el formulario a los valores por defecto.
   useEffect(() => {
     isLoadingDraftRef.current = true;
+    autoFillPendingRef.current = false; // reset
     setSaveStatus('idle');
     setDraftLoadedAt(null);
 
@@ -240,7 +248,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
       if (draft) {
         // Pre-cargar campos con el borrador guardado
         setAnalystsCount(draft.analystsCount ?? 0);
-        setActivitiesText(draft.activitiesText ?? '• ');
+        setActivitiesText(draft.activitiesText ?? '\u2022 ');
         setReceivedReportsTotal(draft.receivedReportsTotal ?? 0);
         setActivatedRooms(draft.activatedRooms ?? 0);
         setReportingRooms(draft.reportingRooms ?? 0);
@@ -254,12 +262,13 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
         setPosCount(draft.posCount ?? 0);
         setNeuCount(draft.neuCount ?? 0);
         setNegCount(draft.negCount ?? 0);
-        setRecommendationsText(draft.recommendationsText ?? '• ');
+        setRecommendationsText(draft.recommendationsText ?? '\u2022 ');
         setDraftLoadedAt(draft.savedAt || null);
+        autoFillPendingRef.current = false; // borrador encontrado, no auto-llenar
       } else {
         // Sin borrador: resetear a valores por defecto
         setAnalystsCount(0);
-        setActivitiesText('• ');
+        setActivitiesText('\u2022 ');
         setReceivedReportsTotal(0);
         setActivatedRooms(0);
         setReportingRooms(0);
@@ -273,14 +282,20 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
         setPosCount(0);
         setNeuCount(0);
         setNegCount(0);
-        setRecommendationsText('• ');
+        setRecommendationsText('\u2022 ');
         setDraftLoadedAt(null);
+        autoFillPendingRef.current = true; // sin borrador → auto-llenar desde la BD
       }
       // Esperar un tick para que React procese los setState antes de
       // reactivar el auto-guardado, evitando un guardado espurio al cargar.
+      // Si no había borrador, ahora también disparamos el auto-llenado.
       setTimeout(() => {
         isLoadingDraftRef.current = false;
-      }, 100);
+        if (autoFillPendingRef.current) {
+          autoFillPendingRef.current = false;
+          handleAutoFillRef.current?.();
+        }
+      }, 150);
     });
 
     return () => {
@@ -380,6 +395,14 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
       ]);
     }
   };
+
+  // ── Mantener handleAutoFillRef siempre actualizado ──
+  // useEffect sin deps (corre cada render) asegura que el ref apunte
+  // a la función con el closure más reciente de submissions, selectedDate, etc.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    handleAutoFillRef.current = handleAutoFillFromDB;
+  });
 
   const [year, month, day] = selectedDate ? selectedDate.split('-') : ['2026', '08', '01'];
   const formattedDateHeader = `${day} / ${month} / ${year}`;
@@ -774,6 +797,41 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
             <p className="text-xs text-slate-500 mt-0.5">
               Soporte ampliado para hasta 14 Salas Externas en 2 columnas, valores en 0 y logos oficiales
             </p>
+            {/* Badge de submissions disponibles para la fecha/turno activo */}
+            {(() => {
+              const countForBadge = submissions.filter((s) => {
+                let subDate = s.reportData?.fechaRaw || s.reportData?.fecha || (s.timestamp ? s.timestamp.split('T')[0] : '');
+                if (subDate.includes('/')) {
+                  const parts = subDate.split('/');
+                  if (parts.length === 3) subDate = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+                } else if (subDate.includes('T')) { subDate = subDate.split('T')[0]; }
+                if (selectedDate && subDate !== selectedDate) return false;
+                if (selectedShift === 'all') return true;
+                let hour = 12;
+                if (s.timestamp) hour = new Date(s.timestamp).getHours();
+                if (selectedShift === 't1') return hour >= 0 && hour < 13;
+                if (selectedShift === 't2') return hour >= 13 && hour < 19;
+                if (selectedShift === 't3') return hour >= 19;
+                return true;
+              }).length;
+              return (
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
+                    📊 {countForBadge} reportes en la BD para este turno
+                  </span>
+                  {countForBadge > 0 && !draftLoadedAt && (
+                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-900/40">
+                      ✅ Auto-llenado activo
+                    </span>
+                  )}
+                  {draftLoadedAt && (
+                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-900/40">
+                      📂 Borrador cargado
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
