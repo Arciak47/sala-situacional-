@@ -315,7 +315,16 @@ export default function MessagingView({
                         </div>
                       )}
 
-                      {msg.imagen && (
+                      {msg.imagen && msg.imagen === '__pending_upload__' && (
+                        <div className="rounded-xl overflow-hidden border border-white/20 my-1 bg-slate-100 dark:bg-slate-800 flex items-center justify-center h-32 sm:h-40 w-full">
+                          <div className="flex flex-col items-center gap-2">
+                            <span className="w-6 h-6 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></span>
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Subiendo imagen...</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {msg.imagen && msg.imagen !== '__pending_upload__' && (
                         <div className="rounded-xl overflow-hidden border border-white/20 my-1">
                           <img
                             src={msg.imagen}

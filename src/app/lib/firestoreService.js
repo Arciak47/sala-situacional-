@@ -459,15 +459,14 @@ export async function addMessageToFirestore(message) {
 
     // Upload image asynchronously if present
     if (updatedMsg.imagen && typeof updatedMsg.imagen === 'string' && updatedMsg.imagen.startsWith('data:')) {
-      uploadImageToStorage(
-        updatedMsg.imagen,
-        `messages/chat_${msgId}_${Date.now()}`
-      ).then(async (imgUrl) => {
-        if (imgUrl) {
-          updatedMsg.imagen = imgUrl;
-          await setDoc(msgRef, sanitize(updatedMsg), { merge: true });
-        }
-      }).catch((err) => console.warn('Message image upload failed:', err));
+      uploadToImgBB(updatedMsg.imagen)
+        .then(async (imgUrl) => {
+          if (imgUrl) {
+            updatedMsg.imagen = imgUrl;
+            await setDoc(msgRef, sanitize(updatedMsg), { merge: true });
+          }
+        })
+        .catch((err) => console.warn('Message image upload failed:', err));
     }
   } catch (err) {
     console.error('❌ Error adding message to Firestore:', err);
