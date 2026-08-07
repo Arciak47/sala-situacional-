@@ -182,7 +182,7 @@ export default function Home() {
     if (!currentUser) return;
 
     let timeoutId;
-    const INACTIVITY_LIMIT = 5 * 60 * 1000; // 5 minutes
+    const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 minutes
 
     const resetTimer = () => {
       if (timeoutId) clearTimeout(timeoutId);
@@ -907,13 +907,22 @@ export default function Home() {
   // ── Analyst Personal Stats ──
   const getStats = () => {
     const mine = submissions.filter((s) => s.analystId === currentUser?.id);
-    const now = new Date(),
-      today = now.toISOString().split('T')[0];
+    const now = new Date();
+    // Use LOCAL date parts to avoid UTC offset issues (Venezuela = UTC-4)
+    const y = now.getFullYear();
+    const mo = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const today = `${y}-${mo}-${d}`;
+    const toLocalDate = (iso) => {
+      const dt = new Date(iso);
+      return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    };
     const weekStart = new Date(now);
     weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
     return {
       total: mine.length,
-      today: mine.filter((s) => s.timestamp.split('T')[0] === today).length,
+      today: mine.filter((s) => toLocalDate(s.timestamp) === today).length,
       week: mine.filter((s) => new Date(s.timestamp) >= weekStart).length,
       month: mine.filter(
         (s) =>
@@ -929,14 +938,22 @@ export default function Home() {
   // ── Global Stats & Per-Analyst Breakdown (for Admin & Supervisor) ──
   const getAllStats = () => {
     const analysts = users.filter((u) => u.role === 'Analista');
-    const now = new Date(),
-      today = now.toISOString().split('T')[0];
+    const now = new Date();
+    // Use LOCAL date parts to avoid UTC offset issues (Venezuela = UTC-4)
+    const y = now.getFullYear();
+    const mo = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const today = `${y}-${mo}-${d}`;
+    const toLocalDate = (iso) => {
+      const dt = new Date(iso);
+      return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    };
     const weekStart = new Date(now);
     weekStart.setDate(now.getDate() - now.getDay());
 
     const totalGlobal = submissions.length;
     const todayGlobal = submissions.filter(
-      (s) => s.timestamp.split('T')[0] === today
+      (s) => toLocalDate(s.timestamp) === today
     ).length;
     const weekGlobal = submissions.filter(
       (s) => new Date(s.timestamp) >= weekStart

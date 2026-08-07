@@ -17,14 +17,14 @@ export default function MessagingView({
   const chatEndRef = useRef(null);
 
   // Available contacts filtered by role hierarchy:
-  // Administrador ↔ Supervisor ↔ Analista
+  // Administrador ↔ Supervisor ↔ Analista (+ Supervisor ↔ Supervisor)
   const contacts = users.filter((u) => {
     if (u.id === currentUser?.id) return false;
     if (currentUser?.role === 'Administrador') {
       return u.role === 'Supervisor';
     }
     if (currentUser?.role === 'Supervisor') {
-      return u.role === 'Administrador' || u.role === 'Analista';
+      return u.role === 'Administrador' || u.role === 'Analista' || u.role === 'Supervisor';
     }
     if (currentUser?.role === 'Analista') {
       return u.role === 'Supervisor';

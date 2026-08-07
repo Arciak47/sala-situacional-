@@ -18,6 +18,8 @@ export default function AdminDashboard({
   messages = [],
 }) {
   const [timeFilter, setTimeFilter] = useState('diario'); // 'diario', 'semanal', 'mensual', 'anual', 'todos'
+  const [analystDateFrom, setAnalystDateFrom] = useState(''); // extra date range for analyst chart
+  const [analystDateTo, setAnalystDateTo] = useState('');
 
   const isAnalyst = currentUser?.role === 'Analista';
 
@@ -33,15 +35,36 @@ export default function AdminDashboard({
     (m) => m.emisorId === currentUser?.id || m.receptorId === currentUser?.id
   );
 
+  // Helper to get LOCAL date string YYYY-MM-DD
+  const getLocalToday = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  // Helper: convert any ISO timestamp to local YYYY-MM-DD
+  const toLocalDateStr = (isoStr) => {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${mo}-${day}`;
+  };
+
   // Helper to filter items by date range
   const isWithinTimeRange = (dateString) => {
     if (!dateString) return false;
     const date = new Date(dateString);
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    // Use LOCAL date to avoid UTC offset issues
+    const todayStr = getLocalToday();
+    const localDateStr = toLocalDateStr(dateString);
 
     if (timeFilter === 'diario') {
-      return dateString.startsWith(todayStr);
+      return localDateStr === todayStr;
     }
 
     if (timeFilter === 'semanal') {
@@ -188,21 +211,32 @@ export default function AdminDashboard({
     }))
     .sort((a, b) => b.count - a.count);
 
-  // Analysts performance data for filtered period (for Admin / Supervisor view)
+  // Analysts performance data – respects global timeFilter OR custom date range
   const analystsList = users.filter((u) => u.role === 'Analista');
   const perAnalystFiltered = analystsList.map((a) => {
-    const analystSubs = filteredSubmissions.filter(
-      (s) => s.analystId === a.id || s.analystEmail === a.email
-    );
+    let analystSubs;
+    if (analystDateFrom || analystDateTo) {
+      // Custom date range overrides global timeFilter
+      analystSubs = targetSubmissions.filter((s) => {
+        const localDate = toLocalDateStr(s.timestamp);
+        const fromOk = analystDateFrom ? localDate >= analystDateFrom : true;
+        const toOk = analystDateTo ? localDate <= analystDateTo : true;
+        return (s.analystId === a.id || s.analystEmail === a.email) && fromOk && toOk;
+      });
+    } else {
+      analystSubs = filteredSubmissions.filter(
+        (s) => s.analystId === a.id || s.analystEmail === a.email
+      );
+    }
     return {
       id: a.id,
       name: a.name,
       email: a.email,
       total: analystSubs.length,
       pending: analystSubs.filter((s) => s.status === 'pendiente').length,
-      reviewed: analystSubs.filter((s) => s.status === 'revisado').length,
+      reviewed: analystSubs.filter((s) => ['revisado', 'reportar', 'reportado', 'repetido'].includes(s.status)).length,
     };
-  });
+  }).sort((a, b) => b.total - a.total);
 
   // Filter dynamic titles
   const filterTitles = {
@@ -827,19 +861,52 @@ export default function AdminDashboard({
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-5">
-          <div className="border-b dark:border-slate-800 pb-3 flex items-center justify-between">
+          <div className="border-b dark:border-slate-800 pb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
               <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <span>📊 Rendimiento Comparativo por Analista ({currentFilterInfo.prefix})</span>
+                <span>📊 Rendimiento Comparativo por Analista</span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Filtro activo: <span className="font-bold text-red-600">{currentFilterInfo.label}</span>
+                {analystDateFrom || analystDateTo
+                  ? <span>Rango personalizado: <span className="font-bold text-blue-600">{analystDateFrom || '...'} → {analystDateTo || 'hoy'}</span></span>
+                  : <span>Filtro activo: <span className="font-bold text-red-600">{currentFilterInfo.label}</span></span>
+                }
               </p>
             </div>
 
-            <span className="text-xs font-bold text-slate-400">
-              {perAnalystFiltered.length} Analistas
-            </span>
+            {/* DATE RANGE FILTER */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs">
+                <span className="text-slate-400">📅 Desde</span>
+                <input
+                  type="date"
+                  value={analystDateFrom}
+                  onChange={(e) => setAnalystDateFrom(e.target.value)}
+                  className="bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-300 cursor-pointer"
+                />
+              </div>
+              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs">
+                <span className="text-slate-400">📅 Hasta</span>
+                <input
+                  type="date"
+                  value={analystDateTo}
+                  onChange={(e) => setAnalystDateTo(e.target.value)}
+                  className="bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-300 cursor-pointer"
+                />
+              </div>
+              {(analystDateFrom || analystDateTo) && (
+                <button
+                  onClick={() => { setAnalystDateFrom(''); setAnalystDateTo(''); }}
+                  className="px-3 py-2 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl hover:bg-red-200 dark:hover:bg-red-900/70 transition-colors cursor-pointer"
+                  title="Limpiar filtro de fecha"
+                >
+                  ✕ Limpiar
+                </button>
+              )}
+              <span className="text-xs font-bold text-slate-400 self-center">
+                {perAnalystFiltered.length} Analistas
+              </span>
+            </div>
           </div>
 
           {perAnalystFiltered.length === 0 ? (

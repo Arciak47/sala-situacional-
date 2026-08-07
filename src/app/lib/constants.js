@@ -54,7 +54,7 @@ export const EMPTY_REPORT = {
   redSocial: 'INSTAGRAM',
   postTitle: '',
   usuario: '',
-  area: 'INFRAESTRUCTURA',
+  area: 'AGUA',
   contexto: '',
   sentimiento: 'NEGATIVO',
   viralidad: 'MEDIO',
@@ -93,16 +93,18 @@ export const REDES_SOCIALES = [
 ];
 
 export const AREAS = [
-  'SALUD',
-  'EDUCACIÓN',
-  'SERVICIOS PÚBLICOS',
+  'AGUA',
+  'GAS DOMÉSTICO',
+  'VIALIDAD',
   'TRANSPORTE',
-  'SEGURIDAD',
-  'ECONOMÍA',
+  'EDUCACIÓN',
+  'SALUD',
   'ALIMENTACIÓN',
-  'VIVIENDA',
-  'INFRAESTRUCTURA',
-  'DESARROLLO SOCIAL',
+  'ECONOMÍA',
+  'TELECOMUNICACIONES',
+  'SEGURIDAD',
+  'PROTECCIÓN CIVIL',
+  'JUDICIAL',
 ];
 
 export const SENTIMIENTOS = ['NEGATIVO', 'NEUTRO', 'POSITIVO'];
