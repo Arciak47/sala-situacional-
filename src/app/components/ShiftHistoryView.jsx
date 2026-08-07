@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from 'react';
+import { exportSubmissionsToHDPDF } from '../lib/exportUtils';
 
-export default function ShiftHistoryView({ reports }) {
+export default function ShiftHistoryView({ reports, submissions = [], openSubmissionForReview }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedReport, setSelectedReport] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   const filteredReports = (reports || []).filter((r) => {
     if (!searchTerm) return true;
@@ -14,6 +16,52 @@ export default function ShiftHistoryView({ reports }) {
       (r.creadoPor || '').toLowerCase().includes(term)
     );
   });
+
+  // Para cada ficha del historial, busca el objeto completo en submissions
+  const getFichaFullObject = (fichaId) => {
+    return submissions.find((s) => s.id === fichaId) || null;
+  };
+
+  const handleDownloadFicha = async (fichaId) => {
+    const fullSub = getFichaFullObject(fichaId);
+    if (!fullSub) {
+      alert('No se encontró la ficha en la base de datos actual. Puede que haya sido eliminada.');
+      return;
+    }
+    setDownloadingId(fichaId);
+    try {
+      await exportSubmissionsToHDPDF([fullSub], `Ficha_${fichaId}`);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handleDownloadAllFichas = async (report) => {
+    const ids = report.fichasIds || (report.fichasDetails || []).map((f) => f.id);
+    const fullSubs = ids.map((id) => getFichaFullObject(id)).filter(Boolean);
+    if (fullSubs.length === 0) {
+      alert('No se encontraron fichas en la base de datos actual para este turno.');
+      return;
+    }
+    setDownloadingId('all');
+    try {
+      await exportSubmissionsToHDPDF(fullSubs, `Fichas_Turno_${report.fecha}`);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handleEditFicha = (fichaId) => {
+    const fullSub = getFichaFullObject(fichaId);
+    if (!fullSub) {
+      alert('No se encontró la ficha en la base de datos actual. Puede que haya sido eliminada.');
+      return;
+    }
+    if (typeof openSubmissionForReview === 'function') {
+      setSelectedReport(null);
+      openSubmissionForReview(fullSub);
+    }
+  };
 
   return (
     <div className="flex h-full bg-slate-50 dark:bg-slate-900 overflow-hidden relative text-slate-800 dark:text-slate-200">
@@ -68,12 +116,22 @@ export default function ShiftHistoryView({ reports }) {
                         <span className="font-bold text-lg">{report.totalFichas}</span>
                       </td>
                       <td className="p-4 text-right">
-                        <button
-                          onClick={() => setSelectedReport(report)}
-                          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-bold rounded-lg transition-colors"
-                        >
-                          Ver Detalles
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleDownloadAllFichas(report)}
+                            disabled={downloadingId === 'all'}
+                            className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:hover:bg-emerald-900/70 text-emerald-700 dark:text-emerald-300 text-xs font-bold rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                            title="Descargar todas las fichas de este turno en PDF"
+                          >
+                            {downloadingId === 'all' ? '⏳' : '📥'} PDF
+                          </button>
+                          <button
+                            onClick={() => setSelectedReport(report)}
+                            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-bold rounded-lg transition-colors cursor-pointer"
+                          >
+                            Ver Detalles
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -91,11 +149,13 @@ export default function ShiftHistoryView({ reports }) {
             <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
               <div>
                 <h3 className="text-xl font-black text-slate-800 dark:text-white">Detalles del Turno</h3>
-                <p className="text-sm text-slate-500 mt-1">Exportado el {selectedReport.fecha} a las {selectedReport.hora} por {selectedReport.creadoPor}</p>
+                <p className="text-sm text-slate-500 mt-1">
+                  Exportado el {selectedReport.fecha} a las {selectedReport.hora} por {selectedReport.creadoPor}
+                </p>
               </div>
               <button
                 onClick={() => setSelectedReport(null)}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
               >
                 ✕
               </button>
@@ -107,43 +167,86 @@ export default function ShiftHistoryView({ reports }) {
               </h4>
               
               <div className="space-y-3">
-                {(selectedReport.fichasDetails || []).map((ficha, idx) => (
-                  <div key={ficha.id || idx} className="flex items-center gap-4 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30">
-                    <div className="w-12 h-12 rounded-lg bg-slate-200 dark:bg-slate-700 overflow-hidden flex-shrink-0">
-                      {ficha.imageSrc ? (
-                        <img src={ficha.imageSrc} alt="Evidencia" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">Sin img</div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate" title={ficha.title}>
-                        {ficha.title || 'Ficha sin título'}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-slate-500 px-2 py-0.5 bg-slate-200 dark:bg-slate-700 rounded-full">
-                          ID: {ficha.id.slice(0, 6)}...
-                        </span>
-                        {ficha.status && (
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            ficha.status.toLowerCase() === 'reportar' ? 'bg-amber-100 text-amber-700' :
-                            ficha.status.toLowerCase() === 'reportado' ? 'bg-emerald-100 text-emerald-700' :
-                            'bg-slate-200 text-slate-700'
-                          }`}>
-                            {ficha.status.toUpperCase()}
-                          </span>
+                {(selectedReport.fichasDetails || []).map((ficha, idx) => {
+                  const fullSub = getFichaFullObject(ficha.id);
+                  const isAvailable = !!fullSub;
+
+                  return (
+                    <div
+                      key={ficha.id || idx}
+                      className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30"
+                    >
+                      {/* IMAGEN THUMBNAIL */}
+                      <div className="w-full sm:w-16 h-24 sm:h-16 rounded-lg bg-slate-200 dark:bg-slate-700 overflow-hidden flex-shrink-0">
+                        {ficha.imageSrc ? (
+                          <img src={ficha.imageSrc} alt="Evidencia" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">Sin img</div>
                         )}
                       </div>
+
+                      {/* INFO */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate" title={ficha.title}>
+                          {ficha.title || 'Ficha sin título'}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-xs text-slate-500 px-2 py-0.5 bg-slate-200 dark:bg-slate-700 rounded-full">
+                            ID: {(ficha.id || '').slice(0, 8)}...
+                          </span>
+                          {ficha.status && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              ficha.status.toLowerCase() === 'reportar' ? 'bg-amber-100 text-amber-700' :
+                              ficha.status.toLowerCase() === 'reportado' ? 'bg-emerald-100 text-emerald-700' :
+                              'bg-slate-200 text-slate-700'
+                            }`}>
+                              {ficha.status.toUpperCase()}
+                            </span>
+                          )}
+                          {!isAvailable && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400">
+                              ⚠️ No en BD
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* BOTONES DE ACCIÓN */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleDownloadFicha(ficha.id)}
+                          disabled={!isAvailable || downloadingId === ficha.id}
+                          className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                          title={isAvailable ? 'Descargar esta ficha en PDF (HD)' : 'Ficha no disponible en la BD'}
+                        >
+                          {downloadingId === ficha.id ? '⏳' : '📥'} PDF
+                        </button>
+                        <button
+                          onClick={() => handleEditFicha(ficha.id)}
+                          disabled={!isAvailable || typeof openSubmissionForReview !== 'function'}
+                          className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                          title={isAvailable ? 'Editar esta ficha en el Canvas Editor' : 'Ficha no disponible en la BD'}
+                        >
+                          🎨 Editar
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
             
-            <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-end gap-3">
+            <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center gap-3">
+              <button
+                onClick={() => handleDownloadAllFichas(selectedReport)}
+                disabled={downloadingId === 'all'}
+                className="px-5 py-2 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 transition-colors cursor-pointer flex items-center gap-2 shadow-sm"
+              >
+                {downloadingId === 'all' ? '⏳ Descargando...' : '📥 Descargar todas en PDF'}
+              </button>
               <button
                 onClick={() => setSelectedReport(null)}
-                className="px-5 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                className="px-5 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
               >
                 Cerrar
               </button>

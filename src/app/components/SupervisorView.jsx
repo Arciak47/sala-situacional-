@@ -65,9 +65,12 @@ export default function SupervisorView({
         <ShiftReportView submissions={submissions} users={users} currentUser={currentUser} />
       )}
 
-      {/* ── HISTORIAL DE TURNOS ── */}
       {activeTab === 'history' && (
-        <ShiftHistoryView reports={shiftReports} />
+        <ShiftHistoryView
+          reports={shiftReports}
+          submissions={submissions}
+          openSubmissionForReview={openSubmissionForReview}
+        />
       )}
 
       {/* ── DASHBOARD PRINCIPAL CON GRÁFICAS ── */}

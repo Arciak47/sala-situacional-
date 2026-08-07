@@ -144,7 +144,11 @@ export default function AdministradorView({
 
       {/* ── HISTORIAL DE TURNOS ── */}
       {activeTab === 'history' && (
-        <ShiftHistoryView reports={shiftReports} />
+        <ShiftHistoryView
+          reports={shiftReports}
+          submissions={submissions}
+          openSubmissionForReview={openSubmissionForReview}
+        />
       )}
 
       {/* ── ESTADÍSTICAS GLOBALES PARA ADMINISTRADOR ── */}
