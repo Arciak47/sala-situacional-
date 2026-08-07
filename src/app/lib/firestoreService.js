@@ -409,14 +409,13 @@ export async function getSubmissionImage(imageId) {
 export function subscribeMessages(onUpdate) {
   try {
     const colRef = collection(db, 'messages');
-    const q = query(colRef, orderBy('timestamp', 'desc'), limit(50));
+    // Messages use 'fecha' as their timestamp field
+    const q = query(colRef, orderBy('fecha', 'asc'), limit(200));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const remoteMsgs = snapshot.empty ? [] : snapshot.docs.map((d) => ({
         ...d.data(),
         firestoreId: d.id,
       }));
-
-      remoteMsgs.sort((a, b) => new Date(a.fecha || a.timestamp || 0) - new Date(b.fecha || b.timestamp || 0));
 
       saveStoredMessages(remoteMsgs);
       onUpdate(remoteMsgs);
@@ -436,21 +435,29 @@ export function subscribeMessages(onUpdate) {
 
 export async function addMessageToFirestore(message) {
   if (!message || !message.id) return;
+
+  // Save to local cache immediately (optimistic)
   const localMsgs = getStoredMessages();
-  saveStoredMessages([...localMsgs, message]);
+  const exists = localMsgs.some((m) => String(m.id) === String(message.id));
+  if (!exists) saveStoredMessages([...localMsgs, message]);
 
   try {
-    const msgId = String(message.id || `msg-${Date.now()}`);
+    const msgId = String(message.id);
     let updatedMsg = JSON.parse(JSON.stringify(message));
+    // Ensure 'fecha' is always set (it is our ordering field)
+    if (!updatedMsg.fecha) updatedMsg.fecha = new Date().toISOString();
 
-    let initialMsg = JSON.parse(JSON.stringify(updatedMsg));
+    // If image is base64, save a placeholder first then upload async
+    let initialMsg = { ...updatedMsg };
     if (initialMsg.imagen && typeof initialMsg.imagen === 'string' && initialMsg.imagen.startsWith('data:')) {
-      initialMsg.imagen = '__pending_upload__';
+      initialMsg = { ...initialMsg, imagen: '__pending_upload__' };
     }
 
     const msgRef = doc(db, 'messages', msgId);
     await setDoc(msgRef, sanitize(initialMsg), { merge: true });
+    console.log(`✅ Mensaje ${msgId} guardado en Firestore`);
 
+    // Upload image asynchronously if present
     if (updatedMsg.imagen && typeof updatedMsg.imagen === 'string' && updatedMsg.imagen.startsWith('data:')) {
       uploadImageToStorage(
         updatedMsg.imagen,
@@ -463,7 +470,8 @@ export async function addMessageToFirestore(message) {
       }).catch((err) => console.warn('Message image upload failed:', err));
     }
   } catch (err) {
-    console.warn('Error adding message to Firestore:', err);
+    console.error('❌ Error adding message to Firestore:', err);
+    throw err;
   }
 }
 

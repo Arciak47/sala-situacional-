@@ -1,20 +1,36 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Submissions: all authenticated app users can read/write
+    // Submissions: all app users can read/write
     match /submissions/{docId} {
       allow read, write: if true;
     }
-    // Users: all authenticated app users can read/write
+    // Users: all app users can read/write
     match /users/{docId} {
       allow read, write: if true;
     }
-    // Messages: all authenticated app users can read/write
+    // Messages (chat): all app users can read/write
     match /messages/{docId} {
       allow read, write: if true;
     }
-    // Audit Logs: all authenticated app users can read/write
+    // Audit Logs
+    match /audit_logs/{docId} {
+      allow read, write: if true;
+    }
+    // Legacy auditLogs (backward compat)
     match /auditLogs/{docId} {
+      allow read, write: if true;
+    }
+    // Shift Reports (Historial de Turnos)
+    match /reportes_turnos/{docId} {
+      allow read, write: if true;
+    }
+    // Shift Report Drafts (Borradores de Turno)
+    match /borradores_turnos/{docId} {
+      allow read, write: if true;
+    }
+    // Submission images (legacy)
+    match /submission_images/{docId} {
       allow read, write: if true;
     }
   }
