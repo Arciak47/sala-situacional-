@@ -571,6 +571,17 @@ export async function addShiftReportRecord(record) {
   }
 }
 
+export async function deleteShiftReportRecord(recordId) {
+  if (!recordId) return;
+  try {
+    const docRef = doc(db, 'reportes_turnos', String(recordId));
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn('Error deleting shift report record from Firestore:', err);
+    throw err;
+  }
+}
+
 // ----------------------------------------------------
 // 6. BORRADORES DE REPORTE DE TURNO
 // Permite guardar y recuperar el estado del formulario

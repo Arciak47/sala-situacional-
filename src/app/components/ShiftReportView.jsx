@@ -695,6 +695,9 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
         imageSrc: f.reportData?.evidenceImageSrc || ''
       }));
 
+      // Extraer imagen miniatura del reporte completo
+      const reportImage = canvas.toDataURL('image/jpeg', 0.5);
+
       const record = {
         id: Date.now().toString(),
         fecha: selectedDate,
@@ -703,6 +706,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
         totalFichas: selectedFichas.length,
         fichasIds: selectedFichasIds,
         fichasDetails: fichasDetails,
+        reportImage: reportImage,
         timestamp: new Date().toISOString()
       };
       
