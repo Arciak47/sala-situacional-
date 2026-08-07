@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { exportCombinedReportAndFichasHDPDF } from '../lib/exportUtils';
+import { addShiftReportRecord, saveShiftReportDraft, subscribeShiftReportDraft } from '../lib/firestoreService';
 
 // Official Social Networks High-Resolution Logo SVG Data URLs
 const SOCIAL_LOGOS = {
@@ -102,7 +103,7 @@ function drawSentimentGauge(ctx, cx, cy, pos, neu, neg) {
   ctx.restore();
 }
 
-export default function ShiftReportView({ submissions = [], users = [] }) {
+export default function ShiftReportView({ submissions = [], users = [], currentUser }) {
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [selectedShift, setSelectedShift] = useState('t1');
@@ -129,6 +130,13 @@ export default function ShiftReportView({ submissions = [], users = [] }) {
   const [negCount, setNegCount] = useState(0);
 
   const [recommendationsText, setRecommendationsText] = useState('• ');
+
+  // Estado del guardado automático del borrador
+  // 'idle' | 'saving' | 'saved' | 'error'
+  const [saveStatus, setSaveStatus] = useState('idle');
+  const [draftLoadedAt, setDraftLoadedAt] = useState(null);
+  const saveTimerRef = useRef(null);
+  const isLoadingDraftRef = useRef(false);
 
   const canvasRef = useRef(null);
   const [loadedLogos, setLoadedLogos] = useState({});
@@ -166,6 +174,120 @@ export default function ShiftReportView({ submissions = [], users = [] }) {
     });
     console.groupEnd();
   }, [submissions, selectedDate]);
+
+  // ── AUTO-GUARDADO CON DEBOUNCE (1.5s) ──────────────────────────────────
+  // Observa todos los campos del formulario y guarda el borrador en Firestore
+  // 1.5 segundos después del último cambio. No guarda mientras se está
+  // cargando un borrador (isLoadingDraftRef.current === true).
+  useEffect(() => {
+    if (isLoadingDraftRef.current) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+
+    setSaveStatus('saving');
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        await saveShiftReportDraft({
+          fecha: selectedDate,
+          turno: selectedShift,
+          analystsCount,
+          activitiesText,
+          receivedReportsTotal,
+          activatedRooms,
+          reportingRooms,
+          pendingRooms,
+          customRooms,
+          facebookCount,
+          instagramCount,
+          tiktokCount,
+          xCount,
+          telegramCount,
+          posCount,
+          neuCount,
+          negCount,
+          recommendationsText,
+          savedAt: new Date().toISOString(),
+          savedBy: currentUser ? currentUser.name || currentUser.email : 'Sistema',
+        });
+        setSaveStatus('saved');
+      } catch {
+        setSaveStatus('error');
+      }
+    }, 1500);
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [
+    selectedDate, selectedShift,
+    analystsCount, activitiesText,
+    receivedReportsTotal, activatedRooms, reportingRooms, pendingRooms,
+    customRooms,
+    facebookCount, instagramCount, tiktokCount, xCount, telegramCount,
+    posCount, neuCount, negCount,
+    recommendationsText,
+  ]);
+
+  // ── CARGA AUTOMÁTICA DEL BORRADOR ──────────────────────────────────────
+  // Cuando el usuario cambia fecha o turno, busca en Firestore si existe
+  // un borrador guardado y pre-carga todos los campos. Si no existe,
+  // resetea el formulario a los valores por defecto.
+  useEffect(() => {
+    isLoadingDraftRef.current = true;
+    setSaveStatus('idle');
+    setDraftLoadedAt(null);
+
+    const unsubscribe = subscribeShiftReportDraft(selectedDate, selectedShift, (draft) => {
+      if (draft) {
+        // Pre-cargar campos con el borrador guardado
+        setAnalystsCount(draft.analystsCount ?? 0);
+        setActivitiesText(draft.activitiesText ?? '• ');
+        setReceivedReportsTotal(draft.receivedReportsTotal ?? 0);
+        setActivatedRooms(draft.activatedRooms ?? 0);
+        setReportingRooms(draft.reportingRooms ?? 0);
+        setPendingRooms(draft.pendingRooms ?? 0);
+        setCustomRooms(draft.customRooms ?? []);
+        setFacebookCount(draft.facebookCount ?? 0);
+        setInstagramCount(draft.instagramCount ?? 0);
+        setTiktokCount(draft.tiktokCount ?? 0);
+        setXCount(draft.xCount ?? 0);
+        setTelegramCount(draft.telegramCount ?? 0);
+        setPosCount(draft.posCount ?? 0);
+        setNeuCount(draft.neuCount ?? 0);
+        setNegCount(draft.negCount ?? 0);
+        setRecommendationsText(draft.recommendationsText ?? '• ');
+        setDraftLoadedAt(draft.savedAt || null);
+      } else {
+        // Sin borrador: resetear a valores por defecto
+        setAnalystsCount(0);
+        setActivitiesText('• ');
+        setReceivedReportsTotal(0);
+        setActivatedRooms(0);
+        setReportingRooms(0);
+        setPendingRooms(0);
+        setCustomRooms([]);
+        setFacebookCount(0);
+        setInstagramCount(0);
+        setTiktokCount(0);
+        setXCount(0);
+        setTelegramCount(0);
+        setPosCount(0);
+        setNeuCount(0);
+        setNegCount(0);
+        setRecommendationsText('• ');
+        setDraftLoadedAt(null);
+      }
+      // Esperar un tick para que React procese los setState antes de
+      // reactivar el auto-guardado, evitando un guardado espurio al cargar.
+      setTimeout(() => {
+        isLoadingDraftRef.current = false;
+      }, 100);
+    });
+
+    return () => {
+      unsubscribe();
+      isLoadingDraftRef.current = false;
+    };
+  }, [selectedDate, selectedShift]);
 
   const handleAddRoom = () => {
     if (customRooms.length >= 14) {
@@ -563,6 +685,31 @@ export default function ShiftReportView({ submissions = [], users = [] }) {
     const selectedFichas = submissions.filter(s => selectedFichasIds.includes(s.id));
     
     await exportCombinedReportAndFichasHDPDF(canvas, selectedFichas, `Reporte_Completo_${selectedDate}`);
+    
+    // Guardar el registro en el historial de turnos
+    try {
+      const fichasDetails = selectedFichas.map(f => ({
+        id: f.id,
+        title: f.reportData?.postTitle || 'Ficha sin título',
+        status: f.status || '',
+        imageSrc: f.reportData?.evidenceImageSrc || ''
+      }));
+
+      const record = {
+        id: Date.now().toString(),
+        fecha: selectedDate,
+        hora: new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+        creadoPor: currentUser ? `${currentUser.name} (${currentUser.email})` : 'Desconocido',
+        totalFichas: selectedFichas.length,
+        fichasIds: selectedFichasIds,
+        fichasDetails: fichasDetails,
+        timestamp: new Date().toISOString()
+      };
+      
+      await addShiftReportRecord(record);
+    } catch (error) {
+      console.warn("Error al guardar el historial del turno:", error);
+    }
   };
 
   const reportablesDelTurno = submissions.filter(s => {
@@ -687,9 +834,35 @@ export default function ShiftReportView({ submissions = [], users = [] }) {
 
       {/* ── FULL EDITABLE FORM PANEL ── */}
       <div className="bg-white dark:bg-slate-900 p-3 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
-        <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider border-b dark:border-slate-800 pb-2">
-          📝 Formulario de Edición Directa del Reporte
-        </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b dark:border-slate-800 pb-2 gap-2">
+          <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+            📝 Formulario de Edición Directa del Reporte
+          </h3>
+
+          {/* INDICADOR DE GUARDADO AUTOMÁTICO */}
+          <div className="flex items-center gap-2">
+            {draftLoadedAt && (
+              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-900/50 flex items-center gap-1">
+                📂 Borrador del {new Date(draftLoadedAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            {saveStatus === 'saving' && (
+              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-900/50 flex items-center gap-1 animate-pulse">
+                ⏳ Guardando...
+              </span>
+            )}
+            {saveStatus === 'saved' && (
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-900/50 flex items-center gap-1">
+                ✅ Guardado automáticamente
+              </span>
+            )}
+            {saveStatus === 'error' && (
+              <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/60 px-2.5 py-1 rounded-full border border-red-200 dark:border-red-900/50 flex items-center gap-1">
+                ⚠️ Error al guardar
+              </span>
+            )}
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           {/* 1. ORGANIZACIÓN */}

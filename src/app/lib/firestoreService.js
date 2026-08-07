@@ -534,3 +534,85 @@ export async function addAuditLogToFirestore(logItem) {
     console.warn('Error adding audit log to Firestore:', err);
   }
 }
+
+// ----------------------------------------------------
+// 5. SHIFT REPORTS (Historial de Turnos)
+// ----------------------------------------------------
+
+export function subscribeShiftReports(onUpdate) {
+  try {
+    const colRef = collection(db, 'reportes_turnos');
+    const q = query(colRef, orderBy('timestamp', 'desc'), limit(100));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const reports = snapshot.empty ? [] : snapshot.docs.map((d) => d.data());
+      // Local fallback sorting just in case
+      reports.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+      onUpdate(reports);
+    }, (err) => {
+      console.warn('Firestore shift reports subscription error:', err);
+      onUpdate([]);
+    });
+    return unsubscribe;
+  } catch (err) {
+    console.warn('Firestore shift reports init error:', err);
+    onUpdate([]);
+    return () => {};
+  }
+}
+
+export async function addShiftReportRecord(record) {
+  if (!record || !record.id) return;
+  try {
+    const recordId = String(record.id);
+    const docRef = doc(db, 'reportes_turnos', recordId);
+    await setDoc(docRef, sanitize(record), { merge: true });
+  } catch (err) {
+    console.warn('Error adding shift report record to Firestore:', err);
+  }
+}
+
+// ----------------------------------------------------
+// 6. BORRADORES DE REPORTE DE TURNO
+// Permite guardar y recuperar el estado del formulario
+// de reporte de turno por (fecha + turno).
+// Colección: borradores_turnos
+// ID del doc: reporte_{fecha}_{turno}  (ej: reporte_2026-08-07_t1)
+// ----------------------------------------------------
+
+export async function saveShiftReportDraft(draft) {
+  if (!draft || !draft.fecha || !draft.turno) return;
+  try {
+    const docId = `reporte_${draft.fecha}_${draft.turno}`;
+    const docRef = doc(db, 'borradores_turnos', docId);
+    await setDoc(docRef, sanitize({ ...draft, id: docId }), { merge: true });
+  } catch (err) {
+    console.warn('Error guardando borrador de reporte de turno:', err);
+    throw err;
+  }
+}
+
+export function subscribeShiftReportDraft(fecha, turno, onUpdate) {
+  if (!fecha || !turno) {
+    onUpdate(null);
+    return () => {};
+  }
+  try {
+    const docId = `reporte_${fecha}_${turno}`;
+    const docRef = doc(db, 'borradores_turnos', docId);
+    const unsubscribe = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        onUpdate(snap.data());
+      } else {
+        onUpdate(null);
+      }
+    }, (err) => {
+      console.warn('Error escuchando borrador de turno:', err);
+      onUpdate(null);
+    });
+    return unsubscribe;
+  } catch (err) {
+    console.warn('Error iniciando suscripción de borrador de turno:', err);
+    onUpdate(null);
+    return () => {};
+  }
+}

@@ -7,6 +7,7 @@ import MessagingView from '../components/MessagingView';
 import AdminDashboard from '../components/AdminDashboard';
 import SupervisorUsersView from '../components/SupervisorUsersView';
 import ShiftReportView from '../components/ShiftReportView';
+import ShiftHistoryView from '../components/ShiftHistoryView';
 import SubmissionInboxView from '../components/SubmissionInboxView';
 
 export default function SupervisorView({
@@ -45,6 +46,7 @@ export default function SupervisorView({
   onMarkAsRead,
   auditLogs = [],
   handleBackupAndClear,
+  shiftReports,
 }) {
   return (
     <div className="space-y-6">
@@ -60,7 +62,12 @@ export default function SupervisorView({
 
       {/* ── REPORTE DE TURNO ── */}
       {activeTab === 'shift' && (
-        <ShiftReportView submissions={submissions} users={users} />
+        <ShiftReportView submissions={submissions} users={users} currentUser={currentUser} />
+      )}
+
+      {/* ── HISTORIAL DE TURNOS ── */}
+      {activeTab === 'history' && (
+        <ShiftHistoryView reports={shiftReports} />
       )}
 
       {/* ── DASHBOARD PRINCIPAL CON GRÁFICAS ── */}

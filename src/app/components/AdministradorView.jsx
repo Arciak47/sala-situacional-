@@ -8,6 +8,7 @@ import ProfileView from '../components/ProfileView';
 import MessagingView from '../components/MessagingView';
 import AdminDashboard from '../components/AdminDashboard';
 import ShiftReportView from '../components/ShiftReportView';
+import ShiftHistoryView from '../components/ShiftHistoryView';
 import SubmissionInboxView from '../components/SubmissionInboxView';
 
 export default function AdministradorView({
@@ -52,6 +53,7 @@ export default function AdministradorView({
   messages,
   onSendMessage,
   onMarkAsRead,
+  shiftReports,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -137,7 +139,12 @@ export default function AdministradorView({
 
       {/* ── REPORTE DE TURNO ── */}
       {activeTab === 'shift' && (
-        <ShiftReportView submissions={submissions} users={users} />
+        <ShiftReportView submissions={submissions} users={users} currentUser={currentUser} />
+      )}
+
+      {/* ── HISTORIAL DE TURNOS ── */}
+      {activeTab === 'history' && (
+        <ShiftHistoryView reports={shiftReports} />
       )}
 
       {/* ── ESTADÍSTICAS GLOBALES PARA ADMINISTRADOR ── */}

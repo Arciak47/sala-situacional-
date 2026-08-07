@@ -12,6 +12,7 @@ import SupervisorView from './components/SupervisorView.jsx';
 import AnalistaView from './components/AnalistaView.jsx';
 import InteractiveBackground from './components/InteractiveBackground';
 import HeaderBar from './components/HeaderBar';
+import ShiftHistoryView from './components/ShiftHistoryView';
 
 import { EMPTY_REPORT } from './lib/constants';
 import { buildElements } from './lib/canvasHelpers';
@@ -45,6 +46,7 @@ import {
   addAuditLogToFirestore,
   getSubmissionImage,
   updateSubmissionStatus,
+  subscribeShiftReports,
 } from './lib/firestoreService';
 
 export default function Home() {
@@ -54,6 +56,7 @@ export default function Home() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [shiftReports, setShiftReports] = useState([]);
   const [activeTab, setActiveTab] = useState(''); // starts empty to prevent premature localStorage overwrite
   const [selectedSubmission, setSelectedSubmission] = useState(null);
 
@@ -157,12 +160,16 @@ export default function Home() {
     const unsubLogs = subscribeAuditLogs((data) => {
       if (data) setAuditLogs(data);
     });
+    const unsubReports = subscribeShiftReports((data) => {
+      if (data) setShiftReports(data);
+    });
 
     return () => {
       unsubUsers();
       unsubSubs();
       unsubMsgs();
       unsubLogs();
+      unsubReports();
     };
   }, [currentUser]);
 
@@ -1062,6 +1069,8 @@ export default function Home() {
     tabs.push(
       { id: 'dashboard', label: '🏠 Dashboard' },
       { id: 'inbox', label: '📥 Bandeja' },
+      { id: 'shift', label: '📄 Reporte Turno' },
+      { id: 'history', label: '📖 Historial Turnos' },
       { id: 'users', label: '👥 Usuarios' },
       { id: 'stats', label: '📊 Estadísticas' },
       { id: 'logs', label: '📜 Auditoría' },
@@ -1080,6 +1089,7 @@ export default function Home() {
       { id: 'dashboard', label: '🏠 Dashboard' },
       { id: 'inbox', label: '📥 Bandeja' },
       { id: 'shift', label: '📄 Reporte Turno' },
+      { id: 'history', label: '📖 Historial Turnos' },
       { id: 'users', label: '👥 Usuarios' },
       { id: 'messaging', label: '💬 Mensajería' },
       { id: 'profile', label: '👤 Mi Perfil' }
@@ -1148,6 +1158,7 @@ export default function Home() {
             markAsReviewed={markAsReviewed}
             markAsRepeated={markAsRepeated}
             markAsReported={markAsReported}
+            shiftReports={shiftReports}
             deleteSubmission={deleteSubmission}
             elements={elements}
             setElements={setElements}
@@ -1209,6 +1220,7 @@ export default function Home() {
             onMarkAsRead={handleMarkAsRead}
             auditLogs={auditLogs}
             handleBackupAndClear={handleBackupAndClear}
+            shiftReports={shiftReports}
           />
         )}
 
