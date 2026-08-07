@@ -639,7 +639,7 @@ export async function exportSubmissionsToHDPDF(selectedSubmissions = [], docTitl
  * Exports the Shift Report Canvas along with selected Submissions to an HD PDF
  * It places the shift report as the first page, followed by each submission.
  */
-export async function exportCombinedReportAndFichasHDPDF(shiftCanvas, selectedSubmissions = [], docTitle = 'Reporte_Completo_Sala_Situacional_HD') {
+export async function exportCombinedReportAndFichasHDPDF(shiftCanvasOrDataUrl, selectedSubmissions = [], docTitle = 'Reporte_Completo_Sala_Situacional_HD') {
   const win = window.open('', '_blank');
   if (!win) {
     alert('Por favor autoriza las ventanas emergentes para generar el PDF HD.');
@@ -647,7 +647,13 @@ export async function exportCombinedReportAndFichasHDPDF(shiftCanvas, selectedSu
   }
 
   // 1. Get shift report image
-  const shiftImgData = shiftCanvas ? shiftCanvas.toDataURL('image/png', 1.0) : null;
+  let shiftImgData = null;
+  if (typeof shiftCanvasOrDataUrl === 'string') {
+    shiftImgData = shiftCanvasOrDataUrl;
+  } else if (shiftCanvasOrDataUrl && typeof shiftCanvasOrDataUrl.toDataURL === 'function') {
+    shiftImgData = shiftCanvasOrDataUrl.toDataURL('image/png', 1.0);
+  }
+  
   const shiftHtml = shiftImgData ? `
     <div class="canvas-pdf-page shift-page" style="page-break-after: ${!selectedSubmissions || selectedSubmissions.length === 0 ? 'auto' : 'always'};">
       <img src="${shiftImgData}" alt="Reporte Diario Oficial" />

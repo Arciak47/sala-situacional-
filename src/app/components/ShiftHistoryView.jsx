@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { exportSubmissionsToHDPDF } from '../lib/exportUtils';
+import { exportSubmissionsToHDPDF, exportCombinedReportAndFichasHDPDF } from '../lib/exportUtils';
 import { deleteShiftReportRecord } from '../lib/firestoreService';
 
 export default function ShiftHistoryView({ reports, submissions = [], openSubmissionForReview }) {
@@ -57,13 +57,17 @@ export default function ShiftHistoryView({ reports, submissions = [], openSubmis
   const handleDownloadAllFichas = async (report) => {
     const ids = report.fichasIds || (report.fichasDetails || []).map((f) => f.id);
     const fullSubs = ids.map((id) => getFichaFullObject(id)).filter(Boolean);
-    if (fullSubs.length === 0) {
-      alert('No se encontraron fichas en la base de datos actual para este turno.');
+    if (fullSubs.length === 0 && !report.reportImage) {
+      alert('No se encontraron fichas en la base de datos actual para este turno, ni reporte consolidado guardado.');
       return;
     }
     setDownloadingId('all');
     try {
-      await exportSubmissionsToHDPDF(fullSubs, `Fichas_Turno_${report.fecha}`);
+      if (report.reportImage) {
+        await exportCombinedReportAndFichasHDPDF(report.reportImage, fullSubs, `Reporte_Turno_Completo_${report.fecha}`);
+      } else {
+        await exportSubmissionsToHDPDF(fullSubs, `Fichas_Turno_${report.fecha}`);
+      }
     } finally {
       setDownloadingId(null);
     }

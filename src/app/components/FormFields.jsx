@@ -167,15 +167,15 @@ export default function FormFields({ data, setData, readOnly = false, onImageUpl
         <div className="flex justify-between items-end mb-1">
           <label className="block text-xs font-bold">Contexto *</label>
           <span className={`text-[10px] font-bold ${
-            (data.contexto || '').length > 130 ? 'text-amber-500' : 'text-slate-400'
+            (data.contexto || '').length > 400 ? 'text-amber-500' : 'text-slate-400'
           }`}>
-            {(data.contexto || '').length}/150
+            {(data.contexto || '').length}/450
           </span>
         </div>
         <textarea
           disabled={readOnly}
           rows="3"
-          maxLength={150}
+          maxLength={450}
           value={data.contexto || ''}
           onChange={ch('contexto')}
           className={cls + ' resize-none'}
