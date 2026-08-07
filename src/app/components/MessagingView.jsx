@@ -16,21 +16,8 @@ export default function MessagingView({
   const [attachedImage, setAttachedImage] = useState(null);
   const chatEndRef = useRef(null);
 
-  // Available contacts filtered by role hierarchy:
-  // Administrador ↔ Supervisor ↔ Analista (+ Supervisor ↔ Supervisor)
-  const contacts = users.filter((u) => {
-    if (u.id === currentUser?.id) return false;
-    if (currentUser?.role === 'Administrador') {
-      return u.role === 'Supervisor';
-    }
-    if (currentUser?.role === 'Supervisor') {
-      return u.role === 'Administrador' || u.role === 'Analista' || u.role === 'Supervisor';
-    }
-    if (currentUser?.role === 'Analista') {
-      return u.role === 'Supervisor';
-    }
-    return false;
-  });
+  // Available contacts (all users except current user)
+  const contacts = users.filter((u) => u.id !== currentUser?.id);
 
   // Set default active contact if none selected
   useEffect(() => {
