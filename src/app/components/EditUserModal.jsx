@@ -193,6 +193,7 @@ export default function EditUserModal({
                 >
                   <option value="Analista">Analista</option>
                   <option value="Supervisor">Supervisor</option>
+                  <option value="Observador">Observador</option>
                   {editingUser.role === 'Administrador' && (
                     <option value="Administrador">Administrador Principal</option>
                   )}

@@ -12,6 +12,7 @@ export default function SubmissionInboxView({
   markAsRepeated,
   markAsReported,
   deleteSubmission,
+  isObserver,
 }) {
   const [selectedIds, setSelectedIds] = useState([]);
   const [sentimentFilter, setSentimentFilter] = useState('Todos');
@@ -260,9 +261,9 @@ export default function SubmissionInboxView({
                       onClick={() => openSubmissionForReview(sub)}
                       className="px-3 py-1.5 rounded-full text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 cursor-pointer shadow-sm"
                     >
-                      🎨 Editar en Canvas
+                      {isObserver ? '👀 Ver Ficha' : '🎨 Editar en Canvas'}
                     </button>
-                    {sub.status === 'pendiente' && (
+                    {!isObserver && sub.status === 'pendiente' && (
                       <>
                         <button
                           onClick={() => markAsReviewed(sub.id)}
@@ -278,7 +279,7 @@ export default function SubmissionInboxView({
                         </button>
                       </>
                     )}
-                    {['pendiente', 'revisado', 'reportar'].includes(sub.status) && (
+                    {!isObserver && ['pendiente', 'revisado', 'reportar'].includes(sub.status) && (
                         <button
                           onClick={() => markAsReported && markAsReported(sub.id)}
                           className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border dark:border-purple-900 cursor-pointer"
@@ -286,13 +287,15 @@ export default function SubmissionInboxView({
                           📢 Reportar
                         </button>
                     )}
-                    <button
-                      onClick={() => deleteSubmission && deleteSubmission(sub.id)}
-                      className="px-3 py-1.5 rounded-full text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/60 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200 dark:border-red-900/50 cursor-pointer transition-all"
-                      title="Eliminar reporte permanentemente"
-                    >
-                      🗑️ Eliminar
-                    </button>
+                    {!isObserver && (
+                      <button
+                        onClick={() => deleteSubmission && deleteSubmission(sub.id)}
+                        className="px-3 py-1.5 rounded-full text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/60 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200 dark:border-red-900/50 cursor-pointer transition-all"
+                        title="Eliminar reporte permanentemente"
+                      >
+                        🗑️ Eliminar
+                      </button>
+                    )}
                   </div>
                 </div>
               );

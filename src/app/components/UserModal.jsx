@@ -128,6 +128,7 @@ export default function UserModal({
                 >
                   <option value="Analista">Analista</option>
                   <option value="Supervisor">Supervisor</option>
+                  <option value="Observador">Observador</option>
                   <option value="Administrador" disabled={hasAdmin}>
                     {hasAdmin ? 'Administrador (Límite: 1 Admin alcanzado)' : 'Administrador'}
                   </option>

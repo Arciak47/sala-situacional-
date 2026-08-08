@@ -34,6 +34,7 @@ export default function CanvasEditor({
   markAsRepeated,
   markAsReported,
   handleImageUpload,
+  isObserver,
 }) {
   const isDragging = useRef(false);
   const isResizing = useRef(false);
@@ -631,402 +632,410 @@ export default function CanvasEditor({
               {new Date(selectedSubmission.timestamp).toLocaleDateString('es-ES')}
             </div>
             <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => {
-                  const { latestElems, latestReport } = getLatestElementsAndReport();
-                  saveSubmissionEdits(null, latestElems, latestReport);
-                }}
-                className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-              >
-                💾 Guardar Cambios
-              </button>
-              {selectedSubmission.status === 'pendiente' && (
+              {!isObserver && (
                 <>
                   <button
                     onClick={() => {
-                      if (markAsReviewed) {
-                        const { latestElems, latestReport } = getLatestElementsAndReport();
-                        markAsReviewed(selectedSubmission.id, latestElems, latestReport);
-                      }
+                      const { latestElems, latestReport } = getLatestElementsAndReport();
+                      saveSubmissionEdits(null, latestElems, latestReport);
                     }}
-                    className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
+                    className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
                   >
-                    ✅ Marcar Revisado
+                    💾 Guardar Cambios
                   </button>
-                  <button
-                    onClick={() => {
-                      if (markAsRepeated) {
-                        const { latestElems, latestReport } = getLatestElementsAndReport();
-                        markAsRepeated(selectedSubmission.id, latestElems, latestReport);
-                      }
-                    }}
-                    className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-orange-400 hover:bg-orange-500 text-white cursor-pointer"
-                  >
-                    ⚠️ Marcar Repetido
-                  </button>
+                  {selectedSubmission.status === 'pendiente' && (
+                    <>
+                      <button
+                        onClick={() => {
+                          if (markAsReviewed) {
+                            const { latestElems, latestReport } = getLatestElementsAndReport();
+                            markAsReviewed(selectedSubmission.id, latestElems, latestReport);
+                          }
+                        }}
+                        className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
+                      >
+                        ✅ Marcar Revisado
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (markAsRepeated) {
+                            const { latestElems, latestReport } = getLatestElementsAndReport();
+                            markAsRepeated(selectedSubmission.id, latestElems, latestReport);
+                          }
+                        }}
+                        className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-orange-400 hover:bg-orange-500 text-white cursor-pointer"
+                      >
+                        ⚠️ Marcar Repetido
+                      </button>
+                    </>
+                  )}
+                  {['pendiente', 'revisado'].includes(selectedSubmission.status) && (
+                      <button
+                        onClick={() => {
+                          if (markAsReported) {
+                             const { latestElems, latestReport } = getLatestElementsAndReport();
+                             markAsReported(selectedSubmission.id, latestElems, latestReport);
+                          }
+                        }}
+                        className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-purple-500 hover:bg-purple-600 text-white cursor-pointer"
+                      >
+                        📢 Para Reportar
+                      </button>
+                  )}
                 </>
-              )}
-              {['pendiente', 'revisado'].includes(selectedSubmission.status) && (
-                  <button
-                    onClick={() => {
-                      if (markAsReported) {
-                         const { latestElems, latestReport } = getLatestElementsAndReport();
-                         markAsReported(selectedSubmission.id, latestElems, latestReport);
-                      }
-                    }}
-                    className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-purple-500 hover:bg-purple-600 text-white cursor-pointer"
-                  >
-                    📢 Para Reportar
-                  </button>
               )}
             </div>
           </div>
         )}
 
         {/* Add elements toolbar */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-md">
-          <h4 className="text-xs font-black text-red-600 uppercase tracking-wider mb-3">
-            ➕ Añadir Elementos
-          </h4>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              {
-                label: 'T Texto',
-                el: {
-                  type: 'text',
-                  x: 200,
-                  y: 200,
-                  w: 300,
-                  h: 40,
-                  text: 'Nuevo Texto',
-                  fs: 24,
-                  fw: 'bold',
-                  color: '#032b69',
-                  align: 'left',
+        {!isObserver && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-md">
+            <h4 className="text-xs font-black text-red-600 uppercase tracking-wider mb-3">
+              ➕ Añadir Elementos
+            </h4>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                {
+                  label: 'T Texto',
+                  el: {
+                    type: 'text',
+                    x: 200,
+                    y: 200,
+                    w: 300,
+                    h: 40,
+                    text: 'Nuevo Texto',
+                    fs: 24,
+                    fw: 'bold',
+                    color: '#032b69',
+                    align: 'left',
+                  },
                 },
-              },
-              {
-                label: '■ Forma',
-                el: { type: 'rect', x: 200, y: 200, w: 200, h: 100, fill: '#032b69' },
-              },
-              {
-                label: '— Línea',
-                el: {
-                  type: 'line',
-                  x: 200,
-                  y: 300,
-                  x2: 500,
-                  y2: 300,
-                  stroke: '#dc2626',
-                  lw: 4,
+                {
+                  label: '■ Forma',
+                  el: { type: 'rect', x: 200, y: 200, w: 200, h: 100, fill: '#032b69' },
                 },
-              },
-              {
-                label: '🖼 Imagen',
-                el: {
-                  type: 'image',
-                  x: 200,
-                  y: 200,
-                  w: 180,
-                  h: 180,
-                  src: null,
-                  placeholder: 'IMAGEN',
-                  replaceable: true,
+                {
+                  label: '— Línea',
+                  el: {
+                    type: 'line',
+                    x: 200,
+                    y: 300,
+                    x2: 500,
+                    y2: 300,
+                    stroke: '#dc2626',
+                    lw: 4,
+                  },
                 },
-              },
-              {
-                label: '◆ Triáng.',
-                el: {
-                  type: 'poly',
-                  pts: [
-                    [200, 350],
-                    [350, 150],
-                    [500, 350],
-                  ],
-                  fill: '#dc2626',
+                {
+                  label: '🖼 Imagen',
+                  el: {
+                    type: 'image',
+                    x: 200,
+                    y: 200,
+                    w: 180,
+                    h: 180,
+                    src: null,
+                    placeholder: 'IMAGEN',
+                    replaceable: true,
+                  },
                 },
-              },
-            ].map(({ label, el }) => (
-              <button
-                key={label}
-                onClick={() => addEl(el)}
-                className="py-2 px-1 rounded-xl text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition-all border border-slate-200 dark:border-slate-700"
-              >
-                {label}
-              </button>
-            ))}
+                {
+                  label: '◆ Triáng.',
+                  el: {
+                    type: 'poly',
+                    pts: [
+                      [200, 350],
+                      [350, 150],
+                      [500, 350],
+                    ],
+                    fill: '#dc2626',
+                  },
+                },
+              ].map(({ label, el }) => (
+                <button
+                  key={label}
+                  onClick={() => addEl(el)}
+                  className="py-2 px-1 rounded-xl text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition-all border border-slate-200 dark:border-slate-700"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 text-[9px] text-slate-400 font-bold text-center">
+              Doble clic en texto para editar directamente
+            </div>
           </div>
-          <div className="mt-2 text-[9px] text-slate-400 font-bold text-center">
-            Doble clic en texto para editar directamente
-          </div>
-        </div>
+        )}
 
         {/* Properties panel */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-md">
-          <h4 className="text-xs font-black text-red-600 uppercase tracking-wider mb-3">
-            ⚙️ Propiedades
-          </h4>
-          {!selEl || selEl.locked ? (
-            <div className="text-center py-6 text-slate-400">
-              <div className="text-3xl mb-2">👆</div>
-              <p className="text-xs font-bold">
-                Clic en cualquier elemento
-                <br />
-                del canvas para seleccionar
-              </p>
-              <p className="text-[10px] mt-1">Doble clic → editar texto</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <code className="text-[10px] font-bold text-red-600 bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded">
-                  {selEl.id}
-                </code>
-                <button
-                  onClick={() => {
-                    setElements((prev) => prev.filter((e) => e.id !== selId));
-                    setSelId(null);
-                  }}
-                  className="text-[10px] px-2 py-1 rounded-lg bg-red-50 text-red-600 font-bold cursor-pointer hover:bg-red-100"
-                >
-                  🗑️ Eliminar
-                </button>
+        {!isObserver && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-md">
+            <h4 className="text-xs font-black text-red-600 uppercase tracking-wider mb-3">
+              ⚙️ Propiedades
+            </h4>
+            {!selEl || selEl.locked ? (
+              <div className="text-center py-6 text-slate-400">
+                <div className="text-3xl mb-2">👆</div>
+                <p className="text-xs font-bold">
+                  Clic en cualquier elemento
+                  <br />
+                  del canvas para seleccionar
+                </p>
+                <p className="text-[10px] mt-1">Doble clic → editar texto</p>
               </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <code className="text-[10px] font-bold text-red-600 bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded">
+                    {selEl.id}
+                  </code>
+                  <button
+                    onClick={() => {
+                      setElements((prev) => prev.filter((e) => e.id !== selId));
+                      setSelId(null);
+                    }}
+                    className="text-[10px] px-2 py-1 rounded-lg bg-red-50 text-red-600 font-bold cursor-pointer hover:bg-red-100"
+                  >
+                    🗑️ Eliminar
+                  </button>
+                </div>
 
-              {/* Position / Size */}
-              {!['line', 'poly'].includes(selEl.type) && (
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">
-                    Posición &amp; Tamaño
-                  </label>
-                  <div className="grid grid-cols-4 gap-1">
-                    {[
-                      ['X', 'x'],
-                      ['Y', 'y'],
-                      ['W', 'w'],
-                      ['H', 'h'],
-                    ].map(([lbl, k]) => (
-                      <div key={k}>
-                        <label className="block text-[9px] text-slate-400 mb-0.5">
-                          {lbl}
+                {/* Position / Size */}
+                {!['line', 'poly'].includes(selEl.type) && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                      Posición &amp; Tamaño
+                    </label>
+                    <div className="grid grid-cols-4 gap-1">
+                      {[
+                        ['X', 'x'],
+                        ['Y', 'y'],
+                        ['W', 'w'],
+                        ['H', 'h'],
+                      ].map(([lbl, k]) => (
+                        <div key={k}>
+                          <label className="block text-[9px] text-slate-400 mb-0.5">
+                            {lbl}
+                          </label>
+                          <input
+                            type="number"
+                            value={Math.round(selEl[k] || 0)}
+                            onChange={(e) => updateEl(selId, { [k]: +e.target.value })}
+                            className="w-full px-1.5 py-1 rounded-lg text-[10px] border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Text props */}
+                {selEl.type === 'text' && (
+                  <>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                        Texto
+                      </label>
+                      <textarea
+                        rows="2"
+                        value={selEl.text || ''}
+                        onChange={(e) => updateEl(selId, { text: e.target.value })}
+                        className="w-full px-2 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 resize-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
+                          Tamaño
                         </label>
                         <input
                           type="number"
-                          value={Math.round(selEl[k] || 0)}
-                          onChange={(e) => updateEl(selId, { [k]: +e.target.value })}
-                          className="w-full px-1.5 py-1 rounded-lg text-[10px] border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950"
+                          min="6"
+                          max="200"
+                          value={selEl.fs || 16}
+                          onChange={(e) => updateEl(selId, { fs: +e.target.value })}
+                          className="w-full px-2 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950"
                         />
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Text props */}
-              {selEl.type === 'text' && (
-                <>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1">
-                      Texto
-                    </label>
-                    <textarea
-                      rows="2"
-                      value={selEl.text || ''}
-                      onChange={(e) => updateEl(selId, { text: e.target.value })}
-                      className="w-full px-2 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 resize-none"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                        Tamaño
-                      </label>
-                      <input
-                        type="number"
-                        min="6"
-                        max="200"
-                        value={selEl.fs || 16}
-                        onChange={(e) => updateEl(selId, { fs: +e.target.value })}
-                        className="w-full px-2 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950"
-                      />
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
+                          Color
+                        </label>
+                        <input
+                          type="color"
+                          value={selEl.color || '#000000'}
+                          onChange={(e) => updateEl(selId, { color: e.target.value })}
+                          className="w-full h-8 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer"
+                        />
+                      </div>
                     </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
+                          Peso
+                        </label>
+                        <select
+                          value={selEl.fw || 'normal'}
+                          onChange={(e) => updateEl(selId, { fw: e.target.value })}
+                          className="w-full px-2 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950"
+                        >
+                          <option value="normal">Normal</option>
+                          <option value="bold">Bold</option>
+                          <option value="700">700</option>
+                          <option value="800">800</option>
+                          <option value="900">900 Black</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
+                          Alineación
+                        </label>
+                        <select
+                          value={selEl.align || 'left'}
+                          onChange={(e) => updateEl(selId, { align: e.target.value })}
+                          className="w-full px-2 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950"
+                        >
+                          <option value="left">Izquierda</option>
+                          <option value="center">Centro</option>
+                          <option value="right">Derecha</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                      <input
+                        type="checkbox"
+                        id="wrapChk"
+                        checked={!!selEl.wrap}
+                        onChange={(e) => updateEl(selId, { wrap: e.target.checked })}
+                        className="cursor-pointer"
+                      />
+                      <label htmlFor="wrapChk" className="text-xs font-bold cursor-pointer">
+                        Ajuste de texto automático
+                      </label>
+                    </div>
+                  </>
+                )}
+
+                {/* Image props */}
+                {selEl.type === 'image' && (
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-bold text-slate-500">
+                      Reemplazar Imagen
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleReplaceImage(e, selId)}
+                      className="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 cursor-pointer"
+                    />
+                    {selEl.src && (
+                      <button
+                        onClick={() => {
+                          updateEl(selId, { src: null });
+                          setImageCache((p) => {
+                            const n = { ...p };
+                            delete n[selId];
+                            return n;
+                          });
+                        }}
+                        className="w-full py-1.5 rounded-lg text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 cursor-pointer"
+                      >
+                        ✕ Quitar imagen actual
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Line props */}
+                {selEl.type === 'line' && (
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
                         Color
                       </label>
                       <input
                         type="color"
-                        value={selEl.color || '#000000'}
-                        onChange={(e) => updateEl(selId, { color: e.target.value })}
-                        className="w-full h-8 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer"
+                        value={selEl.stroke || '#000000'}
+                        onChange={(e) => updateEl(selId, { stroke: e.target.value })}
+                        className="w-full h-8 rounded-lg border border-slate-200 cursor-pointer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
+                        Grosor
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="30"
+                        value={selEl.lw || 2}
+                        onChange={(e) => updateEl(selId, { lw: +e.target.value })}
+                        className="w-full px-2 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950"
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                        Peso
-                      </label>
-                      <select
-                        value={selEl.fw || 'normal'}
-                        onChange={(e) => updateEl(selId, { fw: e.target.value })}
-                        className="w-full px-2 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950"
-                      >
-                        <option value="normal">Normal</option>
-                        <option value="bold">Bold</option>
-                        <option value="700">700</option>
-                        <option value="800">800</option>
-                        <option value="900">900 Black</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                        Alineación
-                      </label>
-                      <select
-                        value={selEl.align || 'left'}
-                        onChange={(e) => updateEl(selId, { align: e.target.value })}
-                        className="w-full px-2 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950"
-                      >
-                        <option value="left">Izquierda</option>
-                        <option value="center">Centro</option>
-                        <option value="right">Derecha</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <input
-                      type="checkbox"
-                      id="wrapChk"
-                      checked={!!selEl.wrap}
-                      onChange={(e) => updateEl(selId, { wrap: e.target.checked })}
-                      className="cursor-pointer"
-                    />
-                    <label htmlFor="wrapChk" className="text-xs font-bold cursor-pointer">
-                      Ajuste de texto automático
-                    </label>
-                  </div>
-                </>
-              )}
+                )}
 
-              {/* Image props */}
-              {selEl.type === 'image' && (
-                <div className="space-y-2">
-                  <label className="block text-[10px] font-bold text-slate-500">
-                    Reemplazar Imagen
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleReplaceImage(e, selId)}
-                    className="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 cursor-pointer"
-                  />
-                  {selEl.src && (
-                    <button
-                      onClick={() => {
-                        updateEl(selId, { src: null });
-                        setImageCache((p) => {
-                          const n = { ...p };
-                          delete n[selId];
-                          return n;
-                        });
-                      }}
-                      className="w-full py-1.5 rounded-lg text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 cursor-pointer"
-                    >
-                      ✕ Quitar imagen actual
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Line props */}
-              {selEl.type === 'line' && (
-                <div className="grid grid-cols-2 gap-2">
+                {/* Rect / Poly fill */}
+                {(selEl.type === 'rect' || selEl.type === 'poly') && (
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                      Color
+                      Color de relleno
                     </label>
                     <input
                       type="color"
-                      value={selEl.stroke || '#000000'}
-                      onChange={(e) => updateEl(selId, { stroke: e.target.value })}
+                      value={selEl.fill || '#ffffff'}
+                      onChange={(e) => updateEl(selId, { fill: e.target.value })}
                       className="w-full h-8 rounded-lg border border-slate-200 cursor-pointer"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                      Grosor
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="30"
-                      value={selEl.lw || 2}
-                      onChange={(e) => updateEl(selId, { lw: +e.target.value })}
-                      className="w-full px-2 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950"
-                    />
+                )}
+
+                {/* Layer order */}
+                <div className="pt-2 border-t dark:border-slate-800">
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1.5">
+                    Orden de capas
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() =>
+                        setElements((prev) => {
+                          const i = prev.findIndex((e) => e.id === selId);
+                          if (i <= 0) return prev;
+                          const a = [...prev];
+                          [a[i - 1], a[i]] = [a[i], a[i - 1]];
+                          return a;
+                        })
+                      }
+                      className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 cursor-pointer hover:bg-slate-200"
+                    >
+                      ↑ Adelante
+                    </button>
+                    <button
+                      onClick={() =>
+                        setElements((prev) => {
+                          const i = prev.findIndex((e) => e.id === selId);
+                          if (i >= prev.length - 1) return prev;
+                          const a = [...prev];
+                          [a[i + 1], a[i]] = [a[i], a[i + 1]];
+                          return a;
+                        })
+                      }
+                      className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 cursor-pointer hover:bg-slate-200"
+                    >
+                      ↓ Atrás
+                    </button>
                   </div>
                 </div>
-              )}
-
-              {/* Rect / Poly fill */}
-              {(selEl.type === 'rect' || selEl.type === 'poly') && (
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                    Color de relleno
-                  </label>
-                  <input
-                    type="color"
-                    value={selEl.fill || '#ffffff'}
-                    onChange={(e) => updateEl(selId, { fill: e.target.value })}
-                    className="w-full h-8 rounded-lg border border-slate-200 cursor-pointer"
-                  />
-                </div>
-              )}
-
-              {/* Layer order */}
-              <div className="pt-2 border-t dark:border-slate-800">
-                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">
-                  Orden de capas
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() =>
-                      setElements((prev) => {
-                        const i = prev.findIndex((e) => e.id === selId);
-                        if (i <= 0) return prev;
-                        const a = [...prev];
-                        [a[i - 1], a[i]] = [a[i], a[i - 1]];
-                        return a;
-                      })
-                    }
-                    className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 cursor-pointer hover:bg-slate-200"
-                  >
-                    ↑ Adelante
-                  </button>
-                  <button
-                    onClick={() =>
-                      setElements((prev) => {
-                        const i = prev.findIndex((e) => e.id === selId);
-                        if (i >= prev.length - 1) return prev;
-                        const a = [...prev];
-                        [a[i + 1], a[i]] = [a[i], a[i + 1]];
-                        return a;
-                      })
-                    }
-                    className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 cursor-pointer hover:bg-slate-200"
-                  >
-                    ↓ Atrás
-                  </button>
-                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* CENTER: Canvas */}
-      <div className="xl:col-span-6">
+      <div className={isObserver ? "xl:col-span-9" : "xl:col-span-6"}>
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-md">
           <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
             <div>
@@ -1087,21 +1096,23 @@ export default function CanvasEditor({
       </div>
 
       {/* RIGHT: Form fields */}
-      <div className="xl:col-span-3 space-y-3">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-md">
-          <h4 className="text-xs font-black text-red-600 uppercase tracking-wider border-b dark:border-slate-800 pb-2 mb-3">
-            📋 Datos del Formulario
-          </h4>
-          <p className="text-[10px] text-slate-400 font-bold mb-3">
-            Los cambios aquí actualizan el canvas automáticamente.
-          </p>
-          <FormFields
-            data={reportData}
-            setData={setReportData}
-            onImageUpload={handleImageUpload}
-          />
+      {!isObserver && (
+        <div className="xl:col-span-3 space-y-3">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-md">
+            <h4 className="text-xs font-black text-red-600 uppercase tracking-wider border-b dark:border-slate-800 pb-2 mb-3">
+              📋 Datos del Formulario
+            </h4>
+            <p className="text-[10px] text-slate-400 font-bold mb-3">
+              Los cambios aquí actualizan el canvas automáticamente.
+            </p>
+            <FormFields
+              data={reportData}
+              setData={setReportData}
+              onImageUpload={handleImageUpload}
+            />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

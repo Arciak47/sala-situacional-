@@ -54,6 +54,7 @@ export default function AdministradorView({
   onSendMessage,
   onMarkAsRead,
   shiftReports,
+  isObserver,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -108,6 +109,7 @@ export default function AdministradorView({
           markAsRepeated={markAsRepeated}
           markAsReported={markAsReported}
           deleteSubmission={deleteSubmission}
+          isObserver={isObserver}
         />
       )}
 
@@ -134,6 +136,7 @@ export default function AdministradorView({
           markAsRepeated={markAsRepeated}
           markAsReported={markAsReported}
           handleImageUpload={handleImageUpload}
+          isObserver={isObserver}
         />
       )}
 
@@ -172,12 +175,14 @@ export default function AdministradorView({
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="px-4 py-2 rounded-full text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:outline-none"
               />
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-blue-600 hover:bg-blue-700 text-white cursor-pointer whitespace-nowrap"
-              >
-                + Crear Usuario
-              </button>
+              {!isObserver && (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-blue-600 hover:bg-blue-700 text-white cursor-pointer whitespace-nowrap"
+                >
+                  + Crear Usuario
+                </button>
+              )}
             </div>
           </div>
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-x-auto custom-scrollbar shadow-xl">
@@ -188,7 +193,7 @@ export default function AdministradorView({
                   <th className="py-4 px-4">Departamento</th>
                   <th className="py-4 px-4">Rol</th>
                   <th className="py-4 px-4">Estado</th>
-                  <th className="py-4 px-6 text-right">Acciones</th>
+                  {!isObserver && <th className="py-4 px-6 text-right">Acciones</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -240,28 +245,30 @@ export default function AdministradorView({
                           ● {u.status}
                         </span>
                       </td>
-                      <td className="py-4 px-6 text-right space-x-2">
-                        <button
-                          onClick={() => setEditingUser(u)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 inline-flex items-center gap-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 cursor-pointer disabled:opacity-50"
-                        >
-                          ✏️ Editar
-                        </button>
-                        <button
-                          onClick={() => toggleStatus(u.id)}
-                          disabled={u.id === currentUser.id}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 cursor-pointer disabled:opacity-50"
-                        >
-                          {u.status === 'Activo' ? 'Desactivar' : 'Activar'}
-                        </button>
-                        <button
-                          onClick={() => deleteUser(u.id, u.name)}
-                          disabled={u.id === currentUser.id}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 inline-flex items-center gap-1.5 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 cursor-pointer disabled:opacity-50"
-                        >
-                          🗑️
-                        </button>
-                      </td>
+                      {!isObserver && (
+                        <td className="py-4 px-6 text-right space-x-2">
+                          <button
+                            onClick={() => setEditingUser(u)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 inline-flex items-center gap-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 cursor-pointer disabled:opacity-50"
+                          >
+                            ✏️ Editar
+                          </button>
+                          <button
+                            onClick={() => toggleStatus(u.id)}
+                            disabled={u.id === currentUser.id}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 cursor-pointer disabled:opacity-50"
+                          >
+                            {u.status === 'Activo' ? 'Desactivar' : 'Activar'}
+                          </button>
+                          <button
+                            onClick={() => deleteUser(u.id, u.name)}
+                            disabled={u.id === currentUser.id}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 inline-flex items-center gap-1.5 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 cursor-pointer disabled:opacity-50"
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
               </tbody>
@@ -334,6 +341,7 @@ export default function AdministradorView({
           messages={messages}
           onSendMessage={onSendMessage}
           onMarkAsRead={onMarkAsRead}
+          isObserver={isObserver}
         />
       )}
     </div>

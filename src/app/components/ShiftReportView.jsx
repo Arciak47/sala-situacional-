@@ -327,7 +327,23 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
 
   const handleAutoFillFromDB = () => {
     const filteredSubs = submissions.filter((s) => {
-      let subDate = s.reportData?.fechaRaw || s.reportData?.fecha || (s.timestamp ? s.timestamp.split('T')[0] : '');
+      let subDate = '';
+      if (s.reportData?.fechaRaw) {
+        subDate = s.reportData.fechaRaw;
+      } else if (s.reportData?.fecha) {
+        subDate = s.reportData.fecha;
+      } else if (s.timestamp) {
+        const d = new Date(s.timestamp);
+        if (!isNaN(d)) {
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          subDate = `${yyyy}-${mm}-${dd}`;
+        } else {
+          subDate = s.timestamp.split('T')[0];
+        }
+      }
+
       if (subDate.includes('/')) {
         const parts = subDate.split('/');
         if (parts.length === 3) {
@@ -336,15 +352,24 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
       } else if (subDate.includes('T')) {
         subDate = subDate.split('T')[0];
       }
+
       if (selectedDate && subDate && subDate !== selectedDate) return false;
       if (selectedShift === 'all') return true;
 
       let hour = 12;
-      if (s.timestamp) {
-        hour = new Date(s.timestamp).getHours();
-      } else if (s.reportData?.hora) {
+      if (s.reportData?.hora) {
         const hMatch = s.reportData.hora.match(/^(\d{1,2})/);
-        if (hMatch) hour = parseInt(hMatch[1], 10);
+        if (hMatch) {
+          hour = parseInt(hMatch[1], 10);
+          const horaStr = s.reportData.hora.toLowerCase();
+          if (horaStr.includes('p.m') || horaStr.includes('pm')) {
+            if (hour < 12) hour += 12;
+          } else if (horaStr.includes('a.m') || horaStr.includes('am')) {
+            if (hour === 12) hour = 0;
+          }
+        }
+      } else if (s.timestamp) {
+        hour = new Date(s.timestamp).getHours();
       }
 
       if (selectedShift === 't1') return hour >= 0 && hour < 13;
@@ -800,18 +825,50 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
             {/* Badge de submissions disponibles para la fecha/turno activo */}
             {(() => {
               const countForBadge = submissions.filter((s) => {
-                let subDate = s.reportData?.fechaRaw || s.reportData?.fecha || (s.timestamp ? s.timestamp.split('T')[0] : '');
+                let subDate = '';
+                if (s.reportData?.fechaRaw) {
+                  subDate = s.reportData.fechaRaw;
+                } else if (s.reportData?.fecha) {
+                  subDate = s.reportData.fecha;
+                } else if (s.timestamp) {
+                  const d = new Date(s.timestamp);
+                  if (!isNaN(d)) {
+                    const yyyy = d.getFullYear();
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    subDate = `${yyyy}-${mm}-${dd}`;
+                  } else {
+                    subDate = s.timestamp.split('T')[0];
+                  }
+                }
+
                 if (subDate.includes('/')) {
                   const parts = subDate.split('/');
                   if (parts.length === 3) subDate = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
                 } else if (subDate.includes('T')) { subDate = subDate.split('T')[0]; }
+                
                 if (selectedDate && subDate !== selectedDate) return false;
                 if (selectedShift === 'all') return true;
+                
                 let hour = 12;
-                if (s.timestamp) hour = new Date(s.timestamp).getHours();
+                if (s.reportData?.hora) {
+                  const hMatch = s.reportData.hora.match(/^(\d{1,2})/);
+                  if (hMatch) {
+                    hour = parseInt(hMatch[1], 10);
+                    const horaStr = s.reportData.hora.toLowerCase();
+                    if (horaStr.includes('p.m') || horaStr.includes('pm')) {
+                      if (hour < 12) hour += 12;
+                    } else if (horaStr.includes('a.m') || horaStr.includes('am')) {
+                      if (hour === 12) hour = 0;
+                    }
+                  }
+                } else if (s.timestamp) {
+                  hour = new Date(s.timestamp).getHours();
+                }
+                
                 if (selectedShift === 't1') return hour >= 0 && hour < 13;
                 if (selectedShift === 't2') return hour >= 13 && hour < 19;
-                if (selectedShift === 't3') return hour >= 19;
+                if (selectedShift === 't3') return hour >= 19 || hour === 0;
                 return true;
               }).length;
               return (

@@ -508,6 +508,7 @@ export default function Home() {
       'postTitle',
       'usuario',
       'contexto',
+      'link',
     ];
     const missing = required.filter((k) => !reportData[k]?.trim());
     if (missing.length > 0) {
@@ -1067,18 +1068,23 @@ export default function Home() {
   const isAdmin = role === 'Administrador';
   const isAnalyst = role === 'Analista';
   const isSupervisor = role === 'Supervisor';
+  const isObserver = role === 'Observador';
   const stats = isAnalyst ? getStats() : null;
-  const allStats = isAdmin || isSupervisor ? getAllStats() : null;
+  const allStats = isAdmin || isSupervisor || isObserver ? getAllStats() : null;
   const pendingCount = submissions.filter((s) => s.status === 'pendiente' && !s.archived).length;
   
   const activeSubmissions = submissions.filter(s => !s.archived);
 
   const tabs = [];
-  if (isAdmin) {
+  if (isAdmin || isObserver) {
     tabs.push(
       { id: 'dashboard', label: '🏠 Dashboard' },
-      { id: 'inbox', label: '📥 Bandeja' },
-      { id: 'shift', label: '📄 Reporte Turno' },
+      { id: 'inbox', label: '📥 Bandeja' }
+    );
+    if (!isObserver) {
+      tabs.push({ id: 'shift', label: '📄 Reporte Turno' });
+    }
+    tabs.push(
       { id: 'history', label: '📖 Historial Turnos' },
       { id: 'users', label: '👥 Usuarios' },
       { id: 'stats', label: '📊 Estadísticas' },
@@ -1146,7 +1152,7 @@ export default function Home() {
           pendingCount={pendingCount}
         />
 
-        {isAdmin && (
+        {(isAdmin || isObserver) && (
           <AdministradorView
             activeTab={activeTab}
             setActiveTab={setActiveTab}
@@ -1189,6 +1195,7 @@ export default function Home() {
             messages={messages}
             onSendMessage={handleSendMessage}
             onMarkAsRead={handleMarkAsRead}
+            isObserver={isObserver}
           />
         )}
 
