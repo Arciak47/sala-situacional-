@@ -508,7 +508,7 @@ export default function Home() {
       'postTitle',
       'usuario',
       'contexto',
-      'link',
+      'enlace',
     ];
     const missing = required.filter((k) => !reportData[k]?.trim());
     if (missing.length > 0) {

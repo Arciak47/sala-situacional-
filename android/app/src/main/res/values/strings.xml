@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Sala Situacional</string>
+    <string name="title_activity_main">Sala Situacional</string>
+    <string name="package_name">com.salasituacional.app</string>
+    <string name="custom_url_scheme">com.salasituacional.app</string>
+</resources>
