@@ -602,20 +602,28 @@ export default function Home() {
           if (targetEl.sync === 'fecha') {
             if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
               const [d, m, y] = val.split('/');
-              val = `${y}-${m}-${d}`;
+              const rawDate = `${y}-${m}-${d}`;
+              updatedReport.fechaRaw = rawDate;
+              updatedReport.fecha = val; // DD/MM/YYYY
+            } else {
+              updatedReport.fecha = val;
             }
-          }
-          if (targetEl.sync === 'hora') {
+          } else if (targetEl.sync === 'hora') {
             const match = val.match(/^(\d{2}):(\d{2})\s(AM|PM)$/i);
             if (match) {
               let [ , h, m, ampm ] = match;
               h = parseInt(h, 10);
               if (ampm.toUpperCase() === 'PM' && h < 12) h += 12;
               if (ampm.toUpperCase() === 'AM' && h === 12) h = 0;
-              val = `${h.toString().padStart(2, '0')}:${m}`;
+              const rawTime = `${h.toString().padStart(2, '0')}:${m}`;
+              updatedReport.horaRaw = rawTime;
+              updatedReport.hora = val; // HH:MM AM/PM
+            } else {
+              updatedReport.hora = val;
             }
+          } else {
+            updatedReport[targetEl.sync] = val;
           }
-          updatedReport[targetEl.sync] = val;
         }
         elementsToUse = elements.map((el) => (el.id === editingId ? { ...el, text: editText } : el));
         // We call commitTextEdit asynchronously to update the UI state
