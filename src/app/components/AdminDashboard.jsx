@@ -112,14 +112,18 @@ export default function AdminDashboard({
     return bounds ? hour >= bounds.min && hour <= bounds.max : true;
   };
 
-  // Filtered dataset
-  const filteredSubmissions = targetSubmissions.filter((s) => isWithinSpecificFilter(s.timestamp));
+  // Base filtered dataset (includes everything)
+  const allFilteredSubmissions = targetSubmissions.filter((s) => isWithinSpecificFilter(s.timestamp));
+  const repeatedCount = allFilteredSubmissions.filter((s) => s.status === 'repetido').length;
+  const allCount = allFilteredSubmissions.length;
+
+  // Actual filtered dataset for stats (EXCLUDES repetidos)
+  const filteredSubmissions = allFilteredSubmissions.filter((s) => s.status !== 'repetido');
   const filteredMessages = userMessages.filter((m) => isWithinSpecificFilter(m.fecha));
 
   const totalSubmissions = filteredSubmissions.length;
   const pendingCount = filteredSubmissions.filter((s) => s.status === 'pendiente').length;
-  const reviewedCount = filteredSubmissions.filter((s) => ['revisado', 'reportar', 'repetido'].includes(s.status)).length;
-  const repeatedCount = filteredSubmissions.filter((s) => s.status === 'repetido').length;
+  const reviewedCount = filteredSubmissions.filter((s) => ['revisado', 'reportar'].includes(s.status)).length;
 
   const pendingPct =
     totalSubmissions > 0 ? Math.round((pendingCount / totalSubmissions) * 100) : 0;
@@ -386,7 +390,7 @@ export default function AdminDashboard({
             </span>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                {filteredSubmissions.length} reportes
+                {allCount} reportes
               </span>
               {repeatedCount > 0 && (
                 <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded-full" title={`${repeatedCount} reportes marcados como repetidos`}>
