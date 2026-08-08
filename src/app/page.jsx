@@ -1152,7 +1152,7 @@ export default function Home() {
         onLogout={handleLogout}
       />
 
-      <main className="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 min-w-0 mt-[60px] md:mt-0">
+      <main className="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 min-w-0">
         <HeaderBar
           currentUser={currentUser}
           activeTab={activeTab}

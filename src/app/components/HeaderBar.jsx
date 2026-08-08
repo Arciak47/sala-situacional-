@@ -37,7 +37,7 @@ export default function HeaderBar({
   });
 
   return (
-    <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 p-3 sm:p-5 rounded-2xl sm:rounded-3xl shadow-lg transition-all duration-300 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 sticky top-0 z-30 mb-4 sm:mb-6">
+    <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 p-2.5 sm:p-5 rounded-2xl sm:rounded-3xl shadow-lg transition-all duration-300 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 relative sm:sticky sm:top-0 z-30 mb-4 sm:mb-6">
       {/* LEFT: TITLE & BREADCRUMB */}
       <div className="flex items-center gap-3.5">
         <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-red-600 to-red-800 text-white font-black text-lg sm:text-xl flex items-center justify-center shadow-md shadow-red-600/20 flex-shrink-0">

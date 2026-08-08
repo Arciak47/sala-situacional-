@@ -74,7 +74,7 @@ export default function FormFields({ data, setData, readOnly = false, onImageUpl
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-bold mb-1">Fecha *</label>
           <input
@@ -107,7 +107,7 @@ export default function FormFields({ data, setData, readOnly = false, onImageUpl
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-bold mb-1">Red Social</label>
           <select
@@ -135,7 +135,7 @@ export default function FormFields({ data, setData, readOnly = false, onImageUpl
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-bold mb-1">Post *</label>
           <input
@@ -182,7 +182,7 @@ export default function FormFields({ data, setData, readOnly = false, onImageUpl
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-bold mb-1">Sentimiento</label>
           <select
