@@ -119,6 +119,7 @@ export default function AdminDashboard({
   const totalSubmissions = filteredSubmissions.length;
   const pendingCount = filteredSubmissions.filter((s) => s.status === 'pendiente').length;
   const reviewedCount = filteredSubmissions.filter((s) => ['revisado', 'reportar', 'repetido'].includes(s.status)).length;
+  const repeatedCount = filteredSubmissions.filter((s) => s.status === 'repetido').length;
 
   const pendingPct =
     totalSubmissions > 0 ? Math.round((pendingCount / totalSubmissions) * 100) : 0;
@@ -383,11 +384,16 @@ export default function AdminDashboard({
             }`}>
               {currentFilterInfo.label}
             </span>
-            {specificDate && (
+            <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
                 {filteredSubmissions.length} reportes
               </span>
-            )}
+              {repeatedCount > 0 && (
+                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded-full" title={`${repeatedCount} reportes marcados como repetidos`}>
+                  {repeatedCount} repetidas
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-xl border border-slate-200/60 dark:border-slate-700">
