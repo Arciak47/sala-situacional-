@@ -543,6 +543,7 @@ export default function Home() {
           sub: s,
           reasons,
           analystName: s.analystName,
+          analystSala: s.analystSala || 'Desconocida',
           fecha: new Date(s.timestamp).toLocaleDateString('es-ES'),
           hora: new Date(s.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
           municipio: s.reportData?.municipio,
@@ -1450,7 +1451,7 @@ export default function Home() {
                     )}
                   </div>
                   <div className="text-slate-600 dark:text-slate-300 space-y-0.5">
-                    <div><span className="font-bold text-slate-800 dark:text-white">Analista:</span> {m.analystName}</div>
+                    <div><span className="font-bold text-slate-800 dark:text-white">Sala:</span> {m.analystSala}</div>
                     <div><span className="font-bold text-slate-800 dark:text-white">Municipio:</span> {m.municipio}</div>
                     <div><span className="font-bold text-slate-800 dark:text-white">Enviado:</span> {m.fecha} a las {m.hora}</div>
                     <div>
