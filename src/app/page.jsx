@@ -507,10 +507,10 @@ export default function Home() {
       .trim()
       .toLowerCase()
       .replace(/^https?:\/\//, '')
-      .replace(/^www\./, '')
-      .replace(/\/$/, '')
-      .split('?')[0]  // strip query params
-      .split('#')[0]; // strip hash fragments
+      .replace(/^(www\.|m\.|mobile\.)/, '')
+      .split('?')[0]  // strip query params first
+      .split('#')[0] // strip hash fragments
+      .replace(/\/$/, ''); // strip trailing slash AFTER params are removed
   };
 
   const simpleImageHash = (base64Src) => {
@@ -525,7 +525,7 @@ export default function Home() {
     const activeNonArchived = submissions.filter((s) => !s.archived);
     const matches = [];
     const newUrl = normalizeUrl(data.enlace);
-    const newImgHash = simpleImageHash(data.evidenceImageSrc);
+    const newImgHash = data.imageHash || simpleImageHash(data.evidenceImageSrc);
 
     for (const s of activeNonArchived) {
       const reasons = [];
@@ -534,7 +534,8 @@ export default function Home() {
         if (existingUrl && existingUrl === newUrl) reasons.push('enlace');
       }
       if (newImgHash) {
-        const existingHash = simpleImageHash(s.reportData?.evidenceImageSrc);
+        // If it's a new report, it has imageHash. If old, we fallback to hashing whatever is in evidenceImageSrc (though it won't match ImgBB URLs)
+        const existingHash = s.reportData?.imageHash || simpleImageHash(s.reportData?.evidenceImageSrc);
         if (existingHash && existingHash === newImgHash) reasons.push('imagen');
       }
       if (reasons.length > 0) {
@@ -977,7 +978,8 @@ export default function Home() {
         ctx.drawImage(img, 0, 0, width, height);
         // Use PNG at maximum quality to preserve text legibility
         const hdSrc = canvas.toDataURL('image/png');
-        setReportData((prev) => ({ ...prev, evidenceImageSrc: hdSrc }));
+        const imgHash = simpleImageHash(hdSrc);
+        setReportData((prev) => ({ ...prev, evidenceImageSrc: hdSrc, imageHash: imgHash }));
       };
       img.src = ev.target.result;
     };
