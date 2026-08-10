@@ -96,7 +96,7 @@ export default function AnalistaView({
           onSendMessage={onSendMessage}
           onMarkAsRead={onMarkAsRead}
         />
-      )}
+      </div>
     </div>
   );
 }
