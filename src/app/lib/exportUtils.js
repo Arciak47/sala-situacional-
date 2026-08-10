@@ -258,6 +258,7 @@ export function exportStatsToExcel(allStats, filenamePrefix = 'Estadisticas_Sala
         <tr><td className="kpi-title">Reportes Esta Semana</td><td style="color:#2563eb; font-weight:bold; text-align:center;">${allStats.weekGlobal || 0}</td></tr>
         <tr><td className="kpi-title">Reportes Pendientes de Revisión</td><td style="color:#d97706; font-weight:bold; text-align:center;">${allStats.pendingGlobal || 0}</td></tr>
         <tr><td className="kpi-title">Reportes Revisados Aprobados</td><td style="color:#16a34a; font-weight:bold; text-align:center;">${allStats.reviewedGlobal || 0}</td></tr>
+        <tr><td className="kpi-title">Reportes Repetidos</td><td style="color:#ea580c; font-weight:bold; text-align:center;">${allStats.repeatedGlobal || 0}</td></tr>
       </tbody>
     </table>
     <br/>
@@ -273,6 +274,7 @@ export function exportStatsToExcel(allStats, filenamePrefix = 'Estadisticas_Sala
           <th>Esta Semana</th>
           <th>Pendientes</th>
           <th>Revisados</th>
+          <th>Repetidas</th>
         </tr>
       </thead>
       <tbody>
@@ -288,6 +290,7 @@ export function exportStatsToExcel(allStats, filenamePrefix = 'Estadisticas_Sala
             <td style="text-align:center;">${a.week}</td>
             <td style="text-align:center; background-color:#fef3c7; color:#92400e; font-weight:bold;">${a.pending}</td>
             <td style="text-align:center; background-color:#dcfce7; color:#166534; font-weight:bold;">${a.reviewed}</td>
+            <td style="text-align:center; background-color:#ffedd5; color:#ea580c; font-weight:bold;">${a.repeated || 0}</td>
           </tr>`
           )
           .join('')}
@@ -512,8 +515,9 @@ export async function renderCanvasFichaImage(sub) {
     } else if (el.type === 'poly') {
       ctx.fillStyle = el.fill;
       ctx.beginPath();
-      ctx.moveTo(el.pts[0][0], el.pts[0][1]);
-      el.pts.slice(1).forEach((p) => ctx.lineTo(p[0], p[1]));
+      const first = el.pts[0];
+      ctx.moveTo(first.x ?? first[0], first.y ?? first[1]);
+      el.pts.slice(1).forEach((p) => ctx.lineTo(p.x ?? p[0], p.y ?? p[1]));
       ctx.closePath();
       ctx.fill();
     } else if (el.type === 'line') {

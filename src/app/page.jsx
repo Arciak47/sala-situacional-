@@ -178,6 +178,16 @@ export default function Home() {
     saveStoredSession(currentUser);
   }, [currentUser]);
 
+  const handleLogout = () => {
+    if (currentUser) addLog(currentUser.email, 'Cierre de Sesión', 'Sesión terminada');
+    setCurrentUser(null);
+    setSelectedSubmission(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('sdm_activeTab');
+      localStorage.removeItem('sdm_selectedSubmissionId');
+    }
+  };
+
   // ── Auto-logout after 5 minutes of inactivity ──
   useEffect(() => {
     if (!currentUser) return;
@@ -344,15 +354,7 @@ export default function Home() {
     addLog(user.email, 'Inicio de Sesión', `Ingreso como ${user.role}`, 'success');
   };
 
-  const handleLogout = () => {
-    if (currentUser) addLog(currentUser.email, 'Cierre de Sesión', 'Sesión terminada');
-    setCurrentUser(null);
-    setSelectedSubmission(null);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('sdm_activeTab');
-      localStorage.removeItem('sdm_selectedSubmissionId');
-    }
-  };
+
 
   // ── User Management ──
   const handleCreateUser = async (e) => {
@@ -487,6 +489,23 @@ export default function Home() {
   // ── Submissions ──
   const addSubmissionWithTimeout = async (sub, timeoutMs = 2500) => {
     try {
+      const findDOM = (obj, path = '') => {
+        if (!obj) return null;
+        if (obj instanceof HTMLElement) return path;
+        if (typeof obj === 'object') {
+          for (let k in obj) {
+            const res = findDOM(obj[k], path ? `${path}.${k}` : k);
+            if (res) return res;
+          }
+        }
+        return null;
+      };
+      const badPath = findDOM(sub);
+      if (badPath) {
+        console.error("FOUND DOM ELEMENT AT PATH:", badPath);
+        alert("Found DOM element at: " + badPath);
+      }
+      
       const res = await Promise.race([
         addSubmissionToFirestore(sub),
         new Promise((resolve) => setTimeout(() => resolve('timeout'), timeoutMs))

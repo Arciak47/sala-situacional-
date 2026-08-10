@@ -113,8 +113,9 @@ export default function CanvasEditor({
       } else if (el.type === 'poly') {
         ctx.fillStyle = el.fill;
         ctx.beginPath();
-        ctx.moveTo(el.pts[0][0], el.pts[0][1]);
-        el.pts.slice(1).forEach((p) => ctx.lineTo(p[0], p[1]));
+        const first = el.pts[0];
+        ctx.moveTo(first.x ?? first[0], first.y ?? first[1]);
+        el.pts.slice(1).forEach((p) => ctx.lineTo(p.x ?? p[0], p.y ?? p[1]));
         ctx.closePath();
         ctx.fill();
       } else if (el.type === 'line') {
@@ -322,7 +323,7 @@ export default function CanvasEditor({
               y2: Math.round(orig.y2 + dy),
             }
           : orig.type === 'poly'
-          ? { ...orig, pts: orig.pts.map((p) => [p[0] + dx, p[1] + dy]) }
+          ? { ...orig, pts: orig.pts.map((p) => ({ x: (p.x ?? p[0]) + dx, y: (p.y ?? p[1]) + dy })) }
           : { ...orig, x: Math.round(orig.x + dx), y: Math.round(orig.y + dy) };
       setElements((prev) => prev.map((el) => (el.id === selId ? moved : el)));
     }
@@ -745,9 +746,9 @@ export default function CanvasEditor({
                   el: {
                     type: 'poly',
                     pts: [
-                      [200, 350],
-                      [350, 150],
-                      [500, 350],
+                      { x: 200, y: 350 },
+                      { x: 350, y: 150 },
+                      { x: 500, y: 350 },
                     ],
                     fill: '#dc2626',
                   },

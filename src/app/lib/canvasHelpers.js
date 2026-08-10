@@ -147,7 +147,7 @@ export function getBBox(el) {
     return { x: mx - 4, y: my - 4, w: Math.abs(el.x2 - el.x) + 8, h: Math.abs(el.y2 - el.y) + 8 };
   }
   if (el.type === 'poly') {
-    const xs = el.pts.map(p => p[0]), ys = el.pts.map(p => p[1]);
+    const xs = el.pts.map(p => p.x ?? p[0]), ys = el.pts.map(p => p.y ?? p[1]);
     const x = Math.min(...xs), y = Math.min(...ys);
     return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
   }
