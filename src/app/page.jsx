@@ -82,6 +82,7 @@ export default function Home() {
   const [inboxFilter, setInboxFilter] = useState('Todos');
   const [reportData, setReportData] = useState({ ...EMPTY_REPORT });
   const [isSaving, setIsSaving] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState(null); // { matches: [], pendingSub: obj }
 
   // Ref to track unread messages count for notifications
   const prevUnreadRef = useRef(0);
@@ -499,8 +500,60 @@ export default function Home() {
       throw err;
     }
   };
+  // ── Duplicate detection helpers ──
+  const normalizeUrl = (url) => {
+    if (!url) return '';
+    return url
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '')
+      .replace(/\/$/, '')
+      .split('?')[0]  // strip query params
+      .split('#')[0]; // strip hash fragments
+  };
 
-  const handleSubmitForm = async () => {
+  const simpleImageHash = (base64Src) => {
+    if (!base64Src) return null;
+    // Use first 200 + last 200 chars of the base64 body as a fast fingerprint
+    const body = base64Src.split(',')[1] || base64Src;
+    if (body.length < 400) return body;
+    return body.slice(0, 200) + '|' + body.slice(-200) + '|' + body.length;
+  };
+
+  const checkForDuplicates = (data) => {
+    const activeNonArchived = submissions.filter((s) => !s.archived);
+    const matches = [];
+    const newUrl = normalizeUrl(data.enlace);
+    const newImgHash = simpleImageHash(data.evidenceImageSrc);
+
+    for (const s of activeNonArchived) {
+      const reasons = [];
+      if (newUrl && newUrl.length > 5) {
+        const existingUrl = normalizeUrl(s.reportData?.enlace);
+        if (existingUrl && existingUrl === newUrl) reasons.push('enlace');
+      }
+      if (newImgHash) {
+        const existingHash = simpleImageHash(s.reportData?.evidenceImageSrc);
+        if (existingHash && existingHash === newImgHash) reasons.push('imagen');
+      }
+      if (reasons.length > 0) {
+        matches.push({
+          sub: s,
+          reasons,
+          analystName: s.analystName,
+          fecha: new Date(s.timestamp).toLocaleDateString('es-ES'),
+          hora: new Date(s.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+          municipio: s.reportData?.municipio,
+          status: s.status,
+        });
+      }
+    }
+    return matches;
+  };
+
+  const handleSubmitForm = async (forceStatus = null) => {
+
     const required = [
       'municipio',
       'fecha',
@@ -517,19 +570,57 @@ export default function Home() {
       setTimeout(() => setToastMsg(''), 4000);
       return;
     }
+
+    // ── Duplicate detection (only on first attempt, not on forced re-submit) ──
+    if (!forceStatus) {
+      const duplicates = checkForDuplicates(reportData);
+      if (duplicates.length > 0) {
+        const sub = {
+          id: `sub-${Date.now()}`,
+          analystId: currentUser.id,
+          analystName: currentUser.name,
+          analystEmail: currentUser.email,
+          analystSala: currentUser.sala || 'Sala Comuna',
+          analystSalaCodigo: currentUser.salaCodigo || '',
+          analystSalaEtiqueta: currentUser.salaEtiqueta || `${currentUser.sala || 'Sala Comuna'} - ${currentUser.name}`,
+          timestamp: new Date().toISOString(),
+          reportData: { ...reportData },
+          status: 'pendiente',
+        };
+        setDuplicateWarning({ matches: duplicates, pendingSub: sub });
+        return; // Stop here — wait for user decision
+      }
+    }
+
     setIsSaving(true);
-    const sub = {
-      id: `sub-${Date.now()}`,
-      analystId: currentUser.id,
-      analystName: currentUser.name,
-      analystEmail: currentUser.email,
-      analystSala: currentUser.sala || 'Sala Comuna',
-      analystSalaCodigo: currentUser.salaCodigo || '',
-      analystSalaEtiqueta: currentUser.salaEtiqueta || `${currentUser.sala || 'Sala Comuna'} - ${currentUser.name}`,
-      timestamp: new Date().toISOString(),
-      reportData: { ...reportData },
-      status: 'pendiente',
-    };
+    const sub = forceStatus
+      ? duplicateWarning?.pendingSub
+        ? { ...duplicateWarning.pendingSub, status: forceStatus }
+        : {
+            id: `sub-${Date.now()}`,
+            analystId: currentUser.id,
+            analystName: currentUser.name,
+            analystEmail: currentUser.email,
+            analystSala: currentUser.sala || 'Sala Comuna',
+            analystSalaCodigo: currentUser.salaCodigo || '',
+            analystSalaEtiqueta: currentUser.salaEtiqueta || `${currentUser.sala || 'Sala Comuna'} - ${currentUser.name}`,
+            timestamp: new Date().toISOString(),
+            reportData: { ...reportData },
+            status: forceStatus,
+          }
+      : {
+          id: `sub-${Date.now()}`,
+          analystId: currentUser.id,
+          analystName: currentUser.name,
+          analystEmail: currentUser.email,
+          analystSala: currentUser.sala || 'Sala Comuna',
+          analystSalaCodigo: currentUser.salaCodigo || '',
+          analystSalaEtiqueta: currentUser.salaEtiqueta || `${currentUser.sala || 'Sala Comuna'} - ${currentUser.name}`,
+          timestamp: new Date().toISOString(),
+          reportData: { ...reportData },
+          status: 'pendiente',
+        };
+    setDuplicateWarning(null);
     try {
       await addSubmissionWithTimeout(sub, 7000); // Allow longer timeout for uploads
       setSubmissions((prev) => [sub, ...prev]);
@@ -545,7 +636,7 @@ export default function Home() {
         const fileInput = document.getElementById('foto-evidencia');
         if (fileInput) fileInput.value = '';
       }
-      setToastMsg('✅ Reporte enviado al Supervisor.');
+      setToastMsg(forceStatus === 'repetido' ? '🔁 Reporte enviado y marcado como repetido.' : '✅ Reporte enviado al Supervisor.');
       setTimeout(() => setToastMsg(''), 4000);
     } catch (error) {
       console.error('Error estricto al enviar reporte:', error);
@@ -555,6 +646,15 @@ export default function Home() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleConfirmDuplicate = (action) => {
+    // action: 'repetido' | 'pendiente' | 'cancel'
+    if (action === 'cancel') {
+      setDuplicateWarning(null);
+      return;
+    }
+    handleSubmitForm(action);
   };
 
   const openSubmissionForReview = async (sub) => {
@@ -1304,6 +1404,87 @@ export default function Home() {
       />
 
       <Toast toastMsg={toastMsg} setToastMsg={setToastMsg} />
+
+      {/* ── DUPLICATE WARNING MODAL ── */}
+      {duplicateWarning && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border-2 border-orange-400 dark:border-orange-600 w-full max-w-lg rounded-3xl shadow-2xl p-6 space-y-5">
+            {/* Header */}
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-orange-100 dark:bg-orange-950/60 flex items-center justify-center text-2xl flex-shrink-0">
+                ⚠️
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                  ¡Posible Reporte Duplicado!
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  El sistema detectó que este reporte podría ser una repetición de uno ya existente.
+                </p>
+              </div>
+            </div>
+
+            {/* Matches */}
+            <div className="space-y-3 max-h-52 overflow-y-auto pr-1">
+              {duplicateWarning.matches.map((m, i) => (
+                <div
+                  key={i}
+                  className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50 rounded-2xl p-4 text-xs space-y-1.5"
+                >
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {m.reasons.includes('enlace') && (
+                      <span className="bg-orange-200 dark:bg-orange-900 text-orange-800 dark:text-orange-200 px-2.5 py-0.5 rounded-full font-bold">
+                        🔗 Mismo Enlace
+                      </span>
+                    )}
+                    {m.reasons.includes('imagen') && (
+                      <span className="bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2.5 py-0.5 rounded-full font-bold">
+                        🖼️ Misma Imagen
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-slate-600 dark:text-slate-300 space-y-0.5">
+                    <div><span className="font-bold text-slate-800 dark:text-white">Analista:</span> {m.analystName}</div>
+                    <div><span className="font-bold text-slate-800 dark:text-white">Municipio:</span> {m.municipio}</div>
+                    <div><span className="font-bold text-slate-800 dark:text-white">Enviado:</span> {m.fecha} a las {m.hora}</div>
+                    <div>
+                      <span className="font-bold text-slate-800 dark:text-white">Estado actual:</span>{' '}
+                      <span className={`font-bold ${
+                        m.status === 'repetido' ? 'text-orange-600' :
+                        m.status === 'pendiente' ? 'text-amber-600' : 'text-emerald-600'
+                      }`}>
+                        {m.status === 'repetido' ? '🔁 Repetido' : m.status === 'pendiente' ? '⏳ Pendiente' : '✅ Revisado'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <button
+                onClick={() => handleConfirmDuplicate('repetido')}
+                className="px-4 py-3 rounded-xl font-black text-xs bg-orange-600 hover:bg-orange-700 text-white transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+              >
+                🔁 Enviar como Repetida
+              </button>
+              <button
+                onClick={() => handleConfirmDuplicate('pendiente')}
+                className="px-4 py-3 rounded-xl font-black text-xs bg-slate-700 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 text-white transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+              >
+                ✅ Enviar de Todos Modos
+              </button>
+              <button
+                onClick={() => handleConfirmDuplicate('cancel')}
+                className="px-4 py-3 rounded-xl font-black text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                ✕ Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isSaving && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center">
