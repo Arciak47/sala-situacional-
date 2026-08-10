@@ -339,23 +339,23 @@ export default function SubmissionInboxView({
                     >
                       {isObserver ? '👀 Ver Ficha' : '🎨 Editar en Canvas'}
                     </button>
-                    {!isObserver && sub.status === 'pendiente' && (
-                      <>
+                    {!isObserver && sub.status !== 'revisado' && (
                         <button
                           onClick={() => markAsReviewed(sub.id)}
                           className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border dark:border-emerald-900 cursor-pointer"
                         >
                           ✅ Revisado
                         </button>
+                    )}
+                    {!isObserver && sub.status !== 'repetido' && (
                         <button
                           onClick={() => markAsRepeated && markAsRepeated(sub.id)}
                           className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 border dark:border-orange-900 cursor-pointer"
                         >
                           ⚠️ Repetido
                         </button>
-                      </>
                     )}
-                    {!isObserver && ['pendiente', 'revisado', 'reportar'].includes(sub.status) && (
+                    {!isObserver && sub.status !== 'reportar' && (
                         <button
                           onClick={() => markAsReported && markAsReported(sub.id)}
                           className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border dark:border-purple-900 cursor-pointer"
