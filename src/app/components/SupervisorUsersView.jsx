@@ -53,12 +53,17 @@ export default function SupervisorUsersView({
       positivoCount,
       positivoPct,
       formattedHours,
+      repeated: analystSubs.filter((s) => s.status === 'repetido').length,
+      reviewed: analystSubs.filter((s) => ['revisado', 'reportar'].includes(s.status)).length,
+      realCount: analystSubs.filter((s) => s.status !== 'repetido').length,
       submissionsList: analystSubs,
     };
   });
 
   // Global summary for Supervisor
   const totalAnalystSubmissions = submissions.length;
+  const globalRepetidas = submissions.filter((s) => s.status === 'repetido').length;
+  const globalReal = totalAnalystSubmissions - globalRepetidas;
   const globalNegativo = submissions.filter(
     (s) => s.reportData?.sentimiento === 'NEGATIVO'
   ).length;
@@ -113,11 +118,13 @@ export default function SupervisorUsersView({
           <tr><th>Fecha de Registro</th><td>${analyst.registrationDate || '01/01/2026'}</td><th>Horas de Uso del Sistema</th><td><strong>${analyst.formattedHours} Horas</strong></td></tr>
         </table>
 
-        <div class="section-title">📊 METRICAS DE FORMULARIOS Y DESGLOSE DE SENTIMIENTO</div>
+        <div class="section-title">📊 METRICAS DE FORMULARIOS, REPETIDAS Y DESGLOSE DE SENTIMIENTO</div>
         <table>
           <thead>
             <tr>
-              <th>Total Formularios</th>
+              <th>Total Subidos</th>
+              <th>🔁 Repetidas</th>
+              <th>✅ Número Real</th>
               <th>Negativos (🔴)</th>
               <th>Neutros (🟡)</th>
               <th>Positivos (🟢)</th>
@@ -126,12 +133,15 @@ export default function SupervisorUsersView({
           <tbody>
             <tr>
               <td><strong>${analyst.total}</strong></td>
+              <td style="color:#ea580c; font-weight:700">${analyst.repeated || 0}${(analyst.repeated || 0) > 0 ? ' ⚠️' : ''}</td>
+              <td style="color:#16a34a; font-weight:700">${analyst.realCount || analyst.total}</td>
               <td>${analyst.negativoCount} (${analyst.negativoPct}%)</td>
               <td>${analyst.neutroCount} (${analyst.neutroPct}%)</td>
               <td>${analyst.positivoCount} (${analyst.positivoPct}%)</td>
             </tr>
           </tbody>
         </table>
+        ${(analyst.repeated || 0) > 0 ? `<p style="margin-top:10px; font-size:12px; color:#ea580c; font-weight:700;">⚠️ Nota: Este analista subió ${analyst.total} reportes. ${analyst.repeated} fueron marcados como repetidos. El número real que va al informe es ${analyst.realCount || analyst.total}.</p>` : ''}
 
         <div class="footer">
           Documento generado automáticamente por el Módulo de Supervisión • Sala de Monitoreo © 2026
@@ -178,7 +188,7 @@ export default function SupervisorUsersView({
       </div>
 
       {/* ── METRIC SUMMARY CARDS ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">
           <div className="text-xs font-bold text-slate-500">Total Analistas</div>
           <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
@@ -187,21 +197,35 @@ export default function SupervisorUsersView({
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">
-          <div className="text-xs font-bold text-slate-500">Formularios Totales</div>
-          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+          <div className="text-xs font-bold text-slate-500">Total Subidos</div>
+          <div className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">
             {totalAnalystSubmissions}
           </div>
         </div>
 
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-orange-200 dark:border-orange-900/40 shadow-md bg-orange-50/40 dark:bg-orange-950/20">
+          <div className="text-xs font-bold text-orange-600 dark:text-orange-400">🔁 Repetidas</div>
+          <div className="text-2xl font-black text-orange-600 dark:text-orange-400 mt-1">
+            {globalRepetidas}
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-emerald-200 dark:border-emerald-900/40 shadow-md bg-emerald-50/40 dark:bg-emerald-950/20">
+          <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">✅ Número Real</div>
+          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+            {globalReal}
+          </div>
+        </div>
+
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">
-          <div className="text-xs font-bold text-slate-500">Formularios Negativos</div>
+          <div className="text-xs font-bold text-slate-500">Negativos</div>
           <div className="text-2xl font-black text-red-600 dark:text-red-400 mt-1">
             🔴 {globalNegativo}
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">
-          <div className="text-xs font-bold text-slate-500">Formularios Positivos/Neutros</div>
+          <div className="text-xs font-bold text-slate-500">Positivos / Neutros</div>
           <div className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">
             🟢 {globalPositivo} / 🟡 {globalNeutro}
           </div>
@@ -266,62 +290,78 @@ export default function SupervisorUsersView({
               </div>
 
               {/* STATS BREAKDOWN GRID */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
-                {/* TOTAL FORMULARIOS */}
-                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800 flex flex-col justify-between">
-                  <span className="text-slate-500 font-semibold">Total Formularios</span>
-                  <div className="text-2xl font-black text-slate-900 dark:text-white mt-2">
-                    📋 {analyst.total}
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-xs">
+                  {/* TOTAL SUBIDOS */}
+                  <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800 flex flex-col justify-between">
+                    <span className="text-slate-500 font-semibold">Total Subidos</span>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white mt-2">
+                      📋 {analyst.total}
+                    </div>
+                  </div>
+
+                  {/* REPETIDAS */}
+                  <div className={`p-4 rounded-2xl border flex flex-col justify-between ${
+                    analyst.repeated > 0
+                      ? 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-900/50'
+                      : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200/60 dark:border-slate-800'
+                  }`}>
+                    <span className={`font-semibold ${ analyst.repeated > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-slate-500'}`}>🔁 Repetidas</span>
+                    <div className={`text-2xl font-black mt-2 ${ analyst.repeated > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-slate-400'}`}>
+                      {analyst.repeated}
+                    </div>
+                  </div>
+
+                  {/* NÚMERO REAL */}
+                  <div className="bg-emerald-50 dark:bg-emerald-950/30 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-900/50 flex flex-col justify-between">
+                    <span className="text-emerald-700 dark:text-emerald-400 font-semibold">✅ Número Real</span>
+                    <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300 mt-2">
+                      {analyst.realCount}
+                    </div>
+                  </div>
+
+                  {/* SENTIMIENTO NEGATIVO */}
+                  <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+                    <div className="flex justify-between items-center font-bold">
+                      <span className="text-red-600 dark:text-red-400">🔴 Negativo</span>
+                      <span className="text-slate-900 dark:text-white">
+                        {analyst.negativoCount} ({analyst.negativoPct}%)
+                      </span>
+                    </div>
+                    <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-red-600 rounded-full transition-all duration-500"
+                        style={{ width: `${analyst.negativoPct}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* SENTIMIENTO POSITIVO */}
+                  <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+                    <div className="flex justify-between items-center font-bold">
+                      <span className="text-emerald-600 dark:text-emerald-400">🟢 Positivo</span>
+                      <span className="text-slate-900 dark:text-white">
+                        {analyst.positivoCount} ({analyst.positivoPct}%)
+                      </span>
+                    </div>
+                    <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                        style={{ width: `${analyst.positivoPct}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* SENTIMIENTO NEGATIVO */}
-                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-2">
-                  <div className="flex justify-between items-center font-bold">
-                    <span className="text-red-600 dark:text-red-400">🔴 Negativo</span>
-                    <span className="text-slate-900 dark:text-white">
-                      {analyst.negativoCount} ({analyst.negativoPct}%)
+                {/* AVISO REPETIDAS */}
+                {analyst.repeated > 0 && (
+                  <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50 rounded-xl px-4 py-2.5 text-xs text-orange-700 dark:text-orange-300 font-bold flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span>
+                      Subió <strong>{analyst.total}</strong> reportes &bull; <strong>{analyst.repeated}</strong> repetida{analyst.repeated !== 1 ? 's' : ''} &bull; Número real que va al informe: <strong>{analyst.realCount}</strong>
                     </span>
                   </div>
-                  <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-red-600 rounded-full transition-all duration-500"
-                      style={{ width: `${analyst.negativoPct}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* SENTIMIENTO NEUTRO */}
-                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-2">
-                  <div className="flex justify-between items-center font-bold">
-                    <span className="text-amber-600 dark:text-amber-400">🟡 Neutro</span>
-                    <span className="text-slate-900 dark:text-white">
-                      {analyst.neutroCount} ({analyst.neutroPct}%)
-                    </span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-amber-500 rounded-full transition-all duration-500"
-                      style={{ width: `${analyst.neutroPct}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* SENTIMIENTO POSITIVO */}
-                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-2">
-                  <div className="flex justify-between items-center font-bold">
-                    <span className="text-emerald-600 dark:text-emerald-400">🟢 Positivo</span>
-                    <span className="text-slate-900 dark:text-white">
-                      {analyst.positivoCount} ({analyst.positivoPct}%)
-                    </span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                      style={{ width: `${analyst.positivoPct}%` }}
-                    />
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           ))}
@@ -411,9 +451,42 @@ export default function SupervisorUsersView({
             {/* SENTIMENT METRICS */}
             <div className="space-y-3">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">
-                🎭 Resumen de Desempeño por Sentimiento
+                📊 Desglose de Reportes
               </h4>
 
+              {/* Repetidas + Real destacados */}
+              <div className="grid grid-cols-3 gap-3 text-xs text-center">
+                <div className="bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+                  <div className="text-slate-500 font-bold">📋 Total Subidos</div>
+                  <div className="text-xl font-black text-slate-900 dark:text-white mt-1">
+                    {selectedAnalystModal.total}
+                  </div>
+                </div>
+
+                <div className="bg-orange-50 dark:bg-orange-950/40 p-3.5 rounded-2xl border border-orange-100 dark:border-orange-900/40">
+                  <div className="text-orange-600 dark:text-orange-400 font-bold">🔁 Repetidas</div>
+                  <div className="text-xl font-black text-orange-700 dark:text-orange-300 mt-1">
+                    {selectedAnalystModal.repeated || 0}
+                  </div>
+                </div>
+
+                <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3.5 rounded-2xl border border-emerald-100 dark:border-emerald-900/40">
+                  <div className="text-emerald-600 dark:text-emerald-400 font-bold">✅ Número Real</div>
+                  <div className="text-xl font-black text-emerald-700 dark:text-emerald-300 mt-1">
+                    {selectedAnalystModal.realCount ?? selectedAnalystModal.total}
+                  </div>
+                </div>
+              </div>
+
+              {(selectedAnalystModal.repeated || 0) > 0 && (
+                <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50 rounded-xl px-4 py-2.5 text-xs text-orange-700 dark:text-orange-300 font-bold">
+                  ⚠️ Subió <strong>{selectedAnalystModal.total}</strong> reportes &bull; <strong>{selectedAnalystModal.repeated}</strong> marcados como repetidos &bull; Número real al informe: <strong>{selectedAnalystModal.realCount}</strong>
+                </div>
+              )}
+
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 pt-1">
+                🎭 Sentimiento
+              </h4>
               <div className="grid grid-cols-3 gap-3 text-xs text-center">
                 <div className="bg-red-50 dark:bg-red-950/40 p-3.5 rounded-2xl border border-red-100 dark:border-red-900/40">
                   <div className="text-red-600 dark:text-red-400 font-bold">🔴 Negativo</div>
