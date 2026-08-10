@@ -2,6 +2,10 @@
 // EXPORT UTILITIES (EXCEL, PDF, PNG) FOR SALA SITUACIONAL
 // ──────────────────────────────────────────────────────────
 
+import { CW, CH } from './constants';
+import { buildElements, drawWrapped } from './canvasHelpers';
+import { getSubmissionImage } from './firestoreService';
+
 /**
  * Exports submissions array to a beautifully styled Excel spreadsheet (.xls)
  * with real columns, custom headers, badges, and auto-filter support.
@@ -444,9 +448,6 @@ export function exportStatsToPDF(title = 'Informe Estadístico - Sala Situaciona
  * Exports selected submissions array to High Definition (HD) PDF document
  * with vector layout, high-res images, and active clickable hyperlinks.
  */
-import { CW, CH } from './constants';
-import { buildElements, drawWrapped } from './canvasHelpers';
-import { getSubmissionImage } from './firestoreService';
 
 /**
  * Renders a submission object onto an off-screen HTML5 Canvas matching the exact Canvas Editor ficha,
