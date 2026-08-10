@@ -27,10 +27,32 @@ import {
 } from './storage';
 
 /**
- * Helper to safely sanitize objects for Firestore (remove undefined values)
+ * Helper to safely sanitize objects for Firestore
+ * Removes undefined values and prevents invalid nested arrays.
  */
 function sanitize(obj) {
-  return JSON.parse(JSON.stringify(obj));
+  if (Array.isArray(obj)) {
+    return obj
+      .filter(v => v !== undefined)
+      .map(v => {
+        if (Array.isArray(v)) {
+          // Firestore does not support arrays containing arrays directly.
+          // Convert nested array into an object to avoid "invalid nested entity" error.
+          const converted = {};
+          v.forEach((item, index) => { converted[index] = sanitize(item); });
+          return converted;
+        }
+        return (v && typeof v === 'object' ? sanitize(v) : (v === undefined ? null : v));
+      });
+  } else if (obj !== null && typeof obj === 'object') {
+    return Object.keys(obj).reduce((acc, key) => {
+      if (obj[key] !== undefined) {
+        acc[key] = sanitize(obj[key]);
+      }
+      return acc;
+    }, {});
+  }
+  return obj;
 }
 
 export async function uploadImageToStorage(fileOrDataUrl, path) {
