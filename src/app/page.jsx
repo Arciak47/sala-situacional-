@@ -553,6 +553,10 @@ export default function Home() {
   };
 
   const handleSubmitForm = async (forceStatus = null) => {
+    // Si forceStatus es un evento (ej. viene del onClick), lo ignoramos
+    if (forceStatus && typeof forceStatus !== 'string') {
+      forceStatus = null;
+    }
 
     const required = [
       'municipio',
