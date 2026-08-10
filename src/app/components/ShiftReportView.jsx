@@ -413,11 +413,51 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
     setReceivedReportsTotal(filteredSubs.length);
 
     if (customRooms.length === 0) {
-      setCustomRooms([
-        { id: 'r1', name: 'SALA PRINCIPAL', count: filteredSubs.length, unit: '' },
-        { id: 'r2', name: 'SALA CLEBG', count: 0, unit: 'REPORTES' },
-        { id: 'r3', name: 'SALA POSICIONAMIENTO DE GESTIÓN', count: 0, unit: '' },
-      ]);
+      // Agrupar submissions por sala (usando analystSala o analystSalaCodigo)
+      const salaCountMap = {};
+      filteredSubs.forEach((s) => {
+        const salaKey = s.analystSala || s.analystSalaCodigo || 'SALA PRINCIPAL';
+        const salaUpper = salaKey.toUpperCase();
+        salaCountMap[salaUpper] = (salaCountMap[salaUpper] || 0) + 1;
+      });
+
+      const salaKeys = Object.keys(salaCountMap);
+
+      if (salaKeys.length > 0) {
+        // Generar salas dinámicamente con los conteos reales
+        const newRooms = salaKeys.map((salaName, idx) => ({
+          id: `r-auto-${idx}`,
+          name: salaName,
+          count: salaCountMap[salaName],
+          unit: '',
+        }));
+        setCustomRooms(newRooms);
+      } else {
+        // Sin submissions: usar el template por defecto
+        setCustomRooms([
+          { id: 'r1', name: 'SALA PRINCIPAL', count: 0, unit: '' },
+          { id: 'r2', name: 'SALA CLEBG', count: 0, unit: 'REPORTES' },
+          { id: 'r3', name: 'SALA POSICIONAMIENTO DE GESTIÓN', count: 0, unit: '' },
+        ]);
+      }
+    } else {
+      // Ya hay salas cargadas: actualizar solo los conteos de las que coincidan
+      const salaCountMap = {};
+      filteredSubs.forEach((s) => {
+        const salaKey = s.analystSala || s.analystSalaCodigo || 'SALA PRINCIPAL';
+        const salaUpper = salaKey.toUpperCase();
+        salaCountMap[salaUpper] = (salaCountMap[salaUpper] || 0) + 1;
+      });
+
+      setCustomRooms((prev) =>
+        prev.map((rm) => {
+          const nameUpper = (rm.name || '').toUpperCase();
+          if (salaCountMap[nameUpper] !== undefined) {
+            return { ...rm, count: salaCountMap[nameUpper] };
+          }
+          return rm;
+        })
+      );
     }
   };
 

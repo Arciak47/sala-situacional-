@@ -351,41 +351,73 @@ export default function ProfileView({
             </h3>
 
             {role === 'Analista' && stats && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
-                  <div className="text-slate-500 text-[11px] font-semibold">
-                    Total Reportes
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+                    <div className="text-slate-500 text-[11px] font-semibold">
+                      Total Reportes
+                    </div>
+                    <div className="text-2xl font-black text-red-600 dark:text-red-500 mt-1">
+                      {stats.total}
+                    </div>
                   </div>
-                  <div className="text-2xl font-black text-red-600 dark:text-red-500 mt-1">
-                    {stats.total}
+
+                  <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+                    <div className="text-slate-500 text-[11px] font-semibold">
+                      Enviados Hoy
+                    </div>
+                    <div className="text-2xl font-black text-amber-600 dark:text-amber-500 mt-1">
+                      {stats.today}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+                    <div className="text-slate-500 text-[11px] font-semibold">
+                      Esta Semana
+                    </div>
+                    <div className="text-2xl font-black text-blue-600 dark:text-blue-500 mt-1">
+                      {stats.week}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+                    <div className="text-slate-500 text-[11px] font-semibold">
+                      Este Mes
+                    </div>
+                    <div className="text-2xl font-black text-emerald-600 dark:text-emerald-500 mt-1">
+                      {stats.month}
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 bg-orange-50 dark:bg-orange-950/30 p-4 rounded-2xl border border-orange-200/60 dark:border-orange-900/50">
+                    <div className="text-orange-600 dark:text-orange-400 text-[11px] font-semibold">
+                      🔁 Repetidas
+                    </div>
+                    <div className="text-2xl font-black text-orange-600 dark:text-orange-400 mt-1">
+                      {stats.repeated || 0}
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
-                  <div className="text-slate-500 text-[11px] font-semibold">
-                    Enviados Hoy
+                {/* Resumen informativo de repetidas */}
+                <div className="bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                  <div className="flex justify-between">
+                    <span className="font-semibold">Total subidos:</span>
+                    <span className="font-black text-slate-900 dark:text-white">{stats.total}</span>
                   </div>
-                  <div className="text-2xl font-black text-amber-600 dark:text-amber-500 mt-1">
-                    {stats.today}
+                  <div className="flex justify-between">
+                    <span className="font-semibold">✅ Revisados:</span>
+                    <span className="font-black text-emerald-600">{stats.reviewed || 0}</span>
                   </div>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
-                  <div className="text-slate-500 text-[11px] font-semibold">
-                    Esta Semana
+                  <div className="flex justify-between">
+                    <span className="font-semibold">🔁 Repetidas:</span>
+                    <span className="font-black text-orange-600">{stats.repeated || 0}</span>
                   </div>
-                  <div className="text-2xl font-black text-blue-600 dark:text-blue-500 mt-1">
-                    {stats.week}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
-                  <div className="text-slate-500 text-[11px] font-semibold">
-                    Este Mes
-                  </div>
-                  <div className="text-2xl font-black text-emerald-600 dark:text-emerald-500 mt-1">
-                    {stats.month}
-                  </div>
+                  {(stats.repeated || 0) > 0 && (
+                    <div className="pt-1 text-[11px] text-orange-600 dark:text-orange-400 font-bold border-t border-orange-200 dark:border-orange-900/50">
+                      ⚠️ Subiste {stats.total} reporte{stats.total !== 1 ? 's' : ''}, {stats.reviewed || 0} revisado{(stats.reviewed || 0) !== 1 ? 's' : ''} y {stats.repeated} marcado{(stats.repeated || 0) !== 1 ? 's' : ''} como repetido{(stats.repeated || 0) !== 1 ? 's' : ''}.
+                    </div>
+                  )}
                 </div>
               </div>
             )}

@@ -940,6 +940,8 @@ export default function Home() {
       year: mine.filter(
         (s) => new Date(s.timestamp) >= new Date(now.getFullYear(), 0, 1)
       ).length,
+      repeated: mine.filter((s) => s.status === 'repetido').length,
+      reviewed: mine.filter((s) => ['revisado', 'reportar'].includes(s.status)).length,
       recent: mine.slice(0, 15),
     };
   };
@@ -975,7 +977,10 @@ export default function Home() {
       (s) => s.status === 'pendiente'
     ).length;
     const reviewedGlobal = submissions.filter(
-      (s) => ['revisado', 'reportar', 'repetido'].includes(s.status)
+      (s) => ['revisado', 'reportar'].includes(s.status)
+    ).length;
+    const repeatedGlobal = submissions.filter(
+      (s) => s.status === 'repetido'
     ).length;
 
     const perAnalyst = analysts.map((a) => {
@@ -995,7 +1000,8 @@ export default function Home() {
         today: mine.filter((s) => s.timestamp.split('T')[0] === today).length,
         week: mine.filter((s) => new Date(s.timestamp) >= weekStart).length,
         pending: mine.filter((s) => s.status === 'pendiente').length,
-        reviewed: mine.filter((s) => ['revisado', 'reportar', 'repetido'].includes(s.status)).length,
+        repeated: mine.filter((s) => s.status === 'repetido').length,
+        reviewed: mine.filter((s) => ['revisado', 'reportar'].includes(s.status)).length,
       };
     });
 
@@ -1006,6 +1012,7 @@ export default function Home() {
       monthGlobal,
       pendingGlobal,
       reviewedGlobal,
+      repeatedGlobal,
       perAnalyst,
     };
   };

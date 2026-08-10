@@ -56,18 +56,19 @@ export default function StatsView({ currentUser, stats, allStats, submissions = 
           <h3 className="text-lg font-black border-b dark:border-slate-800 pb-3 mb-5">
             📊 Mis Estadísticas de Envío
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
-              { label: 'Hoy', value: stats.today, icon: '📅' },
-              { label: 'Esta Semana', value: stats.week, icon: '📆' },
-              { label: 'Este Mes', value: stats.month, icon: '🗓️' },
-              { label: 'Este Año', value: stats.year, icon: '📈' },
+              { label: 'Hoy', value: stats.today, icon: '📅', color: 'text-red-600 dark:text-red-400' },
+              { label: 'Esta Semana', value: stats.week, icon: '📆', color: 'text-red-600 dark:text-red-400' },
+              { label: 'Este Mes', value: stats.month, icon: '🗓️', color: 'text-red-600 dark:text-red-400' },
+              { label: 'Este Año', value: stats.year, icon: '📈', color: 'text-red-600 dark:text-red-400' },
+              { label: 'Repetidas', value: stats.repeated || 0, icon: '🔁', color: 'text-orange-600 dark:text-orange-400' },
             ].map((s) => (
               <div
                 key={s.label}
                 className="p-5 rounded-2xl text-center border border-red-500/10 bg-slate-50 dark:bg-slate-950/40"
               >
-                <div className="text-3xl font-black text-red-600 dark:text-red-400">
+                <div className={`text-3xl font-black ${s.color}`}>
                   {s.value}
                 </div>
                 <div className="text-xs font-bold text-slate-600 dark:text-slate-400 mt-1">
@@ -76,11 +77,23 @@ export default function StatsView({ currentUser, stats, allStats, submissions = 
               </div>
             ))}
           </div>
-          <div className="mt-4 text-center">
-            <span className="text-xs text-slate-400 font-bold">
-              Total histórico:{' '}
-              <span className="text-red-600">{stats.total}</span> reportes enviados
+          <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <span className="text-xs text-slate-500 font-bold">
+              Total subidos: <span className="text-slate-900 dark:text-white">{stats.total}</span>
             </span>
+            <span className="text-slate-300 dark:text-slate-700">|</span>
+            <span className="text-xs text-slate-500 font-bold">
+              Revisados: <span className="text-emerald-600">{stats.reviewed || 0}</span>
+            </span>
+            <span className="text-slate-300 dark:text-slate-700">|</span>
+            <span className="text-xs text-slate-500 font-bold">
+              Repetidas: <span className="text-orange-600">{stats.repeated || 0}</span>
+            </span>
+            {(stats.repeated || 0) > 0 && (
+              <span className="text-[11px] text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/50 px-2 py-0.5 rounded-full font-bold">
+                ⚠️ {stats.repeated} de {stats.total} reportes fueron marcados como repetidos
+              </span>
+            )}
           </div>
         </div>
 
@@ -104,7 +117,7 @@ export default function StatsView({ currentUser, stats, allStats, submissions = 
                   </tr>
                 </thead>
                 <tbody className="divide-y dark:divide-slate-800">
-                  {stats.recent.map((s) => (
+            {stats.recent.map((s) => (
                     <tr key={s.id}>
                       <td className="py-3 px-4 text-slate-500 font-mono">
                         {new Date(s.timestamp).toLocaleDateString('es-ES')}
@@ -118,11 +131,15 @@ export default function StatsView({ currentUser, stats, allStats, submissions = 
                           className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
                             s.status === 'pendiente'
                               ? 'bg-amber-100 text-amber-700'
+                              : s.status === 'repetido'
+                              ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
                               : 'bg-emerald-100 text-emerald-700'
                           }`}
                         >
                           {s.status === 'pendiente'
                             ? '⏳ Pendiente'
+                            : s.status === 'repetido'
+                            ? '🔁 Repetido'
                             : '✅ Revisado'}
                         </span>
                       </td>
@@ -148,13 +165,14 @@ export default function StatsView({ currentUser, stats, allStats, submissions = 
           <h3 className="text-lg font-black border-b dark:border-slate-800 pb-3 mb-5">
             📊 Estadísticas Generales del Sistema
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
             {[
               { label: 'Total Reportes', value: allStats.totalGlobal, icon: '📋', color: 'text-slate-900 dark:text-white' },
               { label: 'Reportes Hoy', value: allStats.todayGlobal, icon: '📅', color: 'text-red-600' },
               { label: 'Esta Semana', value: allStats.weekGlobal, icon: '📆', color: 'text-blue-600' },
               { label: 'Pendientes', value: allStats.pendingGlobal, icon: '⏳', color: 'text-amber-600' },
               { label: 'Revisados', value: allStats.reviewedGlobal, icon: '✅', color: 'text-emerald-600' },
+              { label: 'Repetidas', value: allStats.repeatedGlobal || 0, icon: '🔁', color: 'text-orange-600' },
             ].map((s) => (
               <div
                 key={s.label}
@@ -196,6 +214,7 @@ export default function StatsView({ currentUser, stats, allStats, submissions = 
                     <th className="py-3.5 px-4 text-center">Esta Semana</th>
                     <th className="py-3.5 px-4 text-center">Pendientes</th>
                     <th className="py-3.5 px-4 text-center">Revisados</th>
+                    <th className="py-3.5 px-4 text-center">Repetidas</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -229,6 +248,15 @@ export default function StatsView({ currentUser, stats, allStats, submissions = 
                       <td className="py-4 px-4 text-center">
                         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                           ✅ {a.reviewed}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-center">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                          (a.repeated || 0) > 0
+                            ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
+                            : 'bg-slate-100 text-slate-400 dark:bg-slate-800'
+                        }`}>
+                          🔁 {a.repeated || 0}
                         </span>
                       </td>
                     </tr>
