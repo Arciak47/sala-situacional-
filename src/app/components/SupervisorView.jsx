@@ -61,20 +61,20 @@ export default function SupervisorView({
       </div>
 
       {/* ── REPORTE DE TURNO ── */}
-      {activeTab === 'shift' && (
+      <div className={activeTab === 'shift' ? 'block' : 'hidden'}>
         <ShiftReportView submissions={submissions} users={users} currentUser={currentUser} />
-      )}
+      </div>
 
-      {activeTab === 'history' && (
+      <div className={activeTab === 'history' ? 'block' : 'hidden'}>
         <ShiftHistoryView
           reports={shiftReports}
           submissions={submissions}
           openSubmissionForReview={openSubmissionForReview}
         />
-      )}
+      </div>
 
       {/* ── DASHBOARD PRINCIPAL CON GRÁFICAS ── */}
-      {activeTab === 'dashboard' && (
+      <div className={activeTab === 'dashboard' ? 'block' : 'hidden'}>
         <AdminDashboard
           currentUser={currentUser}
           allStats={allStats}
@@ -83,10 +83,10 @@ export default function SupervisorView({
           auditLogs={auditLogs}
           messages={messages}
         />
-      )}
+      </div>
 
       {/* ── BANDEJA DE ENTRADA ── */}
-      {activeTab === 'inbox' && (
+      <div className={activeTab === 'inbox' ? 'block' : 'hidden'}>
         <SubmissionInboxView
           submissions={submissions}
           inboxFilter={inboxFilter}
@@ -97,10 +97,10 @@ export default function SupervisorView({
           markAsReported={markAsReported}
           deleteSubmission={deleteSubmission}
         />
-      )}
+      </div>
 
       {/* ── EDITOR TIPO CANVA ── */}
-      {activeTab === 'editor' && (
+      <div className={activeTab === 'editor' ? 'block' : 'hidden'}>
         <CanvasEditor
           reportData={reportData}
           setReportData={setReportData}
@@ -123,33 +123,33 @@ export default function SupervisorView({
           markAsReported={markAsReported}
           handleImageUpload={handleImageUpload}
         />
-      )}
+      </div>
 
       {/* ── GESTIÓN Y RENDIMIENTO DE ANALISTAS (USUARIOS) ── */}
-      {activeTab === 'users' && (
+      <div className={activeTab === 'users' ? 'block' : 'hidden'}>
         <SupervisorUsersView
           users={users}
           submissions={submissions}
           auditLogs={auditLogs}
         />
-      )}
+      </div>
 
       {/* ── ESTADÍSTICAS GLOBALES PARA SUPERVISOR ── */}
-      {activeTab === 'stats' && (
+      <div className={activeTab === 'stats' ? 'block' : 'hidden'}>
         <StatsView currentUser={currentUser} allStats={allStats} />
-      )}
+      </div>
 
       {/* ── MI PERFIL ── */}
-      {activeTab === 'profile' && (
+      <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
         <ProfileView
           currentUser={currentUser}
           onUpdateProfile={onUpdateProfile}
           allStats={allStats}
         />
-      )}
+      </div>
 
       {/* ── MENSAJERÍA (CHAT INSTITUCIONAL) ── */}
-      {activeTab === 'messaging' && (
+      <div className={activeTab === 'messaging' ? 'block' : 'hidden'}>
         <MessagingView
           currentUser={currentUser}
           users={users}
@@ -157,7 +157,7 @@ export default function SupervisorView({
           onSendMessage={onSendMessage}
           onMarkAsRead={onMarkAsRead}
         />
-      )}
+      </div>
     </div>
   );
 }

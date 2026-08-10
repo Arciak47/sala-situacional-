@@ -27,19 +27,19 @@ export default function AnalistaView({
 }) {
   return (
     <div className="space-y-6">
-      {/* ── DASHBOARD PRINCIPAL ── */}
-      {activeTab === 'dashboard' && (
+      {/* ── DASHBOARD PRINCIPAL CON GRÁFICAS (Versión Analista) ── */}
+      <div className={activeTab === 'dashboard' ? 'block' : 'hidden'}>
         <AdminDashboard
           currentUser={currentUser}
-          allStats={allStats}
-          submissions={submissions}
-          users={users}
-          auditLogs={auditLogs}
+          allStats={{}} // Analistas ven estadísticas propias desde `stats` si está configurado, o general básico
+          submissions={[]} 
+          users={[]} 
+          auditLogs={[]} 
           messages={messages}
         />
-      )}
+      </div>
       {/* ── FORMULARIO ── */}
-      {activeTab === 'forms' && (
+      <div className={activeTab === 'forms' ? 'block' : 'hidden'}>
         <div className="max-w-3xl mx-auto space-y-5">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-xl">
             <div className="border-b dark:border-slate-800 pb-3 mb-4">
@@ -47,7 +47,7 @@ export default function AnalistaView({
                 📋 Formulario de Reporte
               </h3>
               <p className="text-xs text-slate-500">
-                Completa los campos y envía al Supervisor.
+                Completa los campos del reporte.
               </p>
             </div>
             <FormFields
@@ -55,34 +55,40 @@ export default function AnalistaView({
               setData={setReportData}
               onImageUpload={handleImageUpload}
             />
-            <div className="mt-6 pt-4 border-t dark:border-slate-800">
+            <div className="mt-6 pt-4 border-t dark:border-slate-800 flex gap-3">
               <button
                 onClick={handleSubmitForm}
-                className="w-full py-3.5 px-6 rounded-full text-xs font-black uppercase tracking-wider text-white bg-gradient-to-r from-red-600 to-red-800 hover:opacity-95 shadow-lg shadow-red-600/30 cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
               >
-                📤 ENVIAR REPORTE
+                📤 Enviar Reporte
+              </button>
+              <button
+                onClick={goToEditor}
+                className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 cursor-pointer"
+              >
+                🎨 Ir al Editor
               </button>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* ── ESTADÍSTICAS ── */}
-      {activeTab === 'stats' && (
+      <div className={activeTab === 'stats' ? 'block' : 'hidden'}>
         <StatsView currentUser={currentUser} stats={stats} />
-      )}
+      </div>
 
       {/* ── MI PERFIL ── */}
-      {activeTab === 'profile' && (
+      <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
         <ProfileView
           currentUser={currentUser}
           onUpdateProfile={onUpdateProfile}
           stats={stats}
         />
-      )}
+      </div>
 
       {/* ── MENSAJERÍA (CHAT INSTITUCIONAL) ── */}
-      {activeTab === 'messaging' && (
+      <div className={activeTab === 'messaging' ? 'block' : 'hidden'}>
         <MessagingView
           currentUser={currentUser}
           users={users}
