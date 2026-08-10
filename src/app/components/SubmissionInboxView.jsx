@@ -143,21 +143,29 @@ export default function SubmissionInboxView({
               ))}
             </div>
 
-            {/* AREA FILTER BUTTONS */}
-            <div className="flex gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl flex-wrap">
-              {['Todos', ...AREAS].map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setAreaFilter(f)}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
-                    areaFilter === f
-                      ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
-                      : 'bg-transparent border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  {f === 'Todos' ? '🌍 Todas las Áreas' : f}
-                </button>
-              ))}
+            {/* AREA FILTER DROPDOWN */}
+            <div className="relative flex items-center">
+              <select
+                value={areaFilter}
+                onChange={(e) => setAreaFilter(e.target.value)}
+                className={`appearance-none outline-none pl-4 pr-8 py-1.5 rounded-xl text-[10px] font-bold cursor-pointer transition-all shadow-sm ${
+                  areaFilter === 'Todos'
+                    ? 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-transparent'
+                    : 'bg-purple-600 text-white border-purple-600'
+                }`}
+              >
+                <option value="Todos">🌍 Todas las Áreas</option>
+                {AREAS.map((a) => (
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
+                ))}
+              </select>
+              <div className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] ${
+                areaFilter === 'Todos' ? 'text-slate-400' : 'text-white'
+              }`}>
+                ▼
+              </div>
             </div>
           </div>
         </div>
