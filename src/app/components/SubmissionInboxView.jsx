@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { exportSubmissionsToHDPDF } from '../lib/exportUtils';
+import { AREAS } from '../lib/constants';
 
 export default function SubmissionInboxView({
   submissions = [],
@@ -16,6 +17,7 @@ export default function SubmissionInboxView({
 }) {
   const [selectedIds, setSelectedIds] = useState([]);
   const [sentimentFilter, setSentimentFilter] = useState('Todos');
+  const [areaFilter, setAreaFilter] = useState('Todos');
 
   const filteredSubmissions = submissions.filter(
     (s) => {
@@ -28,7 +30,8 @@ export default function SubmissionInboxView({
         matchStatus = s.status === inboxFilter;
       }
       const matchSentiment = sentimentFilter === 'Todos' || s.reportData?.sentimiento === sentimentFilter;
-      return matchStatus && matchSentiment;
+      const matchArea = areaFilter === 'Todos' || s.reportData?.area === areaFilter;
+      return matchStatus && matchSentiment && matchArea;
     }
   );
 
@@ -136,6 +139,23 @@ export default function SubmissionInboxView({
                     : f === 'NEUTRO'
                     ? '⚪ Neutro'
                     : '🔴 Negativo'}
+                </button>
+              ))}
+            </div>
+
+            {/* AREA FILTER BUTTONS */}
+            <div className="flex gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl flex-wrap">
+              {['Todos', ...AREAS].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setAreaFilter(f)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                    areaFilter === f
+                      ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                      : 'bg-transparent border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {f === 'Todos' ? '🌍 Todas las Áreas' : f}
                 </button>
               ))}
             </div>
