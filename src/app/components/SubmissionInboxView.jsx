@@ -18,6 +18,7 @@ export default function SubmissionInboxView({
   const [selectedIds, setSelectedIds] = useState([]);
   const [sentimentFilter, setSentimentFilter] = useState('Todos');
   const [areaFilter, setAreaFilter] = useState('Todos');
+  const [shiftFilter, setShiftFilter] = useState('Todos');
 
   const filteredSubmissions = submissions.filter(
     (s) => {
@@ -31,7 +32,31 @@ export default function SubmissionInboxView({
       }
       const matchSentiment = sentimentFilter === 'Todos' || s.reportData?.sentimiento === sentimentFilter;
       const matchArea = areaFilter === 'Todos' || s.reportData?.area === areaFilter;
-      return matchStatus && matchSentiment && matchArea;
+      
+      let matchShift = true;
+      if (shiftFilter !== 'Todos') {
+        let hour = 12;
+        if (s.reportData?.hora) {
+          const hMatch = s.reportData.hora.match(/^(\d{1,2})/);
+          if (hMatch) {
+            hour = parseInt(hMatch[1], 10);
+            const horaStr = s.reportData.hora.toLowerCase();
+            if (horaStr.includes('p.m') || horaStr.includes('pm')) {
+              if (hour < 12) hour += 12;
+            } else if (horaStr.includes('a.m') || horaStr.includes('am')) {
+              if (hour === 12) hour = 0;
+            }
+          }
+        } else if (s.timestamp) {
+          hour = new Date(s.timestamp).getHours();
+        }
+        
+        if (shiftFilter === 't1') matchShift = hour >= 0 && hour < 13;
+        else if (shiftFilter === 't2') matchShift = hour >= 13 && hour < 19;
+        else if (shiftFilter === 't3') matchShift = hour >= 19 || hour === 0;
+      }
+
+      return matchStatus && matchSentiment && matchArea && matchShift;
     }
   );
 
@@ -163,6 +188,29 @@ export default function SubmissionInboxView({
               </select>
               <div className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] ${
                 areaFilter === 'Todos' ? 'text-slate-400' : 'text-white'
+              }`}>
+                ▼
+              </div>
+            </div>
+
+            {/* SHIFT FILTER DROPDOWN */}
+            <div className="relative flex items-center">
+              <select
+                value={shiftFilter}
+                onChange={(e) => setShiftFilter(e.target.value)}
+                className={`appearance-none outline-none pl-4 pr-8 py-1.5 rounded-xl text-[10px] font-bold cursor-pointer transition-all shadow-sm ${
+                  shiftFilter === 'Todos'
+                    ? 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-transparent'
+                    : 'bg-amber-600 text-white border-amber-600'
+                }`}
+              >
+                <option value="Todos">🕒 Todos los Turnos</option>
+                <option value="t1">Turno 1 (01:00 PM)</option>
+                <option value="t2">Turno 2 (07:00 PM)</option>
+                <option value="t3">Turno 3 (12:00 AM)</option>
+              </select>
+              <div className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] ${
+                shiftFilter === 'Todos' ? 'text-slate-400' : 'text-white'
               }`}>
                 ▼
               </div>
