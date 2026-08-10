@@ -28,31 +28,39 @@ import {
 
 /**
  * Helper to safely sanitize objects for Firestore
- * Removes undefined values and prevents invalid nested arrays.
+ * Removes undefined values, custom classes, functions, and prevents invalid nested arrays.
  */
 function sanitize(obj) {
-  if (Array.isArray(obj)) {
-    return obj
-      .filter(v => v !== undefined)
-      .map(v => {
+  // Pass 1: completely strip out any undefined, functions, or custom classes (like Date)
+  // by round-tripping through JSON. This guarantees a 100% plain object tree.
+  const plainObj = JSON.parse(JSON.stringify(obj));
+
+  // Pass 2: recursively convert any array-within-array to an object, 
+  // because Firestore natively rejects nested arrays.
+  function fixNested(val) {
+    if (Array.isArray(val)) {
+      return val.map((v) => {
         if (Array.isArray(v)) {
-          // Firestore does not support arrays containing arrays directly.
-          // Convert nested array into an object to avoid "invalid nested entity" error.
+          // Convert directly nested array to object map
           const converted = {};
-          v.forEach((item, index) => { converted[index] = sanitize(item); });
+          v.forEach((item, index) => {
+            converted[index] = fixNested(item);
+          });
           return converted;
         }
-        return (v && typeof v === 'object' ? sanitize(v) : (v === undefined ? null : v));
+        return v !== null && typeof v === 'object' ? fixNested(v) : v;
       });
-  } else if (obj !== null && typeof obj === 'object') {
-    return Object.keys(obj).reduce((acc, key) => {
-      if (obj[key] !== undefined) {
-        acc[key] = sanitize(obj[key]);
+    } else if (val !== null && typeof val === 'object') {
+      const newObj = {};
+      for (const key of Object.keys(val)) {
+        newObj[key] = fixNested(val[key]);
       }
-      return acc;
-    }, {});
+      return newObj;
+    }
+    return val;
   }
-  return obj;
+
+  return fixNested(plainObj);
 }
 
 export async function uploadImageToStorage(fileOrDataUrl, path) {
