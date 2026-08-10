@@ -108,6 +108,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [selectedShift, setSelectedShift] = useState('t1');
   const [selectedFichasIds, setSelectedFichasIds] = useState([]);
+  const [fichasShiftFilter, setFichasShiftFilter] = useState('Todos');
 
   const [analystsCount, setAnalystsCount] = useState(0);
   const [activitiesText, setActivitiesText] = useState('• ');
@@ -850,6 +851,28 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
     return matchDate;
   });
 
+  const filteredReportables = reportablesDelTurno.filter(s => {
+    if (fichasShiftFilter === 'Todos') return true;
+    
+    let hour = 12;
+    if (s.reportData?.hora) {
+      const hMatch = s.reportData.hora.match(/^(\d{1,2})/);
+      if (hMatch) {
+        hour = parseInt(hMatch[1], 10);
+        const horaStr = s.reportData.hora.toLowerCase();
+        if ((horaStr.includes('p.m') || horaStr.includes('pm')) && hour < 12) hour += 12;
+        if ((horaStr.includes('a.m') || horaStr.includes('am')) && hour === 12) hour = 0;
+      }
+    } else if (s.timestamp) {
+      hour = new Date(s.timestamp).getHours();
+    }
+    
+    if (fichasShiftFilter === 'Turno 1') return hour >= 0 && hour < 13;
+    if (fichasShiftFilter === 'Turno 2') return hour >= 13 && hour < 19;
+    if (fichasShiftFilter === 'Turno 3') return hour >= 19 || hour === 0;
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       {/* ── HEADER & QUICK EXPORT ACTIONS ── */}
@@ -1305,12 +1328,22 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
           </div>
           
           <div className="flex gap-2">
+            <select
+              value={fichasShiftFilter}
+              onChange={(e) => setFichasShiftFilter(e.target.value)}
+              className="text-xs px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 cursor-pointer"
+            >
+              <option value="Todos">Turno: Todos</option>
+              <option value="Turno 1">Turno 1 (12am - 12pm)</option>
+              <option value="Turno 2">Turno 2 (1pm - 6pm)</option>
+              <option value="Turno 3">Turno 3 (7pm - 12am)</option>
+            </select>
             <button
               onClick={() => {
-                if (selectedFichasIds.length === reportablesDelTurno.length && reportablesDelTurno.length > 0) {
+                if (selectedFichasIds.length === filteredReportables.length && filteredReportables.length > 0) {
                   setSelectedFichasIds([]);
                 } else {
-                  setSelectedFichasIds(reportablesDelTurno.map(s => s.id));
+                  setSelectedFichasIds(filteredReportables.map(s => s.id));
                 }
               }}
               className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
@@ -1338,7 +1371,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {reportablesDelTurno.map((sub) => (
+              {filteredReportables.map((sub) => (
                 <tr 
                   key={sub.id} 
                   className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors ${selectedFichasIds.includes(sub.id) ? 'bg-red-50/50 dark:bg-red-900/10' : ''}`}
@@ -1368,10 +1401,10 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
                   <td className="py-3 px-4 font-medium text-slate-600 dark:text-slate-400">@{sub.reportData?.usuario || 'anon'}</td>
                 </tr>
               ))}
-              {reportablesDelTurno.length === 0 && (
+              {filteredReportables.length === 0 && (
                 <tr>
                   <td colSpan="5" className="py-8 text-center text-slate-400 font-medium">
-                    No hay formularios con estado &quot;Reportar&quot; para esta fecha.
+                    No hay formularios con estado &quot;Reportar&quot; para esta fecha y turno seleccionados.
                   </td>
                 </tr>
               )}
