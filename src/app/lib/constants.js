@@ -108,6 +108,8 @@ export const AREAS = [
   'JUDICIAL',
   'ELECTRICIDAD',
   'CONTEXTO POLÍTICO',
+  'DEPORTE',
+  'INFRAESTRUCTURA',
 ];
 
 export const SENTIMIENTOS = ['NEGATIVO', 'NEUTRO', 'POSITIVO'];
