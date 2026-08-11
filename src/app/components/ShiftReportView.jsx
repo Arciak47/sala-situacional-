@@ -131,6 +131,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
   const [negCount, setNegCount] = useState(0);
 
   const [recommendationsText, setRecommendationsText] = useState('• ');
+  const [roomsFontSize, setRoomsFontSize] = useState(10.5);
 
   // Estado del guardado automático del borrador
   // 'idle' | 'saving' | 'saved' | 'error'
@@ -213,6 +214,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
           neuCount,
           negCount,
           recommendationsText,
+          roomsFontSize,
           savedAt: new Date().toISOString(),
           savedBy: currentUser ? currentUser.name || currentUser.email : 'Sistema',
         });
@@ -264,6 +266,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
         setNeuCount(draft.neuCount ?? 0);
         setNegCount(draft.negCount ?? 0);
         setRecommendationsText(draft.recommendationsText ?? '\u2022 ');
+        setRoomsFontSize(draft.roomsFontSize ?? 10.5);
         setDraftLoadedAt(draft.savedAt || null);
         autoFillPendingRef.current = false; // borrador encontrado, no auto-llenar
       } else {
@@ -284,6 +287,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
         setNeuCount(0);
         setNegCount(0);
         setRecommendationsText('\u2022 ');
+        setRoomsFontSize(10.5);
         setDraftLoadedAt(null);
         autoFillPendingRef.current = true; // sin borrador → auto-llenar desde la BD
       }
@@ -591,10 +595,10 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
         const isRightCol = idx >= 7;
         const colX = isRightCol ? 885 : 625;
         const rowInCol = idx % 7;
-        const lineY = 236 + rowInCol * 18;
+        const lineY = 236 + rowInCol * (roomsFontSize + 7.5);
 
         if (lineY <= 358) {
-          ctx.font = '800 10.5px "Plus Jakarta Sans", sans-serif';
+          ctx.font = `800 ${roomsFontSize}px "Plus Jakarta Sans", sans-serif`;
           ctx.fillStyle = '#032b69';
           ctx.textAlign = 'left';
           const nameUpper = (r.name || 'SALA').toUpperCase();
@@ -1054,12 +1058,31 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
               <h4 className="text-xs font-black text-red-600 uppercase flex items-center gap-1.5">
                 <span>2️⃣ Reportes de Salas Externas (Hasta 14 Salas)</span>
               </h4>
-              <button
-                onClick={handleAddRoom}
-                className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] shadow-sm transition-all flex items-center gap-1 cursor-pointer"
-              >
-                <span>➕</span> Añadir Sala
-              </button>
+              <div className="flex items-center gap-2">
+                <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-600">
+                  <button
+                    onClick={() => setRoomsFontSize(prev => Math.max(6, prev - 0.5))}
+                    title="Reducir tamaño del texto"
+                    className="px-2 py-1 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 cursor-pointer"
+                  >
+                    A-
+                  </button>
+                  <div className="w-[1px] bg-slate-300 dark:bg-slate-600"></div>
+                  <button
+                    onClick={() => setRoomsFontSize(prev => Math.min(20, prev + 0.5))}
+                    title="Aumentar tamaño del texto"
+                    className="px-2 py-1 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 cursor-pointer"
+                  >
+                    A+
+                  </button>
+                </div>
+                <button
+                  onClick={handleAddRoom}
+                  className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] shadow-sm transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <span>➕</span> Añadir Sala
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
