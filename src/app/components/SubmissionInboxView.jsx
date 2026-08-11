@@ -44,25 +44,10 @@ export default function SubmissionInboxView({
       const matchArea = areaFilter === 'Todos' || s.reportData?.area === areaFilter;
       
       let matchShift = true;
-      if (shiftFilter !== 'Todos') {
-        let hour = 12;
-        if (s.reportData?.hora) {
-          const hMatch = s.reportData.hora.match(/^(\d{1,2})/);
-          if (hMatch) {
-            hour = parseInt(hMatch[1], 10);
-            const horaStr = s.reportData.hora.toLowerCase();
-            if (horaStr.includes('p.m') || horaStr.includes('pm')) {
-              if (hour < 12) hour += 12;
-            } else if (horaStr.includes('a.m') || horaStr.includes('am')) {
-              if (hour === 12) hour = 0;
-            }
-          }
-        } else if (s.timestamp) {
-          hour = new Date(s.timestamp).getHours();
-        }
-        
-        if (shiftFilter === 't1') matchShift = hour >= 7 && hour < 13;
-        else if (shiftFilter === 't2') matchShift = hour >= 13 && hour < 19;
+      if (shiftFilter !== 'Todos' && s.timestamp) {
+        const hour = new Date(s.timestamp).getHours();
+        if (shiftFilter === 't1') matchShift = hour >= 7 && hour <= 12;
+        else if (shiftFilter === 't2') matchShift = hour >= 13 && hour <= 18;
         else if (shiftFilter === 't3') matchShift = hour >= 19 && hour <= 23;
       }
 

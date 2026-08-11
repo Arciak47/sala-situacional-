@@ -358,24 +358,13 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
       if (selectedShift === 'all') return true;
 
       let hour = 12;
-      if (s.reportData?.hora) {
-        const hMatch = s.reportData.hora.match(/^(\d{1,2})/);
-        if (hMatch) {
-          hour = parseInt(hMatch[1], 10);
-          const horaStr = s.reportData.hora.toLowerCase();
-          if (horaStr.includes('p.m') || horaStr.includes('pm')) {
-            if (hour < 12) hour += 12;
-          } else if (horaStr.includes('a.m') || horaStr.includes('am')) {
-            if (hour === 12) hour = 0;
-          }
-        }
-      } else if (s.timestamp) {
+      if (s.timestamp) {
         hour = new Date(s.timestamp).getHours();
       }
 
-      if (selectedShift === 't1') return hour >= 0 && hour < 13;
-      if (selectedShift === 't2') return hour >= 13 && hour < 19;
-      if (selectedShift === 't3') return hour >= 19 || hour === 0;
+      if (selectedShift === 't1') return hour >= 7 && hour <= 12;
+      if (selectedShift === 't2') return hour >= 13 && hour <= 18;
+      if (selectedShift === 't3') return hour >= 19 && hour <= 23;
       return true;
     });
 
@@ -855,20 +844,12 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
     if (fichasShiftFilter === 'Todos') return true;
     
     let hour = 12;
-    if (s.reportData?.hora) {
-      const hMatch = s.reportData.hora.match(/^(\d{1,2})/);
-      if (hMatch) {
-        hour = parseInt(hMatch[1], 10);
-        const horaStr = s.reportData.hora.toLowerCase();
-        if ((horaStr.includes('p.m') || horaStr.includes('pm')) && hour < 12) hour += 12;
-        if ((horaStr.includes('a.m') || horaStr.includes('am')) && hour === 12) hour = 0;
-      }
-    } else if (s.timestamp) {
+    if (s.timestamp) {
       hour = new Date(s.timestamp).getHours();
     }
     
-    if (fichasShiftFilter === 'Turno 1') return hour >= 7 && hour < 13;
-    if (fichasShiftFilter === 'Turno 2') return hour >= 13 && hour < 19;
+    if (fichasShiftFilter === 'Turno 1') return hour >= 7 && hour <= 12;
+    if (fichasShiftFilter === 'Turno 2') return hour >= 13 && hour <= 18;
     if (fichasShiftFilter === 'Turno 3') return hour >= 19 && hour <= 23;
     return true;
   });
@@ -914,24 +895,13 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
                 if (selectedShift === 'all') return true;
                 
                 let hour = 12;
-                if (s.reportData?.hora) {
-                  const hMatch = s.reportData.hora.match(/^(\d{1,2})/);
-                  if (hMatch) {
-                    hour = parseInt(hMatch[1], 10);
-                    const horaStr = s.reportData.hora.toLowerCase();
-                    if (horaStr.includes('p.m') || horaStr.includes('pm')) {
-                      if (hour < 12) hour += 12;
-                    } else if (horaStr.includes('a.m') || horaStr.includes('am')) {
-                      if (hour === 12) hour = 0;
-                    }
-                  }
-                } else if (s.timestamp) {
+                if (s.timestamp) {
                   hour = new Date(s.timestamp).getHours();
                 }
                 
-                if (selectedShift === 't1') return hour >= 0 && hour < 13;
-                if (selectedShift === 't2') return hour >= 13 && hour < 19;
-                if (selectedShift === 't3') return hour >= 19 || hour === 0;
+                if (selectedShift === 't1') return hour >= 7 && hour <= 12;
+                if (selectedShift === 't2') return hour >= 13 && hour <= 18;
+                if (selectedShift === 't3') return hour >= 19 && hour <= 23;
                 return true;
               }).length;
               return (
