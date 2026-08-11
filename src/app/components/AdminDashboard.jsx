@@ -299,6 +299,53 @@ export default function AdminDashboard({
 
   const canExport = currentUser?.role === 'Administrador' || currentUser?.role === 'Supervisor';
 
+  const handleExportStats = () => {
+    // We want the export to reflect exactly what is shown on the dashboard (allFilteredSubmissions).
+    const now = new Date();
+    const y = now.getFullYear();
+    const mo = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const today = `${y}-${mo}-${d}`;
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+
+    const totalGlobal = allFilteredSubmissions.length;
+    const todayGlobal = allFilteredSubmissions.filter((s) => toLocalDateStr(s.timestamp) === today).length;
+    const weekGlobal = allFilteredSubmissions.filter((s) => new Date(s.timestamp) >= weekStart).length;
+    const pendingGlobal = allFilteredSubmissions.filter((s) => s.status === 'pendiente').length;
+    const reviewedGlobal = allFilteredSubmissions.filter((s) => ['revisado', 'reportar', 'reportado'].includes(s.status)).length;
+    const repeatedGlobal = allFilteredSubmissions.filter((s) => s.status === 'repetido').length;
+
+    const perAnalystExport = analystsList.map((a) => {
+      const aSubs = allFilteredSubmissions.filter(
+        (s) => s.analystId === a.id || s.analystEmail === a.email
+      );
+      return {
+        sala: a.sala || '',
+        name: a.name,
+        email: a.email,
+        total: aSubs.length,
+        today: aSubs.filter((s) => toLocalDateStr(s.timestamp) === today).length,
+        week: aSubs.filter((s) => new Date(s.timestamp) >= weekStart).length,
+        pending: aSubs.filter((s) => s.status === 'pendiente').length,
+        reviewed: aSubs.filter((s) => ['revisado', 'reportar', 'reportado'].includes(s.status)).length,
+        repeated: aSubs.filter((s) => s.status === 'repetido').length,
+      };
+    });
+
+    const exportData = {
+      totalGlobal,
+      todayGlobal,
+      weekGlobal,
+      pendingGlobal,
+      reviewedGlobal,
+      repeatedGlobal,
+      perAnalyst: perAnalystExport.sort((a, b) => b.total - a.total)
+    };
+
+    exportStatsToExcel(exportData);
+  };
+
   return (
     <div className="space-y-6" id="admin-dashboard-container">
       {/* ── HEADER BANNER ── */}
@@ -367,7 +414,7 @@ export default function AdminDashboard({
               <span>📊</span> Base de Datos (Excel)
             </button>
             <button
-              onClick={() => exportStatsToExcel(allStats)}
+              onClick={handleExportStats}
               className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
               title="Descargar resumen de métricas en Excel"
             >
