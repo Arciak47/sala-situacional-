@@ -102,10 +102,19 @@ export default function AdminDashboard({
   };
 
   const isWithinSpecificFilter = (timestamp) => {
-    if (!specificDate) return isWithinTimeRange(timestamp);
     if (!timestamp) return false;
-    const localDate = toLocalDateStr(timestamp);
-    if (localDate !== specificDate) return false;
+
+    // 1. Validar la fecha
+    let isDateValid = false;
+    if (specificDate) {
+      isDateValid = toLocalDateStr(timestamp) === specificDate;
+    } else {
+      isDateValid = isWithinTimeRange(timestamp);
+    }
+    
+    if (!isDateValid) return false;
+
+    // 2. Validar el turno
     if (shiftFilter === 'all') return true;
     const hour = new Date(timestamp).getHours();
     const bounds = getShiftHourBounds(shiftFilter);
@@ -285,8 +294,8 @@ export default function AdminDashboard({
   };
 
   const currentFilterInfo = specificDate
-    ? { label: `${specificDate} · ${shiftLabels[shiftFilter]}`, prefix: specificDate }
-    : filterTitles[timeFilter];
+    ? { label: `${specificDate} · ${shiftLabels[shiftFilter]}`, prefix: `${specificDate} (${shiftLabels[shiftFilter]})` }
+    : { label: `${filterTitles[timeFilter].label} · ${shiftLabels[shiftFilter]}`, prefix: `${filterTitles[timeFilter].prefix} (${shiftLabels[shiftFilter]})` };
 
   const canExport = currentUser?.role === 'Administrador' || currentUser?.role === 'Supervisor';
 
@@ -444,29 +453,27 @@ export default function AdminDashboard({
             )}
           </div>
 
-          {specificDate && (
-            <div className="flex flex-wrap items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 p-1.5 rounded-xl border border-blue-200/60 dark:border-blue-900/40">
-              <span className="text-[10px] font-black text-blue-500 dark:text-blue-400 px-1">⏰ Turno:</span>
-              {[
-                { id: 'all', label: '☀️ Todo el día' },
-                { id: 't1', label: '🌅 T1 · 07am - 01pm' },
-                { id: 't2', label: '🌆 T2 · 01pm - 07pm' },
-                { id: 't3', label: '🌙 T3 · 07pm - 12am' },
-              ].map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setShiftFilter(s.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    shiftFilter === s.id
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40'
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 p-1.5 rounded-xl border border-blue-200/60 dark:border-blue-900/40">
+            <span className="text-[10px] font-black text-blue-500 dark:text-blue-400 px-1">⏰ Turno:</span>
+            {[
+              { id: 'all', label: '☀️ Todo el día' },
+              { id: 't1', label: '🌅 T1 · 07am - 01pm' },
+              { id: 't2', label: '🌆 T2 · 01pm - 07pm' },
+              { id: 't3', label: '🌙 T3 · 07pm - 12am' },
+            ].map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setShiftFilter(s.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  shiftFilter === s.id
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
