@@ -19,6 +19,16 @@ export default function SubmissionInboxView({
   const [sentimentFilter, setSentimentFilter] = useState('Todos');
   const [areaFilter, setAreaFilter] = useState('Todos');
   const [shiftFilter, setShiftFilter] = useState('Todos');
+  const [specificDate, setSpecificDate] = useState('');
+
+  const toLocalDateStr = (isoStr) => {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${mo}-${day}`;
+  };
 
   const filteredSubmissions = submissions.filter(
     (s) => {
@@ -56,7 +66,12 @@ export default function SubmissionInboxView({
         else if (shiftFilter === 't3') matchShift = hour >= 19 && hour <= 23;
       }
 
-      return matchStatus && matchSentiment && matchArea && matchShift;
+      let matchDate = true;
+      if (specificDate) {
+        matchDate = toLocalDateStr(s.timestamp) === specificDate;
+      }
+
+      return matchStatus && matchSentiment && matchArea && matchShift && matchDate;
     }
   );
 
@@ -214,6 +229,25 @@ export default function SubmissionInboxView({
               }`}>
                 ▼
               </div>
+            </div>
+
+            {/* DATE FILTER */}
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={specificDate}
+                onChange={(e) => setSpecificDate(e.target.value)}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[10px] font-bold text-slate-800 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              />
+              {specificDate && (
+                <button
+                  onClick={() => setSpecificDate('')}
+                  className="px-2 py-1.5 rounded-xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 text-[10px] font-bold hover:bg-red-200 dark:hover:bg-red-900/70 transition-colors cursor-pointer flex items-center gap-1"
+                  title="Limpiar filtro de fecha"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
         </div>
