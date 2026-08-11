@@ -94,8 +94,8 @@ export default function AdminDashboard({
   // When specificDate is set this overrides the period filter entirely.
   const getShiftHourBounds = (shift) => {
     // Matches the same hour boundaries used in ShiftReportView.
-    // t1 → 00:00-12:59, t2 → 13:00-18:59, t3 → 19:00-23:59
-    if (shift === 't1') return { min: 0, max: 12 };
+    // t1 → 07:00-12:59, t2 → 13:00-18:59, t3 → 19:00-23:59
+    if (shift === 't1') return { min: 7, max: 12 };
     if (shift === 't2') return { min: 13, max: 18 };
     if (shift === 't3') return { min: 19, max: 23 };
     return null; // 'all' — no hour restriction
@@ -279,9 +279,9 @@ export default function AdminDashboard({
 
   const shiftLabels = {
     all: 'Jornada Completa',
-    t1: 'Turno 1 (01:00 PM)',
-    t2: 'Turno 2 (07:00 PM)',
-    t3: 'Turno 3 (12:00 AM)',
+    t1: 'Turno 1 (07:00 AM - 01:00 PM)',
+    t2: 'Turno 2 (01:00 PM - 07:00 PM)',
+    t3: 'Turno 3 (07:00 PM - 12:00 AM)',
   };
 
   const currentFilterInfo = specificDate
@@ -449,9 +449,9 @@ export default function AdminDashboard({
               <span className="text-[10px] font-black text-blue-500 dark:text-blue-400 px-1">⏰ Turno:</span>
               {[
                 { id: 'all', label: '☀️ Todo el día' },
-                { id: 't1', label: '🌅 T1 · 01:00 PM' },
-                { id: 't2', label: '🌆 T2 · 07:00 PM' },
-                { id: 't3', label: '🌙 T3 · 12:00 AM' },
+                { id: 't1', label: '🌅 T1 · 07am - 01pm' },
+                { id: 't2', label: '🌆 T2 · 01pm - 07pm' },
+                { id: 't3', label: '🌙 T3 · 07pm - 12am' },
               ].map((s) => (
                 <button
                   key={s.id}

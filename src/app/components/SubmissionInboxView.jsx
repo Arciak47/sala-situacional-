@@ -51,9 +51,9 @@ export default function SubmissionInboxView({
           hour = new Date(s.timestamp).getHours();
         }
         
-        if (shiftFilter === 't1') matchShift = hour >= 0 && hour < 13;
+        if (shiftFilter === 't1') matchShift = hour >= 7 && hour < 13;
         else if (shiftFilter === 't2') matchShift = hour >= 13 && hour < 19;
-        else if (shiftFilter === 't3') matchShift = hour >= 19 || hour === 0;
+        else if (shiftFilter === 't3') matchShift = hour >= 19 && hour <= 23;
       }
 
       return matchStatus && matchSentiment && matchArea && matchShift;
@@ -205,9 +205,9 @@ export default function SubmissionInboxView({
                 }`}
               >
                 <option value="Todos">🕒 Todos los Turnos</option>
-                <option value="t1">Turno 1 (01:00 PM)</option>
-                <option value="t2">Turno 2 (07:00 PM)</option>
-                <option value="t3">Turno 3 (12:00 AM)</option>
+                <option value="t1">Turno 1 (07:00 AM - 01:00 PM)</option>
+                <option value="t2">Turno 2 (01:00 PM - 07:00 PM)</option>
+                <option value="t3">Turno 3 (07:00 PM - 12:00 AM)</option>
               </select>
               <div className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] ${
                 shiftFilter === 'Todos' ? 'text-slate-400' : 'text-white'

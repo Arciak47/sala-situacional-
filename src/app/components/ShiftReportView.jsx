@@ -867,9 +867,9 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
       hour = new Date(s.timestamp).getHours();
     }
     
-    if (fichasShiftFilter === 'Turno 1') return hour >= 0 && hour < 13;
+    if (fichasShiftFilter === 'Turno 1') return hour >= 7 && hour < 13;
     if (fichasShiftFilter === 'Turno 2') return hour >= 13 && hour < 19;
-    if (fichasShiftFilter === 'Turno 3') return hour >= 19 || hour === 0;
+    if (fichasShiftFilter === 'Turno 3') return hour >= 19 && hour <= 23;
     return true;
   });
 
@@ -993,7 +993,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
           <div className="sm:col-span-8 flex flex-wrap items-center gap-1.5 sm:gap-2">
             <span className="text-xs font-bold text-slate-700 dark:text-slate-200">⏰ Turno:</span>
             {[
-              { id: 't1', label: '🌅 Turno 1 (12:00 AM - 1:00 PM)' },
+              { id: 't1', label: '🌅 Turno 1 (7:00 AM - 1:00 PM)' },
               { id: 't2', label: '🌆 Turno 2 (1:00 PM - 7:00 PM)' },
               { id: 't3', label: '🌙 Turno 3 (7:00 PM - 12:00 AM)' },
               { id: 'all', label: '☀️ Jornada Completa' },
@@ -1334,7 +1334,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
               className="text-xs px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="Todos">Turno: Todos</option>
-              <option value="Turno 1">Turno 1 (12am - 1pm)</option>
+              <option value="Turno 1">Turno 1 (7am - 1pm)</option>
               <option value="Turno 2">Turno 2 (1pm - 7pm)</option>
               <option value="Turno 3">Turno 3 (7pm - 12am)</option>
             </select>
