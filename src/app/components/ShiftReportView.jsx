@@ -716,6 +716,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
     loadedLogos,
     formattedDateHeader,
     shiftTimeLabel,
+    roomsFontSize,
   ]);
 
   const handleDownloadPNG = () => {
