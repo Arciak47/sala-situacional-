@@ -235,6 +235,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
     facebookCount, instagramCount, tiktokCount, xCount, telegramCount,
     posCount, neuCount, negCount,
     recommendationsText,
+    roomsFontSize,
   ]);
 
   // ── CARGA AUTOMÁTICA DEL BORRADOR ──────────────────────────────────────
