@@ -55,6 +55,13 @@ export default function FormFields({ data, setData, readOnly = false, onImageUpl
     }));
   };
 
+  // Get current date in local time for YYYY-MM-DD format (min/max attributes)
+  const todayObj = new Date();
+  const yyyy = todayObj.getFullYear();
+  const mm = String(todayObj.getMonth() + 1).padStart(2, '0');
+  const dd = String(todayObj.getDate()).padStart(2, '0');
+  const today = `${yyyy}-${mm}-${dd}`;
+
   return (
     <div className="space-y-3 text-slate-700 dark:text-slate-200">
       <div>
@@ -80,6 +87,8 @@ export default function FormFields({ data, setData, readOnly = false, onImageUpl
           <input
             disabled={readOnly}
             type="date"
+            min={today}
+            max={today}
             value={getRawDate()}
             onChange={handleDateChange}
             className={cls + ' font-medium cursor-pointer'}
