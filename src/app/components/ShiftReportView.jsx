@@ -130,6 +130,8 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
   const [neuCount, setNeuCount] = useState(0);
   const [negCount, setNegCount] = useState(0);
 
+  const [includeRepeatedInStats, setIncludeRepeatedInStats] = useState(false);
+
   const [recommendationsText, setRecommendationsText] = useState('• ');
   const [roomsFontSize, setRoomsFontSize] = useState(10.5);
 
@@ -371,7 +373,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
       if (selectedShift === 't2') return hour >= 13 && hour <= 18;
       if (selectedShift === 't3') return hour >= 19 && hour <= 23;
       return true;
-    });
+    }).filter(s => includeRepeatedInStats || (s.status || '').toLowerCase().trim() !== 'repetido');
 
     const activeAnalysts = new Set(
       filteredSubs.map((s) => s.analystId || s.analystEmail || s.analystName).filter(Boolean)
@@ -909,11 +911,15 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
                 if (selectedShift === 't2') return hour >= 13 && hour <= 18;
                 if (selectedShift === 't3') return hour >= 19 && hour <= 23;
                 return true;
-              }).length;
+              });
+              
+              const countForBadge = allForBadge.filter(s => (s.status || '').toLowerCase().trim() !== 'repetido').length;
+              const repeatedCount = allForBadge.length - countForBadge;
+              
               return (
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                   <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
-                    📊 {countForBadge} reportes en la BD para este turno
+                    📊 {countForBadge} reportes {repeatedCount > 0 && `(+${repeatedCount} repetidos)`} en la BD para este turno
                   </span>
                   {countForBadge > 0 && !draftLoadedAt && (
                     <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-900/40">
@@ -931,6 +937,15 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 cursor-pointer mr-2 bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-xl transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">
+              <input
+                type="checkbox"
+                checked={includeRepeatedInStats}
+                onChange={(e) => setIncludeRepeatedInStats(e.target.checked)}
+                className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+              />
+              Incluir Repetidos
+            </label>
             <button
               onClick={handleAutoFillFromDB}
               className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"

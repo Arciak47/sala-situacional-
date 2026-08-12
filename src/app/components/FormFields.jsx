@@ -287,7 +287,7 @@ export default function FormFields({ data, setData, readOnly = false, onImageUpl
           <input
             id="foto-evidencia"
             type="file"
-            accept="image/*"
+            accept="image/jpeg, image/png, image/webp"
             onChange={onImageUpload}
             className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-red-50 file:text-red-700 cursor-pointer"
           />

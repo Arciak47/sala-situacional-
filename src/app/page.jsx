@@ -971,7 +971,8 @@ export default function Home() {
   };
 
   const handleImageUpload = (e) => {
-    const file = e.target.files[0];
+    const target = e.target;
+    const file = target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -996,10 +997,11 @@ export default function Home() {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        // Use PNG at maximum quality to preserve text legibility
-        const hdSrc = canvas.toDataURL('image/png');
+        // Use JPEG at high quality to preserve legibility while avoiding massive base64 strings
+        const hdSrc = canvas.toDataURL('image/jpeg', 0.85);
         const imgHash = simpleImageHash(hdSrc);
         setReportData((prev) => ({ ...prev, evidenceImageSrc: hdSrc, imageHash: imgHash }));
+        target.value = ''; // Allow uploading the same file again
       };
       img.src = ev.target.result;
     };

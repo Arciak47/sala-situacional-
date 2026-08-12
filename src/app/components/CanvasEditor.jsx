@@ -434,8 +434,8 @@ export default function CanvasEditor({
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(originalImg, 0, 0, width, height);
-        // Use PNG at maximum quality to preserve text and detail legibility
-        const hdSrc = canvas.toDataURL('image/png');
+        // Use JPEG at high quality to preserve text and detail legibility without massive base64 size
+        const hdSrc = canvas.toDataURL('image/jpeg', 0.85);
 
         setElements((prev) =>
           prev.map((el) => (el.id === elId ? { ...el, src: hdSrc } : el))
@@ -926,7 +926,7 @@ export default function CanvasEditor({
                     </label>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg, image/png, image/webp"
                       onChange={(e) => handleReplaceImage(e, selId)}
                       className="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 cursor-pointer"
                     />
