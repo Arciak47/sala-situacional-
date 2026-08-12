@@ -981,7 +981,7 @@ export default function Home() {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const max_size = 1920; // HD resolution cap — ImgBB supports up to 32MB
+        const max_size = 800; // Optimized for fast loading
         if (width > height) {
           if (width > max_size) {
             height *= max_size / width;
@@ -997,8 +997,8 @@ export default function Home() {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        // Use JPEG at high quality to preserve legibility while avoiding massive base64 strings
-        const hdSrc = canvas.toDataURL('image/jpeg', 0.85);
+        // Use JPEG at optimal quality to preserve legibility while drastically reducing loading times
+        const hdSrc = canvas.toDataURL('image/jpeg', 0.7);
         const imgHash = simpleImageHash(hdSrc);
         setReportData((prev) => ({ ...prev, evidenceImageSrc: hdSrc, imageHash: imgHash }));
         target.value = ''; // Allow uploading the same file again
