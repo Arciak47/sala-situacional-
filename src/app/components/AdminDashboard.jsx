@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { MUNICIPIOS, AREAS } from '../lib/constants';
+import { MUNICIPIOS, AREAS, getEventHour } from '../lib/constants';
 import {
   exportSubmissionsToExcel,
   exportStatsToExcel,
@@ -101,8 +101,9 @@ export default function AdminDashboard({
     return null; // 'all' — no hour restriction
   };
 
-  const isWithinSpecificFilter = (timestamp) => {
-    if (!timestamp) return false;
+  const isWithinSpecificFilter = (obj) => {
+    if (!obj) return false;
+    const timestamp = obj.timestamp || obj.fecha; // fallback for messages
 
     // 1. Validar la fecha
     let isDateValid = false;
@@ -116,19 +117,19 @@ export default function AdminDashboard({
 
     // 2. Validar el turno
     if (shiftFilter === 'all') return true;
-    const hour = new Date(timestamp).getHours();
+    const hour = getEventHour(obj);
     const bounds = getShiftHourBounds(shiftFilter);
     return bounds ? hour >= bounds.min && hour <= bounds.max : true;
   };
 
   // Base filtered dataset (includes everything)
-  const allFilteredSubmissions = targetSubmissions.filter((s) => isWithinSpecificFilter(s.timestamp));
+  const allFilteredSubmissions = targetSubmissions.filter((s) => isWithinSpecificFilter(s));
   const repeatedCount = allFilteredSubmissions.filter((s) => s.status === 'repetido').length;
   const allCount = allFilteredSubmissions.length;
 
   // Actual filtered dataset for stats (EXCLUDES repetidos)
   const filteredSubmissions = allFilteredSubmissions.filter((s) => s.status !== 'repetido');
-  const filteredMessages = userMessages.filter((m) => isWithinSpecificFilter(m.fecha));
+  const filteredMessages = userMessages.filter((m) => isWithinSpecificFilter(m));
 
   const totalSubmissions = filteredSubmissions.length;
   const pendingCount = filteredSubmissions.filter((s) => s.status === 'pendiente').length;
@@ -263,7 +264,7 @@ export default function AdminDashboard({
         return (s.analystId === a.id || s.analystEmail === a.email) && fromOk && toOk;
       });
     } else {
-      analystSubs = filteredSubmissions.filter(
+      analystSubs = allFilteredSubmissions.filter(
         (s) => s.analystId === a.id || s.analystEmail === a.email
       );
     }

@@ -135,3 +135,17 @@ export const ROLE_BADGES = {
     icon: '👁️',
   },
 };
+
+export const getEventHour = (obj) => {
+  if (!obj) return 12;
+  const horaRaw = obj.reportData?.horaRaw || obj.horaRaw;
+  if (horaRaw) {
+    const parsedHour = parseInt(horaRaw.split(':')[0], 10);
+    if (!isNaN(parsedHour)) return parsedHour;
+  }
+  const ts = obj.timestamp || obj.fechaHora || obj.fecha;
+  if (ts) {
+    return new Date(ts).getHours();
+  }
+  return 12;
+};

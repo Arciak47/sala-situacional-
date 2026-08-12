@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { exportSubmissionsToHDPDF } from '../lib/exportUtils';
-import { AREAS } from '../lib/constants';
+import { AREAS, getEventHour } from '../lib/constants';
 
 export default function SubmissionInboxView({
   submissions = [],
@@ -44,8 +44,8 @@ export default function SubmissionInboxView({
       const matchArea = areaFilter === 'Todos' || s.reportData?.area === areaFilter;
       
       let matchShift = true;
-      if (shiftFilter !== 'Todos' && s.timestamp) {
-        const hour = new Date(s.timestamp).getHours();
+      if (shiftFilter !== 'Todos') {
+        const hour = getEventHour(s);
         if (shiftFilter === 't1') matchShift = hour >= 7 && hour <= 12;
         else if (shiftFilter === 't2') matchShift = hour >= 13 && hour <= 18;
         else if (shiftFilter === 't3') matchShift = hour >= 19 && hour <= 23;

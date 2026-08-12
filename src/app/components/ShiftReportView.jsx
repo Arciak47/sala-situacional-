@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { exportCombinedReportAndFichasHDPDF } from '../lib/exportUtils';
 import { addShiftReportRecord, saveShiftReportDraft, subscribeShiftReportDraft } from '../lib/firestoreService';
+import { getEventHour } from '../lib/constants';
 
 // Official Social Networks High-Resolution Logo SVG Data URLs
 const SOCIAL_LOGOS = {
@@ -114,6 +115,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
   const [activitiesText, setActivitiesText] = useState('• ');
 
   const [receivedReportsTotal, setReceivedReportsTotal] = useState(0);
+  const [repeatedReportsTotal, setRepeatedReportsTotal] = useState(0);
   const [activatedRooms, setActivatedRooms] = useState(0);
   const [reportingRooms, setReportingRooms] = useState(0);
   const [pendingRooms, setPendingRooms] = useState(0);
@@ -130,7 +132,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
   const [neuCount, setNeuCount] = useState(0);
   const [negCount, setNegCount] = useState(0);
 
-  const [includeRepeatedInStats, setIncludeRepeatedInStats] = useState(false);
+  const [includeRepeatedInStats, setIncludeRepeatedInStats] = useState(true);
 
   const [recommendationsText, setRecommendationsText] = useState('• ');
   const [roomsFontSize, setRoomsFontSize] = useState(10.5);
@@ -203,6 +205,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
           analystsCount,
           activitiesText,
           receivedReportsTotal,
+          repeatedReportsTotal,
           activatedRooms,
           reportingRooms,
           pendingRooms,
@@ -232,7 +235,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
   }, [
     selectedDate, selectedShift,
     analystsCount, activitiesText,
-    receivedReportsTotal, activatedRooms, reportingRooms, pendingRooms,
+    receivedReportsTotal, repeatedReportsTotal, activatedRooms, reportingRooms, pendingRooms,
     customRooms,
     facebookCount, instagramCount, tiktokCount, xCount, telegramCount,
     posCount, neuCount, negCount,
@@ -256,6 +259,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
         setAnalystsCount(draft.analystsCount ?? 0);
         setActivitiesText(draft.activitiesText ?? '\u2022 ');
         setReceivedReportsTotal(draft.receivedReportsTotal ?? 0);
+        setRepeatedReportsTotal(draft.repeatedReportsTotal ?? 0);
         setActivatedRooms(draft.activatedRooms ?? 0);
         setReportingRooms(draft.reportingRooms ?? 0);
         setPendingRooms(draft.pendingRooms ?? 0);
@@ -277,6 +281,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
         setAnalystsCount(0);
         setActivitiesText('\u2022 ');
         setReceivedReportsTotal(0);
+        setRepeatedReportsTotal(0);
         setActivatedRooms(0);
         setReportingRooms(0);
         setPendingRooms(0);
@@ -364,26 +369,33 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
       if (selectedDate && subDate && subDate !== selectedDate) return false;
       if (selectedShift === 'all') return true;
 
-      let hour = 12;
-      if (s.timestamp) {
-        hour = new Date(s.timestamp).getHours();
-      }
+      const hour = getEventHour(s);
 
       if (selectedShift === 't1') return hour >= 7 && hour <= 12;
       if (selectedShift === 't2') return hour >= 13 && hour <= 18;
       if (selectedShift === 't3') return hour >= 19 && hour <= 23;
       return true;
-    }).filter(s => includeRepeatedInStats || (s.status || '').toLowerCase().trim() !== 'repetido');
+    });
+
+    let repCount = 0;
+    allShiftSubs.forEach((s) => {
+      if ((s.status || '').toLowerCase().trim() === 'repetido') {
+        repCount++;
+      }
+    });
+    setRepeatedReportsTotal(repCount);
+
+    const finalFilteredSubs = allShiftSubs.filter(s => includeRepeatedInStats || (s.status || '').toLowerCase().trim() !== 'repetido');
 
     const activeAnalysts = new Set(
-      filteredSubs.map((s) => s.analystId || s.analystEmail || s.analystName).filter(Boolean)
+      finalFilteredSubs.map((s) => s.analystId || s.analystEmail || s.analystName).filter(Boolean)
     ).size;
     setAnalystsCount(activeAnalysts);
 
     let fb = 0, ig = 0, tk = 0, x = 0, tg = 0;
     let pos = 0, neu = 0, neg = 0;
 
-    filteredSubs.forEach((s) => {
+    finalFilteredSubs.forEach((s) => {
       const net = (s.reportData?.redSocial || '').toUpperCase();
       if (net.includes('FACEBOOK')) fb++;
       else if (net.includes('INSTAGRAM')) ig++;
@@ -465,6 +477,13 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
   useEffect(() => {
     handleAutoFillRef.current = handleAutoFillFromDB;
   });
+
+  // Automatically refill if includeRepeatedInStats changes
+  useEffect(() => {
+    if (!isLoadingDraftRef.current) {
+      handleAutoFillRef.current?.();
+    }
+  }, [includeRepeatedInStats]);
 
   const [year, month, day] = selectedDate ? selectedDate.split('-') : ['2026', '08', '01'];
   const formattedDateHeader = `${day} / ${month} / ${year}`;
@@ -570,7 +589,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
       ctx.fillStyle = '#032b69';
       ctx.font = '800 13px "Plus Jakarta Sans", sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(`🖥️ REPORTES RECIBIDOS: ${receivedReportsTotal}`, 625, 172);
+      ctx.fillText(`🖥️ REPORTES RECIBIDOS: ${receivedReportsTotal}   |   🔁 REPETIDOS: ${repeatedReportsTotal}`, 625, 172);
 
       ctx.strokeStyle = '#cbd5e1';
       ctx.lineWidth = 1;
@@ -851,10 +870,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
   const filteredReportables = reportablesDelTurno.filter(s => {
     if (fichasShiftFilter === 'Todos') return true;
     
-    let hour = 12;
-    if (s.timestamp) {
-      hour = new Date(s.timestamp).getHours();
-    }
+    const hour = getEventHour(s);
     
     if (fichasShiftFilter === 'Turno 1') return hour >= 7 && hour <= 12;
     if (fichasShiftFilter === 'Turno 2') return hour >= 13 && hour <= 18;
@@ -902,10 +918,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
                 if (selectedDate && subDate !== selectedDate) return false;
                 if (selectedShift === 'all') return true;
                 
-                let hour = 12;
-                if (s.timestamp) {
-                  hour = new Date(s.timestamp).getHours();
-                }
+                const hour = getEventHour(s);
                 
                 if (selectedShift === 't1') return hour >= 7 && hour <= 12;
                 if (selectedShift === 't2') return hour >= 13 && hour <= 18;
