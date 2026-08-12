@@ -924,7 +924,9 @@ export default function Home() {
         
         const zip = new JSZip();
         
-        // Agregar Excel en vez de JSON
+        const activeToArchive = submissions.filter(s => !s.archived);
+        
+        // Agregar Excel en vez de JSON (mantiene toda la data cargada)
         const excelBlob = getExcelBlob(submissions);
         if (excelBlob) {
           zip.file("Base_de_Datos.xls", excelBlob);
@@ -932,14 +934,20 @@ export default function Home() {
         
         const imgFolder = zip.folder("fichas");
         
-        for (const sub of submissions) {
+        for (const sub of activeToArchive) {
           try {
+            // Obtener fecha del reporte (YYYY-MM-DD)
+            const subDate = sub.timestamp ? new Date(sub.timestamp).toISOString().split('T')[0] : 'Sin_Fecha';
+            // Obtener sentimiento
+            const sentiment = sub.reportData?.sentimiento || 'Sin_Sentimiento';
+            
             // Genera la ficha completa oficial usando la utilidad
             const dataUrl = await renderCanvasFichaImage(sub);
             if (dataUrl) {
               // Limpiar encabezado base64 (e.g. data:image/png;base64,...)
               const base64Data = dataUrl.split(',')[1];
-              imgFolder.file(`ficha_${sub.id}.png`, base64Data, { base64: true });
+              // Organizar en carpetas: fichas / Fecha / Sentimiento / ficha_id.png
+              imgFolder.folder(subDate).folder(sentiment).file(`ficha_${sub.id}.png`, base64Data, { base64: true });
             }
           } catch (e) {
             console.warn(`No se pudo generar la ficha para el reporte ${sub.id}:`, e);
