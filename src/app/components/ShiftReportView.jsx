@@ -876,7 +876,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
             </p>
             {/* Badge de submissions disponibles para la fecha/turno activo */}
             {(() => {
-              const countForBadge = submissions.filter((s) => {
+              const allForBadge = submissions.filter((s) => {
                 let subDate = '';
                 if (s.reportData?.fechaRaw) {
                   subDate = s.reportData.fechaRaw;
