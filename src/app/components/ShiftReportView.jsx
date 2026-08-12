@@ -378,14 +378,14 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
     });
 
     let repCount = 0;
-    allShiftSubs.forEach((s) => {
+    filteredSubs.forEach((s) => {
       if ((s.status || '').toLowerCase().trim() === 'repetido') {
         repCount++;
       }
     });
     setRepeatedReportsTotal(repCount);
 
-    const finalFilteredSubs = allShiftSubs.filter(s => includeRepeatedInStats || (s.status || '').toLowerCase().trim() !== 'repetido');
+    const finalFilteredSubs = filteredSubs.filter(s => includeRepeatedInStats || (s.status || '').toLowerCase().trim() !== 'repetido');
 
     const activeAnalysts = new Set(
       finalFilteredSubs.map((s) => s.analystId || s.analystEmail || s.analystName).filter(Boolean)
