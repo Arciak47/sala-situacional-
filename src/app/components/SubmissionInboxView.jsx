@@ -53,7 +53,7 @@ export default function SubmissionInboxView({
 
       let matchDate = true;
       if (specificDate) {
-        matchDate = toLocalDateStr(s.timestamp) === specificDate;
+        matchDate = toLocalDateStr(getEventTimestamp(s)) === specificDate;
       }
 
       return matchStatus && matchSentiment && matchArea && matchShift && matchDate;
@@ -317,8 +317,8 @@ export default function SubmissionInboxView({
                         <span className="font-bold text-slate-700 dark:text-slate-300">
                           {sub.analystName}
                         </span>{' '}
-                        • {new Date(sub.timestamp).toLocaleDateString('es-ES')}{' '}
-                        {new Date(sub.timestamp).toLocaleTimeString('es-ES', {
+                        • ⏰ Evento: {new Date(getEventTimestamp(sub)).toLocaleDateString('es-ES')}{' '}
+                        {new Date(getEventTimestamp(sub)).toLocaleTimeString('es-ES', {
                           hour: '2-digit',
                           minute: '2-digit',
                         })}

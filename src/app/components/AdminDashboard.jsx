@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { MUNICIPIOS, AREAS, getEventHour } from '../lib/constants';
+import { MUNICIPIOS, AREAS, getEventHour, getEventTimestamp } from '../lib/constants';
 import {
   exportSubmissionsToExcel,
   exportStatsToExcel,
@@ -104,14 +104,15 @@ export default function AdminDashboard({
 
   const isWithinSpecificFilter = (obj) => {
     if (!obj) return false;
-    const timestamp = obj.timestamp || obj.fecha; // fallback for messages
+    const fallbackTs = obj.timestamp || obj.fecha; // fallback for messages
+    const eventTs = getEventTimestamp(obj) || fallbackTs;
 
     // 1. Validar la fecha
     let isDateValid = false;
     if (specificDate) {
-      isDateValid = toLocalDateStr(timestamp) === specificDate;
+      isDateValid = toLocalDateStr(eventTs) === specificDate;
     } else {
-      isDateValid = isWithinTimeRange(timestamp);
+      isDateValid = isWithinTimeRange(eventTs);
     }
     
     if (!isDateValid) return false;
