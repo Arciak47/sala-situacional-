@@ -231,7 +231,7 @@ export async function saveUsersBatchToFirestore(users) {
 export function subscribeSubmissions(onUpdate) {
   try {
     const colRef = collection(db, 'submissions');
-    const q = query(colRef, orderBy('timestamp', 'desc'), limit(150));
+    const q = query(colRef, orderBy('timestamp', 'desc'), limit(5000));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const remoteSubs = snapshot.empty
         ? []
@@ -400,7 +400,11 @@ export async function archiveSubmissionInFirestore(subId) {
 
   try {
     const subRef = doc(db, 'submissions', String(subId));
-    await updateDoc(subRef, { archived: true });
+    await updateDoc(subRef, { 
+      archived: true,
+      'reportData.evidenceImageSrc': null,
+      'reportData.evidenceImageId': null
+    });
     
     // Eliminar imagen legacy
     const imgRef = doc(db, 'submission_images', `img_${subId}`);

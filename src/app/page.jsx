@@ -914,7 +914,7 @@ export default function Home() {
   const handleBackupAndClear = async () => {
     if (
       typeof window !== 'undefined' &&
-      window.confirm('⚠️ ATENCIÓN: ¿Estás seguro de que deseas RESPALDAR los datos y LIMPIAR la base de datos? Esta acción borrará todos los reportes.')
+      window.confirm('⚠️ ATENCIÓN: ¿Estás seguro de que deseas hacer el Cierre del Día?\nEsta acción generará un respaldo, purgará las imágenes pesadas para liberar espacio, pero mantendrá intactas las estadísticas.')
     ) {
       setToastMsg('📦 Generando respaldo, por favor espera...');
       try {
