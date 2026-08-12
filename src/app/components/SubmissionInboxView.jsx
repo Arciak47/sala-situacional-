@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { exportSubmissionsToHDPDF } from '../lib/exportUtils';
-import { AREAS, getEventHour } from '../lib/constants';
+import { AREAS, getEventHour, getEventTimestamp } from '../lib/constants';
 
 export default function SubmissionInboxView({
   submissions = [],
@@ -58,7 +58,11 @@ export default function SubmissionInboxView({
 
       return matchStatus && matchSentiment && matchArea && matchShift && matchDate;
     }
-  );
+  ).sort((a, b) => {
+    const tsA = getEventTimestamp(a);
+    const tsB = getEventTimestamp(b);
+    return tsB - tsA; // Descending (newest first)
+  });
 
   const allSelected =
     filteredSubmissions.length > 0 &&

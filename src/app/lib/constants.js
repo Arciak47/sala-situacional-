@@ -149,3 +149,26 @@ export const getEventHour = (obj) => {
   }
   return 12;
 };
+
+export const getEventTimestamp = (obj) => {
+  if (!obj) return 0;
+  try {
+    const fechaRaw = obj.reportData?.fechaRaw || obj.fechaRaw;
+    const horaRaw = obj.reportData?.horaRaw || obj.horaRaw;
+    
+    if (fechaRaw && horaRaw) {
+      // Create a valid ISO string e.g. "2026-08-12T19:30:00"
+      const dateStr = `${fechaRaw}T${horaRaw}`;
+      const time = new Date(dateStr).getTime();
+      if (!isNaN(time)) return time;
+    }
+  } catch (err) {}
+
+  const ts = obj.timestamp || obj.fechaHora || obj.fecha;
+  if (ts) {
+    const time = new Date(ts).getTime();
+    if (!isNaN(time)) return time;
+  }
+  
+  return 0;
+};
