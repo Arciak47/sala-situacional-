@@ -23,6 +23,7 @@ export default function AdminDashboard({
   // ── Specific date + shift filter (overrides timeFilter when set) ──
   const [specificDate, setSpecificDate] = useState(''); // '' = use timeFilter, 'YYYY-MM-DD' = exact day
   const [shiftFilter, setShiftFilter] = useState('all'); // 'all' | 't1' | 't2' | 't3'
+  const [includeRepeatedAnalysts, setIncludeRepeatedAnalysts] = useState(true);
 
   const isAnalyst = currentUser?.role === 'Analista';
 
@@ -267,6 +268,10 @@ export default function AdminDashboard({
       analystSubs = allFilteredSubmissions.filter(
         (s) => s.analystId === a.id || s.analystEmail === a.email
       );
+    }
+
+    if (!includeRepeatedAnalysts) {
+      analystSubs = analystSubs.filter((s) => s.status !== 'repetido');
     }
     return {
       id: a.id,
@@ -1023,12 +1028,28 @@ export default function AdminDashboard({
               <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <span>📊 Rendimiento Comparativo por Analista</span>
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {analystDateFrom || analystDateTo
-                  ? <span>Rango personalizado: <span className="font-bold text-blue-600">{analystDateFrom || '...'} → {analystDateTo || 'hoy'}</span></span>
-                  : <span>Filtro activo: <span className="font-bold text-red-600">{currentFilterInfo.label}</span></span>
-                }
-              </p>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-1">
+                <p className="text-xs text-slate-500">
+                  {analystDateFrom || analystDateTo
+                    ? <span>Rango personalizado: <span className="font-bold text-blue-600">{analystDateFrom || '...'} → {analystDateTo || 'hoy'}</span></span>
+                    : <span>Filtro activo: <span className="font-bold text-red-600">{currentFilterInfo.label}</span></span>
+                  }
+                </p>
+                <div className="flex items-center gap-2">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={includeRepeatedAnalysts}
+                      onChange={(e) => setIncludeRepeatedAnalysts(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-slate-600 peer-checked:bg-blue-600"></div>
+                    <span className="ml-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Incluir Repetidos
+                    </span>
+                  </label>
+                </div>
+              </div>
             </div>
 
             {/* DATE RANGE FILTER */}
