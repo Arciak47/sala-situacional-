@@ -495,7 +495,6 @@ export async function renderCanvasFichaImage(sub) {
             let imgSrc = el.src;
             if (!imgSrc.startsWith('data:') && !imgSrc.startsWith('/')) {
               img.crossOrigin = 'anonymous';
-              imgSrc = `https://api.allorigins.win/raw?url=${encodeURIComponent(el.src)}`;
             }
             img.onload = () => {
               imageCache[el.id] = img;
