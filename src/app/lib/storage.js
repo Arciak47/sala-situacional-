@@ -102,8 +102,8 @@ export function saveStoredSubmissions(submissions) {
     } catch (e) {
       console.warn('localStorage quota exceeded for submissions, trimming old entries:', e);
       try {
-        // Fallback: keep only the last 50 submissions
-        const trimmed = submissions.slice(0, 50);
+        // Fallback: keep only the last 50 submissions using lightweight data
+        const trimmed = lightweightSubs.slice(0, 50);
         localStorage.setItem('sdm_submissions', JSON.stringify(trimmed));
       } catch (e2) {
         console.error('Failed to save even trimmed submissions:', e2);

@@ -826,13 +826,19 @@ export default function Home() {
     setIsSaving(true);
     try {
       if (selectedSubmission && selectedSubmission.id === subId) {
-        await saveSubmissionEdits('revisado', currentElements, currentReport);
+        await Promise.race([
+          saveSubmissionEdits('revisado', currentElements, currentReport),
+          new Promise(r => setTimeout(r, 4000))
+        ]);
       } else {
         const existing = submissions.find(s => s.id === subId);
         if (existing) {
           const updatedSub = { ...existing, status: 'revisado' };
           setSubmissions((prev) => prev.map((s) => (s.id === subId ? updatedSub : s)));
-          await updateSubmissionStatus(subId, 'revisado');
+          await Promise.race([
+            updateSubmissionStatus(subId, 'revisado'),
+            new Promise(r => setTimeout(r, 4000))
+          ]);
         }
       }
       addLog(currentUser.email, 'Reporte Revisado', `ID: ${subId}`, 'success');
@@ -851,13 +857,19 @@ export default function Home() {
     setIsSaving(true);
     try {
       if (selectedSubmission && selectedSubmission.id === subId) {
-        await saveSubmissionEdits('repetido', currentElements, currentReport);
+        await Promise.race([
+          saveSubmissionEdits('repetido', currentElements, currentReport),
+          new Promise(r => setTimeout(r, 4000))
+        ]);
       } else {
         const existing = submissions.find(s => s.id === subId);
         if (existing) {
           const updatedSub = { ...existing, status: 'repetido' };
           setSubmissions((prev) => prev.map((s) => (s.id === subId ? updatedSub : s)));
-          await updateSubmissionStatus(subId, 'repetido');
+          await Promise.race([
+            updateSubmissionStatus(subId, 'repetido'),
+            new Promise(r => setTimeout(r, 4000))
+          ]);
         }
       }
       addLog(currentUser.email, 'Reporte Repetido', `ID: ${subId}`, 'warning');
@@ -877,14 +889,20 @@ export default function Home() {
     try {
       if (selectedSubmission && selectedSubmission.id === subId) {
         // Save canvas edits WITH status 'reportar' so /shift can find it
-        await saveSubmissionEdits('reportar', currentElements, currentReport);
+        await Promise.race([
+          saveSubmissionEdits('reportar', currentElements, currentReport),
+          new Promise(r => setTimeout(r, 4000))
+        ]);
         // saveSubmissionEdits already navigates to 'shift' when status is 'reportar'
       } else {
         const existing = submissions.find(s => s.id === subId);
         if (existing) {
           const updatedSub = { ...existing, status: 'reportar' };
           setSubmissions((prev) => prev.map((s) => (s.id === subId ? updatedSub : s)));
-          await updateSubmissionStatus(subId, 'reportar');
+          await Promise.race([
+            updateSubmissionStatus(subId, 'reportar'),
+            new Promise(r => setTimeout(r, 4000))
+          ]);
         }
       }
       addLog(currentUser.email, 'Reporte para Reportar', `ID: ${subId}`, 'info');
