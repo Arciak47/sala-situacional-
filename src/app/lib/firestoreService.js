@@ -605,6 +605,22 @@ export async function saveShiftReportDraft(draft) {
   }
 }
 
+export async function getShiftReportDraft(fecha, turno) {
+  if (!fecha || !turno) return null;
+  try {
+    const docId = `reporte_${fecha}_${turno}`;
+    const docRef = doc(db, 'borradores_turnos', docId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data();
+    }
+    return null;
+  } catch (error) {
+    console.error("Error al obtener borrador:", error);
+    return null;
+  }
+}
+
 export function subscribeShiftReportDraft(fecha, turno, onUpdate) {
   if (!fecha || !turno) {
     onUpdate(null);

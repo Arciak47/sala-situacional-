@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { exportCombinedReportAndFichasHDPDF } from '../lib/exportUtils';
-import { addShiftReportRecord, saveShiftReportDraft, subscribeShiftReportDraft } from '../lib/firestoreService';
+import { addShiftReportRecord, saveShiftReportDraft, getShiftReportDraft } from '../lib/firestoreService';
 import { getEventHour } from '../lib/constants';
 
 // Official Social Networks High-Resolution Logo SVG Data URLs
@@ -248,12 +248,16 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
   // un borrador guardado y pre-carga todos los campos. Si no existe,
   // resetea el formulario a los valores por defecto.
   useEffect(() => {
+    let isActive = true;
     isLoadingDraftRef.current = true;
     autoFillPendingRef.current = false; // reset
     setSaveStatus('idle');
     setDraftLoadedAt(null);
 
-    const unsubscribe = subscribeShiftReportDraft(selectedDate, selectedShift, (draft) => {
+    const loadDraft = async () => {
+      const draft = await getShiftReportDraft(selectedDate, selectedShift);
+      if (!isActive) return;
+
       if (draft) {
         // Pre-cargar campos con el borrador guardado
         setAnalystsCount(draft.analystsCount ?? 0);
@@ -299,20 +303,24 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
         setDraftLoadedAt(null);
         autoFillPendingRef.current = true; // sin borrador → auto-llenar desde la BD
       }
+
       // Esperar un tick para que React procese los setState antes de
       // reactivar el auto-guardado, evitando un guardado espurio al cargar.
       // Si no había borrador, ahora también disparamos el auto-llenado.
       setTimeout(() => {
+        if (!isActive) return;
         isLoadingDraftRef.current = false;
         if (autoFillPendingRef.current) {
           autoFillPendingRef.current = false;
           handleAutoFillRef.current?.();
         }
       }, 150);
-    });
+    };
+
+    loadDraft();
 
     return () => {
-      unsubscribe();
+      isActive = false;
       isLoadingDraftRef.current = false;
     };
   }, [selectedDate, selectedShift]);
