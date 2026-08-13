@@ -286,6 +286,18 @@ export default function Home() {
       setToastMsg(`💬 ¡Nuevo mensaje recibido! (${unreadMessagesCount} sin leer)`);
       setTimeout(() => setToastMsg(''), 5000);
 
+      // Disparar Notificación de Escritorio/Push Web
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification('💬 Sala de Monitoreo - Nuevo Mensaje', {
+            body: `Tienes ${unreadMessagesCount} mensaje(s) institucional(es) sin leer.`,
+            icon: '/favicon.ico'
+          });
+        } catch (err) {
+          // Fallback ignorado
+        }
+      }
+
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = audioCtx.createOscillator();
@@ -352,6 +364,13 @@ export default function Home() {
     setCurrentUser(user);
     setActiveTab('dashboard'); // fresh logins always start on dashboard
     addLog(user.email, 'Inicio de Sesión', `Ingreso como ${user.role}`, 'success');
+
+    // Solicitar permiso de notificaciones al entrar
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+      }
+    }
   };
 
 
