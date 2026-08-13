@@ -589,7 +589,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
       ctx.fillStyle = '#032b69';
       ctx.font = '800 13px "Plus Jakarta Sans", sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(`🖥️ REPORTES RECIBIDOS: ${receivedReportsTotal}   |   🔁 REPETIDOS: ${repeatedReportsTotal}`, 625, 172);
+      ctx.fillText(`🖥️ REPORTES RECIBIDOS: ${receivedReportsTotal}`, 625, 172);
 
       ctx.strokeStyle = '#cbd5e1';
       ctx.lineWidth = 1;

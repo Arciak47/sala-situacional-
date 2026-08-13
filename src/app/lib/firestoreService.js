@@ -70,50 +70,23 @@ export async function uploadImageToStorage(fileOrDataUrl, path) {
     return fileOrDataUrl;
   }
   
-  return new Promise(async (resolve, reject) => {
-    try {
-      let fileBlob = fileOrDataUrl;
-      // Convert base64 to Blob for optimized upload and better CORS compatibility
-      if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('data:')) {
-        const response = await fetch(fileOrDataUrl);
-        fileBlob = await response.blob();
-      }
-
-      const storageRef = ref(storage, path);
-      
-      // Use uploadBytesResumable to track progress and handle network errors cleanly
-      const uploadTask = uploadBytesResumable(storageRef, fileBlob);
-
-      // Force a hard timeout so the UI doesn't hang indefinitely (15s)
-      const timeoutId = setTimeout(() => {
-        uploadTask.cancel();
-        reject(new Error('El servidor tardó demasiado en responder (timeout). Verifica tu conexión a internet o los permisos de Firebase.'));
-      }, 15000);
-
-      uploadTask.on(
-        'state_changed',
-        null,
-        (error) => {
-          clearTimeout(timeoutId);
-          console.error("Firebase Storage Upload Error:", error);
-          reject(error);
-        },
-        async () => {
-          clearTimeout(timeoutId);
-          try {
-            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(downloadUrl);
-          } catch (urlError) {
-            console.error("Error obteniendo la URL de descarga:", urlError);
-            reject(urlError);
-          }
-        }
-      );
-    } catch (err) {
-      console.error("Error procesando imagen para Storage:", err);
-      reject(err);
+  try {
+    const storageRef = ref(storage, path);
+    if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('data:')) {
+      const snapshot = await uploadString(storageRef, fileOrDataUrl, 'data_url');
+      const downloadUrl = await getDownloadURL(snapshot.ref);
+      console.log(`✅ Imagen subida exitosamente a Storage: ${path}`);
+      return downloadUrl;
+    } else {
+      const snapshot = await uploadBytes(storageRef, fileOrDataUrl);
+      const downloadUrl = await getDownloadURL(snapshot.ref);
+      console.log(`✅ Imagen subida exitosamente a Storage: ${path}`);
+      return downloadUrl;
     }
-  });
+  } catch (error) {
+    console.error("❌ Firebase Storage Upload Error:", error);
+    throw error;
+  }
 }
 
 // ----------------------------------------------------
@@ -259,32 +232,7 @@ export function subscribeSubmissions(onUpdate) {
   }
 }
 
-export async function uploadToImgBB(base64Image) {
-  if (!base64Image || !base64Image.startsWith('data:')) return base64Image;
-  
-  try {
-    // Remove the "data:image/jpeg;base64," prefix
-    const base64Data = base64Image.split(',')[1];
-    
-    const formData = new FormData();
-    formData.append('image', base64Data);
-    
-    const response = await fetch('https://api.imgbb.com/1/upload?key=58411e0cedccf0c7deddb7246d0b0397', {
-      method: 'POST',
-      body: formData,
-    });
-    
-    const data = await response.json();
-    if (data && data.success) {
-      return data.data.url;
-    } else {
-      throw new Error(data?.error?.message || 'Fallo al subir la imagen a ImgBB');
-    }
-  } catch (error) {
-    console.error('Error en uploadToImgBB:', error);
-    throw error;
-  }
-}
+
 
 export async function addSubmissionToFirestore(submission) {
   if (!submission || !submission.id) return;
@@ -297,16 +245,21 @@ export async function addSubmissionToFirestore(submission) {
   try {
     const subId = String(submission.id || `sub-${Date.now()}`);
     let updatedSub = JSON.parse(JSON.stringify(submission));
-    // 3. Subir cualquier imagen Base64 a ImgBB
+    // 3. Subir cualquier imagen Base64 a Firebase Storage
     const imageFields = ['evidenceImageSrc', 'canvasBg', 'finalRender'];
     if (updatedSub.reportData) {
       for (const field of imageFields) {
         if (updatedSub.reportData[field]?.startsWith('data:')) {
           try {
-            const imgUrl = await uploadToImgBB(updatedSub.reportData[field]);
-            updatedSub.reportData[field] = imgUrl; // Reemplazar Base64 con URL
+            const imgUrl = await uploadImageToStorage(
+              updatedSub.reportData[field],
+              `submissions/${subId}_${field}_${Date.now()}`
+            );
+            if (imgUrl) {
+              updatedSub.reportData[field] = imgUrl; // Reemplazar Base64 con URL
+            }
           } catch (err) {
-            throw new Error(`Fallo al subir la imagen ${field} a ImgBB. ` + (err.message || ''));
+            throw new Error(`Fallo al subir la imagen ${field} a Storage. ` + (err.message || ''));
           }
         }
       }
@@ -493,7 +446,7 @@ export async function addMessageToFirestore(message) {
 
     // Upload image asynchronously if present
     if (updatedMsg.imagen && typeof updatedMsg.imagen === 'string' && updatedMsg.imagen.startsWith('data:')) {
-      uploadToImgBB(updatedMsg.imagen)
+      uploadImageToStorage(updatedMsg.imagen, `messages/${msgId}_${Date.now()}`)
         .then(async (imgUrl) => {
           if (imgUrl) {
             updatedMsg.imagen = imgUrl;

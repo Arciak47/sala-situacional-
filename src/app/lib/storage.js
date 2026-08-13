@@ -87,7 +87,18 @@ export function saveStoredSubmissions(submissions) {
   if (typeof window === 'undefined') return;
   if (Array.isArray(submissions)) {
     try {
-      localStorage.setItem('sdm_submissions', JSON.stringify(submissions));
+      // Strip large base64 strings to prevent QuotaExceededError in localStorage
+      const lightweightSubs = submissions.map(sub => {
+        if (!sub.reportData) return sub;
+        const lightweightReportData = { ...sub.reportData };
+        ['evidenceImageSrc', 'canvasBg', 'finalRender'].forEach(field => {
+          if (lightweightReportData[field] && lightweightReportData[field].startsWith('data:')) {
+            lightweightReportData[field] = '__pending_upload__'; // Placeholder instead of huge base64
+          }
+        });
+        return { ...sub, reportData: lightweightReportData };
+      });
+      localStorage.setItem('sdm_submissions', JSON.stringify(lightweightSubs));
     } catch (e) {
       console.warn('localStorage quota exceeded for submissions, trimming old entries:', e);
       try {
