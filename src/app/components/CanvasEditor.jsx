@@ -86,12 +86,7 @@ export default function CanvasEditor({
         
         const img = new Image();
         
-        // Proxy Firebase Storage and external URLs to prevent CORS Canvas tainting
         let imgSrc = el.src;
-        if (imgSrc.startsWith('http') && !imgSrc.includes('/api/proxy-image')) {
-          imgSrc = `/api/proxy-image?url=${encodeURIComponent(imgSrc)}`;
-        }
-
         if (!imgSrc.startsWith('data:') && !imgSrc.startsWith('/')) {
           img.crossOrigin = 'anonymous';
         }
