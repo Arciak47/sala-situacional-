@@ -59,9 +59,9 @@ export default function SubmissionInboxView({
       return matchStatus && matchSentiment && matchArea && matchShift && matchDate;
     }
   ).sort((a, b) => {
-    const tsA = getEventTimestamp(a);
-    const tsB = getEventTimestamp(b);
-    return tsB - tsA; // Descending (newest first)
+    const tsA = new Date(a.timestamp || a.fechaHora || 0).getTime();
+    const tsB = new Date(b.timestamp || b.fechaHora || 0).getTime();
+    return tsB - tsA; // Descending (newest arrival first)
   });
 
   const allSelected =
