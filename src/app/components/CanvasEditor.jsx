@@ -89,7 +89,7 @@ export default function CanvasEditor({
         let imgSrc = el.src;
         if (!imgSrc.startsWith('data:') && !imgSrc.startsWith('/')) {
           img.crossOrigin = 'anonymous';
-          imgSrc = `https://corsproxy.io/?${encodeURIComponent(el.src)}`;
+          imgSrc = `https://api.allorigins.win/raw?url=${encodeURIComponent(el.src)}`;
         }
         
         img.onload = () => {
