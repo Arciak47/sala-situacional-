@@ -157,7 +157,7 @@ export async function saveUserToFirestore(user) {
   try {
     let updatedUser = { ...user };
     if (updatedUser.avatar && typeof updatedUser.avatar === 'string' && updatedUser.avatar.startsWith('data:')) {
-      const avatarUrl = await uploadImageToStorage(updatedUser.avatar, `avatars/${user.id}_${Date.now()}`);
+      const avatarUrl = await uploadToImgBB(updatedUser.avatar);
       if (avatarUrl) updatedUser.avatar = avatarUrl;
     }
     const userRef = doc(db, 'users', String(user.id));
@@ -232,7 +232,32 @@ export function subscribeSubmissions(onUpdate) {
   }
 }
 
-
+export async function uploadToImgBB(base64Image) {
+  if (!base64Image || !base64Image.startsWith('data:')) return base64Image;
+  
+  try {
+    // Remove the "data:image/jpeg;base64," prefix
+    const base64Data = base64Image.split(',')[1];
+    
+    const formData = new FormData();
+    formData.append('image', base64Data);
+    
+    const response = await fetch('https://api.imgbb.com/1/upload?key=58411e0cedccf0c7deddb7246d0b0397', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    const data = await response.json();
+    if (data && data.success) {
+      return data.data.url;
+    } else {
+      throw new Error(data?.error?.message || 'Fallo al subir la imagen a ImgBB');
+    }
+  } catch (error) {
+    console.error('Error en uploadToImgBB:', error);
+    throw error;
+  }
+}
 
 export async function addSubmissionToFirestore(submission) {
   if (!submission || !submission.id) return;
@@ -245,21 +270,18 @@ export async function addSubmissionToFirestore(submission) {
   try {
     const subId = String(submission.id || `sub-${Date.now()}`);
     let updatedSub = JSON.parse(JSON.stringify(submission));
-    // 3. Subir cualquier imagen Base64 a Firebase Storage
+    // 3. Subir cualquier imagen Base64 a ImgBB
     const imageFields = ['evidenceImageSrc', 'canvasBg', 'finalRender'];
     if (updatedSub.reportData) {
       for (const field of imageFields) {
         if (updatedSub.reportData[field]?.startsWith('data:')) {
           try {
-            const imgUrl = await uploadImageToStorage(
-              updatedSub.reportData[field],
-              `submissions/${subId}_${field}_${Date.now()}`
-            );
+            const imgUrl = await uploadToImgBB(updatedSub.reportData[field]);
             if (imgUrl) {
               updatedSub.reportData[field] = imgUrl; // Reemplazar Base64 con URL
             }
           } catch (err) {
-            throw new Error(`Fallo al subir la imagen ${field} a Storage. ` + (err.message || ''));
+            throw new Error(`Fallo al subir la imagen ${field} a ImgBB. ` + (err.message || ''));
           }
         }
       }
@@ -446,7 +468,7 @@ export async function addMessageToFirestore(message) {
 
     // Upload image asynchronously if present
     if (updatedMsg.imagen && typeof updatedMsg.imagen === 'string' && updatedMsg.imagen.startsWith('data:')) {
-      uploadImageToStorage(updatedMsg.imagen, `messages/${msgId}_${Date.now()}`)
+      uploadToImgBB(updatedMsg.imagen)
         .then(async (imgUrl) => {
           if (imgUrl) {
             updatedMsg.imagen = imgUrl;

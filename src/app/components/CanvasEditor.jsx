@@ -77,15 +77,34 @@ export default function CanvasEditor({
   useEffect(() => {
     elements.forEach((el) => {
       if (el.type !== 'image') return;
-      if (el.src && !imageCache[el.id + '_' + el.src.slice(-10)]) {
+      
+      const cacheKey = el.id + '_' + (el.src ? el.src.slice(-15) : 'none');
+      
+      if (el.src && !imageCache[cacheKey]) {
+        // Prevent infinite loop by immediately marking this key as loading
+        setImageCache((prev) => ({ ...prev, [cacheKey]: 'loading' }));
+        
         const img = new Image();
-        if (!el.src.startsWith('data:')) {
+        
+        // Proxy Firebase Storage and external URLs to prevent CORS Canvas tainting
+        let imgSrc = el.src;
+        if (imgSrc.startsWith('http') && !imgSrc.includes('/api/proxy-image')) {
+          imgSrc = `/api/proxy-image?url=${encodeURIComponent(imgSrc)}`;
+        }
+
+        if (!imgSrc.startsWith('data:') && !imgSrc.startsWith('/')) {
           img.crossOrigin = 'anonymous';
         }
-        const cacheKey = el.id + '_' + el.src.slice(-10);
-        img.onload = () =>
-          setImageCache((prev) => ({ ...prev, [el.id]: img, [cacheKey]: true }));
-        img.src = el.src;
+        
+        img.onload = () => {
+          setImageCache((prev) => ({ ...prev, [el.id]: img, [cacheKey]: 'loaded' }));
+        };
+        img.onerror = () => {
+          console.error(`Error loading image for element ${el.id}: ${el.src}`);
+          setImageCache((prev) => ({ ...prev, [cacheKey]: 'error' }));
+        };
+        
+        img.src = imgSrc;
       }
       if (!el.src && imageCache[el.id]) {
         setImageCache((prev) => {
