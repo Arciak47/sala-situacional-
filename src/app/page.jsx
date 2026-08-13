@@ -574,6 +574,7 @@ export default function Home() {
   };
 
   const handleSubmitForm = async (forceStatus = null) => {
+    if (isSaving) return;
     // Si forceStatus es un evento (ej. viene del onClick), lo ignoramos
     if (forceStatus && typeof forceStatus !== 'string') {
       forceStatus = null;
@@ -712,7 +713,7 @@ export default function Home() {
   };
 
   const saveSubmissionEdits = async (newStatus = null, currentElements = null, currentReport = null) => {
-    if (!selectedSubmission) return;
+    if (!selectedSubmission || isSaving) return;
     setIsSaving(true);
     
     let updatedReport = currentReport || { ...reportData };

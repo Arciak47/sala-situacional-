@@ -204,7 +204,7 @@ export async function saveUsersBatchToFirestore(users) {
 export function subscribeSubmissions(onUpdate) {
   try {
     const colRef = collection(db, 'submissions');
-    const q = query(colRef, orderBy('timestamp', 'desc'), limit(5000));
+    const q = query(colRef, orderBy('timestamp', 'desc'), limit(300));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const remoteSubs = snapshot.empty
         ? []
