@@ -492,15 +492,17 @@ export async function renderCanvasFichaImage(sub) {
         (el) =>
           new Promise((resolve) => {
             const img = new Image();
-            if (!el.src.startsWith('data:')) {
+            let imgSrc = el.src;
+            if (!imgSrc.startsWith('data:') && !imgSrc.startsWith('/')) {
               img.crossOrigin = 'anonymous';
+              imgSrc = `/api/proxy-image?url=${encodeURIComponent(el.src)}`;
             }
             img.onload = () => {
               imageCache[el.id] = img;
               resolve();
             };
             img.onerror = () => resolve();
-            img.src = el.src;
+            img.src = imgSrc;
           })
       )
   );
