@@ -79,7 +79,9 @@ export default function CanvasEditor({
       if (el.type !== 'image') return;
       if (el.src && !imageCache[el.id + '_' + el.src.slice(-10)]) {
         const img = new Image();
-        img.crossOrigin = 'anonymous';
+        if (!el.src.startsWith('data:')) {
+          img.crossOrigin = 'anonymous';
+        }
         const cacheKey = el.id + '_' + el.src.slice(-10);
         img.onload = () =>
           setImageCache((prev) => ({ ...prev, [el.id]: img, [cacheKey]: true }));

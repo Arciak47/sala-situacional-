@@ -492,7 +492,9 @@ export async function renderCanvasFichaImage(sub) {
         (el) =>
           new Promise((resolve) => {
             const img = new Image();
-            img.crossOrigin = 'anonymous';
+            if (!el.src.startsWith('data:')) {
+              img.crossOrigin = 'anonymous';
+            }
             img.onload = () => {
               imageCache[el.id] = img;
               resolve();
