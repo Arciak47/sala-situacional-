@@ -1134,12 +1134,38 @@ export default function Home() {
   };
 
   const getStats = () => {
-    if (!currentUser || !dashboardStats) return null;
+    if (!currentUser) return null;
     const mine = submissions.filter(
       (s) => s.analystId === currentUser.id || s.analystEmail === currentUser.email
     );
+
+    const now = new Date();
+    const todayStr = now.toLocaleDateString('es-ES');
+    
+    const firstDayOfWeek = new Date(now);
+    const dayOfWeek = firstDayOfWeek.getDay();
+    const diffToMonday = firstDayOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+    firstDayOfWeek.setDate(diffToMonday);
+    firstDayOfWeek.setHours(0,0,0,0);
+    
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const todayCount = mine.filter(s => {
+      const d = new Date(s.timestamp || s.fechaHora || 0);
+      return d.toLocaleDateString('es-ES') === todayStr;
+    }).length;
+
+    const weekCount = mine.filter(s => new Date(s.timestamp || s.fechaHora || 0) >= firstDayOfWeek).length;
+    const monthCount = mine.filter(s => new Date(s.timestamp || s.fechaHora || 0) >= firstDayOfMonth).length;
+
     return {
-      ...dashboardStats,
+      total: dashboardStats?.total !== undefined ? dashboardStats.total : mine.length,
+      today: dashboardStats?.today !== undefined ? dashboardStats.today : todayCount,
+      week: dashboardStats?.week && dashboardStats.week !== 'N/A' ? dashboardStats.week : weekCount,
+      month: dashboardStats?.month && dashboardStats.month !== 'N/A' ? dashboardStats.month : monthCount,
+      repeated: dashboardStats?.repeated !== undefined ? dashboardStats.repeated : mine.filter(s => s.status === 'repetido').length,
+      reviewed: dashboardStats?.reviewed !== undefined ? dashboardStats.reviewed : mine.filter(s => ['revisado', 'reportar'].includes(s.status)).length,
+      pending: dashboardStats?.pending !== undefined ? dashboardStats.pending : mine.filter(s => s.status === 'pendiente').length,
       recent: mine.slice(0, 15),
     };
   };
