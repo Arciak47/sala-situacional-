@@ -16,6 +16,8 @@ export default function AdminDashboard({
   users = [],
   auditLogs = [],
   messages = [],
+  loadDashboardStats,
+  dashboardLoading,
 }) {
   const [timeFilter, setTimeFilter] = useState('diario'); // 'diario', 'semanal', 'mensual', 'anual', 'todos'
   const [analystDateFrom, setAnalystDateFrom] = useState(''); // extra date range for analyst chart
