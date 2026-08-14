@@ -24,6 +24,8 @@ export default function AnalistaView({
   messages,
   onSendMessage,
   onMarkAsRead,
+  loadDashboardStats,
+  dashboardLoading,
 }) {
   return (
     <div className="space-y-6">
@@ -31,11 +33,14 @@ export default function AnalistaView({
       <div className={activeTab === 'dashboard' ? 'block' : 'hidden'}>
         <AdminDashboard
           currentUser={currentUser}
-          allStats={{}} // Analistas ven estadísticas propias desde `stats` si está configurado, o general básico
+          allStats={allStats}
+          stats={stats}
           submissions={[]} 
           users={[]} 
           auditLogs={[]} 
           messages={messages}
+          loadDashboardStats={loadDashboardStats}
+          dashboardLoading={dashboardLoading}
         />
       </div>
       {/* ── FORMULARIO ── */}

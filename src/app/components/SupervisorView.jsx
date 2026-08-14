@@ -47,6 +47,8 @@ export default function SupervisorView({
   auditLogs = [],
   handleBackupAndClear,
   shiftReports,
+  loadDashboardStats,
+  dashboardLoading,
 }) {
   return (
     <div className="space-y-6">
@@ -70,32 +72,41 @@ export default function SupervisorView({
           reports={shiftReports}
           submissions={submissions}
           openSubmissionForReview={openSubmissionForReview}
-        />
-      </div>
-
       {/* ── DASHBOARD PRINCIPAL CON GRÁFICAS ── */}
       <div className={activeTab === 'dashboard' ? 'block' : 'hidden'}>
         <AdminDashboard
-          currentUser={currentUser}
-          allStats={allStats}
-          submissions={submissions}
           users={users}
+          currentUser={currentUser}
           auditLogs={auditLogs}
-          messages={messages}
+          submissions={submissions}
+          allStats={allStats}
+          loadDashboardStats={loadDashboardStats}
+          dashboardLoading={dashboardLoading}
         />
       </div>
 
-      {/* ── BANDEJA DE ENTRADA ── */}
+      {/* ── BANDEJA (NUEVO DISEÑO) ── */}
       <div className={activeTab === 'inbox' ? 'block' : 'hidden'}>
         <SubmissionInboxView
           submissions={submissions}
-          inboxFilter={inboxFilter}
-          setInboxFilter={setInboxFilter}
+          currentUser={currentUser}
           openSubmissionForReview={openSubmissionForReview}
           markAsReviewed={markAsReviewed}
           markAsRepeated={markAsRepeated}
           markAsReported={markAsReported}
           deleteSubmission={deleteSubmission}
+          inboxFilter={inboxFilter}
+          setInboxFilter={setInboxFilter}
+          users={users}
+        />
+      </div>
+
+      {/* ── HISTORIAL DE TURNOS ── */}
+      <div className={activeTab === 'history' ? 'block' : 'hidden'}>
+        <ShiftHistoryView
+          reports={shiftReports}
+          submissions={submissions}
+          openSubmissionForReview={openSubmissionForReview}
         />
       </div>
 
@@ -136,7 +147,12 @@ export default function SupervisorView({
 
       {/* ── ESTADÍSTICAS GLOBALES PARA SUPERVISOR ── */}
       <div className={activeTab === 'stats' ? 'block' : 'hidden'}>
-        <StatsView currentUser={currentUser} allStats={allStats} />
+        <StatsView 
+          currentUser={currentUser} 
+          allStats={allStats} 
+          loadDashboardStats={loadDashboardStats} 
+          dashboardLoading={dashboardLoading} 
+        />
       </div>
 
       {/* ── MI PERFIL ── */}

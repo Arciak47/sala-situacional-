@@ -47,6 +47,8 @@ import {
   getSubmissionImage,
   updateSubmissionStatus,
   subscribeShiftReports,
+  fetchGlobalStats,
+  fetchAnalystStats,
 } from './lib/firestoreService';
 
 export default function Home() {
@@ -59,6 +61,46 @@ export default function Home() {
   const [shiftReports, setShiftReports] = useState([]);
   const [activeTab, setActiveTab] = useState(''); // starts empty to prevent premature localStorage overwrite
   const [selectedSubmission, setSelectedSubmission] = useState(null);
+
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+
+  const loadDashboardStats = async () => {
+    if (!currentUser) return;
+    const isAnalyst = currentUser.role === 'Analista';
+    
+    setDashboardLoading(true);
+    try {
+      if (isAnalyst) {
+        // Analysts only need their own stats
+        const analystsStats = await fetchAnalystStats([currentUser]);
+        if (analystsStats && analystsStats.length > 0) {
+          setDashboardStats({
+            total: analystsStats[0].total,
+            today: analystsStats[0].today,
+            pending: analystsStats[0].pending,
+            reviewed: analystsStats[0].reviewed,
+            repeated: analystsStats[0].repeated,
+            // Since we don't have week/month/year via getCountFromServer easily for analysts, we set them to N/A or compute differently.
+            // For now, we just pass the available ones.
+            week: 'N/A', month: 'N/A', year: 'N/A'
+          });
+        }
+      } else {
+        const [global, perAnalyst] = await Promise.all([
+          fetchGlobalStats(),
+          fetchAnalystStats(users.filter(u => u.role === 'Analista'))
+        ]);
+        setDashboardStats({
+          ...global,
+          perAnalyst: perAnalyst || []
+        });
+      }
+    } catch (err) {
+      console.error('Error loading dashboard stats:', err);
+    }
+    setDashboardLoading(false);
+  };
 
   const [loginError, setLoginError] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -136,6 +178,10 @@ export default function Home() {
         setUsers(data);
       }
     });
+
+    // Load stats initially
+    loadDashboardStats();
+
     const unsubSubs = subscribeSubmissions((data) => {
       if (data) {
         setSubmissions(data);
@@ -1087,107 +1133,14 @@ export default function Home() {
     setOverlayRect(null);
   };
 
-  // ── Analyst Personal Stats ──
   const getStats = () => {
-    const mine = submissions.filter((s) => s.analystId === currentUser?.id);
-    const now = new Date();
-    // Use LOCAL date parts to avoid UTC offset issues (Venezuela = UTC-4)
-    const y = now.getFullYear();
-    const mo = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    const today = `${y}-${mo}-${d}`;
-    const toLocalDate = (iso) => {
-      const dt = new Date(iso);
-      return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
-    };
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay());
-    weekStart.setHours(0, 0, 0, 0);
+    if (!currentUser || !dashboardStats) return null;
+    const mine = submissions.filter(
+      (s) => s.analystId === currentUser.id || s.analystEmail === currentUser.email
+    );
     return {
-      total: mine.length,
-      today: mine.filter((s) => toLocalDate(s.timestamp) === today).length,
-      week: mine.filter((s) => new Date(s.timestamp) >= weekStart).length,
-      month: mine.filter(
-        (s) =>
-          new Date(s.timestamp) >= new Date(now.getFullYear(), now.getMonth(), 1)
-      ).length,
-      year: mine.filter(
-        (s) => new Date(s.timestamp) >= new Date(now.getFullYear(), 0, 1)
-      ).length,
-      repeated: mine.filter((s) => s.status === 'repetido').length,
-      reviewed: mine.filter((s) => ['revisado', 'reportar'].includes(s.status)).length,
+      ...dashboardStats,
       recent: mine.slice(0, 15),
-    };
-  };
-
-  // ── Global Stats & Per-Analyst Breakdown (for Admin & Supervisor) ──
-  const getAllStats = () => {
-    const analysts = users.filter((u) => u.role === 'Analista');
-    const now = new Date();
-    // Use LOCAL date parts to avoid UTC offset issues (Venezuela = UTC-4)
-    const y = now.getFullYear();
-    const mo = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    const today = `${y}-${mo}-${d}`;
-    const toLocalDate = (iso) => {
-      const dt = new Date(iso);
-      return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
-    };
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay());
-
-    const totalGlobal = submissions.length;
-    const todayGlobal = submissions.filter(
-      (s) => toLocalDate(s.timestamp) === today
-    ).length;
-    const weekGlobal = submissions.filter(
-      (s) => new Date(s.timestamp) >= weekStart
-    ).length;
-    const monthGlobal = submissions.filter(
-      (s) =>
-        new Date(s.timestamp) >= new Date(now.getFullYear(), now.getMonth(), 1)
-    ).length;
-    const pendingGlobal = submissions.filter(
-      (s) => s.status === 'pendiente'
-    ).length;
-    const reviewedGlobal = submissions.filter(
-      (s) => ['revisado', 'reportar'].includes(s.status)
-    ).length;
-    const repeatedGlobal = submissions.filter(
-      (s) => s.status === 'repetido'
-    ).length;
-
-    const perAnalyst = analysts.map((a) => {
-      const mine = submissions.filter(
-        (s) => s.analystId === a.id || s.analystEmail === a.email
-      );
-      const defaultEtiqueta = a.salaEtiqueta || (a.salaCodigo ? `${a.salaCodigo} - ${a.name}` : `${a.sala || 'Sala Comuna'} - ${a.name}`);
-      return {
-        id: a.id,
-        username: a.username || '',
-        name: a.name,
-        email: a.email,
-        sala: a.sala || 'Sala Comuna',
-        salaCodigo: a.salaCodigo || '',
-        salaEtiqueta: defaultEtiqueta,
-        total: mine.length,
-        today: mine.filter((s) => s.timestamp.split('T')[0] === today).length,
-        week: mine.filter((s) => new Date(s.timestamp) >= weekStart).length,
-        pending: mine.filter((s) => s.status === 'pendiente').length,
-        repeated: mine.filter((s) => s.status === 'repetido').length,
-        reviewed: mine.filter((s) => ['revisado', 'reportar'].includes(s.status)).length,
-      };
-    });
-
-    return {
-      totalGlobal,
-      todayGlobal,
-      weekGlobal,
-      monthGlobal,
-      pendingGlobal,
-      reviewedGlobal,
-      repeatedGlobal,
-      perAnalyst,
     };
   };
 
@@ -1259,7 +1212,7 @@ export default function Home() {
   const isSupervisor = role === 'Supervisor';
   const isObserver = role === 'Observador';
   const stats = isAnalyst ? getStats() : null;
-  const allStats = isAdmin || isSupervisor || isObserver ? getAllStats() : null;
+  const allStats = isAdmin || isSupervisor || isObserver ? dashboardStats : null;
   const pendingCount = submissions.filter((s) => s.status === 'pendiente' && !s.archived).length;
   
   const activeSubmissions = submissions.filter(s => !s.archived);
@@ -1419,6 +1372,8 @@ export default function Home() {
             saveSubmissionEdits={saveSubmissionEdits}
             handleImageUpload={handleImageUpload}
             allStats={allStats}
+            loadDashboardStats={loadDashboardStats}
+            dashboardLoading={dashboardLoading}
             onUpdateProfile={handleUpdateProfile}
             messages={messages}
             onSendMessage={handleSendMessage}
@@ -1440,6 +1395,8 @@ export default function Home() {
             handleSubmitForm={handleSubmitForm}
             stats={stats}
             allStats={allStats}
+            loadDashboardStats={loadDashboardStats}
+            dashboardLoading={dashboardLoading}
             submissions={activeSubmissions}
             auditLogs={auditLogs}
             onUpdateProfile={handleUpdateProfile}

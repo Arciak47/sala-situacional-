@@ -11,7 +11,9 @@ import {
   query,
   orderBy,
   limit,
-  startAfter
+  startAfter,
+  getCountFromServer,
+  where
 } from 'firebase/firestore';
 import { ref, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
@@ -205,7 +207,7 @@ export async function saveUsersBatchToFirestore(users) {
 export function subscribeSubmissions(onUpdate) {
   try {
     const colRef = collection(db, 'submissions');
-    const q = query(colRef, orderBy('timestamp', 'desc'), limit(300));
+    const q = query(colRef, orderBy('timestamp', 'desc'), limit(50));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const remoteSubs = snapshot.empty
         ? []
@@ -261,6 +263,97 @@ export async function fetchInboxSubmissionsPaginated(lastDoc = null, pageSize = 
   } catch (err) {
     console.error('Error fetching paginated submissions:', err);
     return { data: [], lastDoc: null };
+  }
+}
+
+export async function fetchGlobalStats() {
+  try {
+    const colRef = collection(db, 'submissions');
+    const now = new Date();
+    const y = now.getFullYear();
+    const mo = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${y}-${mo}-${d}`;
+    
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+
+    // Paralelizamos las consultas
+    const [
+      totalSnap,
+      todaySnap,
+      weekSnap,
+      pendingSnap,
+      reviewedSnap,
+      repeatedSnap
+    ] = await Promise.all([
+      getCountFromServer(colRef),
+      // Firebase equality over strings is faster for 'today' if we stored a date string. But we store ISO.
+      // We will do a >= query for today
+      getCountFromServer(query(colRef, where('timestamp', '>=', `${todayStr}T00:00:00.000Z`))),
+      getCountFromServer(query(colRef, where('timestamp', '>=', weekStart.toISOString()))),
+      getCountFromServer(query(colRef, where('status', '==', 'pendiente'))),
+      // We can't do 'IN' operator with getCountFromServer if we have multiple statuses, but we can do it if 'in' is supported.
+      getCountFromServer(query(colRef, where('status', 'in', ['revisado', 'reportar']))),
+      getCountFromServer(query(colRef, where('status', '==', 'repetido')))
+    ]);
+
+    return {
+      totalGlobal: totalSnap.data().count,
+      todayGlobal: todaySnap.data().count,
+      weekGlobal: weekSnap.data().count,
+      pendingGlobal: pendingSnap.data().count,
+      reviewedGlobal: reviewedSnap.data().count,
+      repeatedGlobal: repeatedSnap.data().count,
+    };
+  } catch (err) {
+    console.error('Error fetching global stats:', err);
+    return null;
+  }
+}
+
+export async function fetchAnalystStats(analysts) {
+  try {
+    const colRef = collection(db, 'submissions');
+    const now = new Date();
+    const y = now.getFullYear();
+    const mo = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${y}-${mo}-${d}T00:00:00.000Z`;
+
+    const statsPromises = analysts.map(async (a) => {
+      // Due to index limitations we might not be able to combine analystId + status + timestamp easily without composite indexes.
+      // If we don't have composite indexes, we can just fetch total and pending by analyst.
+      const [total, pending, reviewed, repeated, today] = await Promise.all([
+        getCountFromServer(query(colRef, where('analystEmail', '==', a.email))),
+        getCountFromServer(query(colRef, where('analystEmail', '==', a.email), where('status', '==', 'pendiente'))),
+        getCountFromServer(query(colRef, where('analystEmail', '==', a.email), where('status', 'in', ['revisado', 'reportar']))),
+        getCountFromServer(query(colRef, where('analystEmail', '==', a.email), where('status', '==', 'repetido'))),
+        getCountFromServer(query(colRef, where('analystEmail', '==', a.email), where('timestamp', '>=', todayStr)))
+      ]);
+
+      const defaultEtiqueta = a.salaEtiqueta || (a.salaCodigo ? `${a.salaCodigo} - ${a.name}` : `${a.sala || 'Sala Comuna'} - ${a.name}`);
+      return {
+        id: a.id,
+        username: a.username || '',
+        name: a.name,
+        email: a.email,
+        sala: a.sala || 'Sala Comuna',
+        salaCodigo: a.salaCodigo || '',
+        salaEtiqueta: defaultEtiqueta,
+        total: total.data().count,
+        today: today.data().count,
+        pending: pending.data().count,
+        reviewed: reviewed.data().count,
+        repeated: repeated.data().count,
+      };
+    });
+
+    return await Promise.all(statsPromises);
+  } catch (err) {
+    console.error('Error fetching analyst stats:', err);
+    // Return empty array to prevent crashes if index is missing
+    return [];
   }
 }
 

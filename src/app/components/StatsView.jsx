@@ -7,7 +7,14 @@ import {
   exportElementToPNG,
 } from '../lib/exportUtils';
 
-export default function StatsView({ currentUser, stats, allStats, submissions = [] }) {
+export default function StatsView({ 
+  currentUser, 
+  stats, 
+  allStats, 
+  submissions = [],
+  loadDashboardStats,
+  dashboardLoading,
+}) {
   const isAnalyst = currentUser?.role === 'Analista';
   const canExport = currentUser?.role === 'Administrador' || currentUser?.role === 'Supervisor';
 
@@ -22,6 +29,17 @@ export default function StatsView({ currentUser, stats, allStats, submissions = 
         </p>
       </div>
       <div className="flex items-center gap-2 flex-wrap">
+        {loadDashboardStats && (
+          <button
+            onClick={loadDashboardStats}
+            disabled={dashboardLoading}
+            className="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-black text-xs shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            title="Refrescar estadísticas"
+          >
+            <span className={dashboardLoading ? 'animate-spin' : ''}>🔄</span> 
+            {dashboardLoading ? 'Cargando...' : 'Actualizar'}
+          </button>
+        )}
         <button
           onClick={() => exportSubmissionsToExcel(submissions.length > 0 ? submissions : stats?.recent || [])}
           className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"

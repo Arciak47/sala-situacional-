@@ -413,6 +413,17 @@ export default function AdminDashboard({
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {loadDashboardStats && (
+              <button
+                onClick={loadDashboardStats}
+                disabled={dashboardLoading}
+                className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-slate-700 hover:bg-slate-600 text-white cursor-pointer disabled:opacity-50"
+                title="Refrescar estadísticas generales"
+              >
+                <span className={dashboardLoading ? 'animate-spin' : ''}>🔄</span> 
+                {dashboardLoading ? 'Actualizando...' : 'Actualizar'}
+              </button>
+            )}
             <button
               onClick={() => exportSubmissionsToExcel(filteredSubmissions)}
               className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"

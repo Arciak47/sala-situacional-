@@ -49,6 +49,8 @@ export default function AdministradorView({
   saveSubmissionEdits,
   handleImageUpload,
   allStats,
+  loadDashboardStats,
+  dashboardLoading,
   onUpdateProfile,
   messages,
   onSendMessage,
@@ -98,10 +100,24 @@ export default function AdministradorView({
         </div>
       </div>
 
+      {/* ── DASHBOARD ── */}
+      <div className={activeTab === 'dashboard' ? 'block' : 'hidden'}>
+        <AdminDashboard
+          users={users}
+          currentUser={currentUser}
+          auditLogs={auditLogs}
+          submissions={submissions}
+          allStats={allStats}
+          loadDashboardStats={loadDashboardStats}
+          dashboardLoading={dashboardLoading}
+        />
+      </div>
+
       {/* ── BANDEJA DE ENTRADA ── */}
       <div className={activeTab === 'inbox' ? 'block' : 'hidden'}>
         <SubmissionInboxView
           submissions={submissions}
+          currentUser={currentUser}
           inboxFilter={inboxFilter}
           setInboxFilter={setInboxFilter}
           openSubmissionForReview={openSubmissionForReview}
@@ -109,6 +125,7 @@ export default function AdministradorView({
           markAsRepeated={markAsRepeated}
           markAsReported={markAsReported}
           deleteSubmission={deleteSubmission}
+          users={users}
           isObserver={isObserver}
         />
       </div>
@@ -156,7 +173,12 @@ export default function AdministradorView({
 
       {/* ── ESTADÍSTICAS GLOBALES PARA ADMINISTRADOR ── */}
       <div className={activeTab === 'stats' ? 'block' : 'hidden'}>
-        <StatsView currentUser={currentUser} allStats={allStats} />
+        <StatsView 
+          currentUser={currentUser} 
+          allStats={allStats} 
+          loadDashboardStats={loadDashboardStats} 
+          dashboardLoading={dashboardLoading} 
+        />
       </div>
 
       {/* ── USUARIOS ── */}
