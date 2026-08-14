@@ -1,0 +1,9 @@
+{
+  "redirects": [
+    {
+      "source": "/:tab(dashboard|forms|inbox|shift|users|stats|logs|messaging|profile|editor)",
+      "destination": "/#:tab",
+      "permanent": false
+    }
+  ]
+}
