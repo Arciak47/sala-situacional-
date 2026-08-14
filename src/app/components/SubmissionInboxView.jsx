@@ -22,60 +22,11 @@ export default function SubmissionInboxView({
   const [shiftFilter, setShiftFilter] = useState('Todos');
   const [specificDate, setSpecificDate] = useState('');
 
-  // Pagination states
-  const [paginatedData, setPaginatedData] = useState([]);
-  const [lastDoc, setLastDoc] = useState(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  // Client-side pagination state
+  const [displayLimit, setDisplayLimit] = useState(20);
 
-  // Load initial page
-  useEffect(() => {
-    const loadInitial = async () => {
-      const res = await fetchInboxSubmissionsPaginated(null, 20);
-      setPaginatedData(res.data);
-      setLastDoc(res.lastDoc);
-      setHasMore(res.data.length === 20);
-    };
-    loadInitial();
-  }, []);
-
-  // Sync real-time changes from global submissions into our paginated list
-  useEffect(() => {
-    setPaginatedData(prev => {
-      if (prev.length === 0) return prev;
-      
-      const newestPaginatedTs = new Date(prev[0].timestamp || prev[0].fechaHora || 0).getTime();
-      
-      // Find completely new items that arrived via real-time
-      const newItems = submissions.filter(s => {
-        const ts = new Date(s.timestamp || s.fechaHora || 0).getTime();
-        return ts > newestPaginatedTs && !prev.some(p => String(p.id) === String(s.id));
-      });
-
-      // Update existing items in the paginated list (status changes, etc)
-      const updatedPrev = prev.map(p => {
-        const updated = submissions.find(s => String(s.id) === String(p.id));
-        return updated ? { ...p, ...updated } : p;
-      });
-
-      if (newItems.length > 0) {
-        // Sort new items so they are inserted in correct order
-        newItems.sort((a, b) => new Date(b.timestamp || b.fechaHora || 0) - new Date(a.timestamp || a.fechaHora || 0));
-        return [...newItems, ...updatedPrev];
-      }
-      
-      return updatedPrev;
-    });
-  }, [submissions]);
-
-  const handleLoadMore = async () => {
-    if (!lastDoc || loadingMore) return;
-    setLoadingMore(true);
-    const res = await fetchInboxSubmissionsPaginated(lastDoc, 20);
-    setPaginatedData(prev => [...prev, ...res.data]);
-    setLastDoc(res.lastDoc);
-    setHasMore(res.data.length === 20);
-    setLoadingMore(false);
+  const handleLoadMore = () => {
+    setDisplayLimit((prev) => prev + 20);
   };
 
   const toLocalDateStr = (isoStr) => {
@@ -87,7 +38,7 @@ export default function SubmissionInboxView({
     return `${y}-${mo}-${day}`;
   };
 
-  const filteredSubmissions = paginatedData.filter(
+  const filteredSubmissions = submissions.filter(
     (s) => {
       if (s.archived) return false;
       
@@ -122,6 +73,9 @@ export default function SubmissionInboxView({
     const tsB = new Date(b.timestamp || b.fechaHora || 0).getTime();
     return tsB - tsA; // Descending (newest arrival first)
   });
+
+  const displayedSubmissions = filteredSubmissions.slice(0, displayLimit);
+  const hasMore = displayLimit < filteredSubmissions.length;
 
   const allSelected =
     filteredSubmissions.length > 0 &&
@@ -333,7 +287,7 @@ export default function SubmissionInboxView({
           </p>
         ) : (
           <div className="space-y-3">
-            {filteredSubmissions.map((sub) => {
+            {displayedSubmissions.map((sub) => {
               const isSelected = selectedIds.includes(sub.id);
 
               return (
@@ -465,10 +419,9 @@ export default function SubmissionInboxView({
           <div className="mt-6 flex justify-center">
             <button
               onClick={handleLoadMore}
-              disabled={loadingMore}
-              className="px-6 py-2 rounded-full text-sm font-bold text-white bg-slate-800 hover:bg-slate-700 disabled:opacity-50 transition-all shadow-md"
+              className="px-6 py-2 rounded-full text-sm font-bold text-white bg-slate-800 hover:bg-slate-700 transition-all shadow-md"
             >
-              {loadingMore ? 'Cargando...' : 'Cargar más reportes'}
+              Cargar más reportes
             </button>
           </div>
         )}
