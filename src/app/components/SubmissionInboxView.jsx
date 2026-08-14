@@ -89,6 +89,8 @@ export default function SubmissionInboxView({
 
   const filteredSubmissions = paginatedData.filter(
     (s) => {
+      if (s.archived) return false;
+      
       let matchStatus = false;
       if (inboxFilter === 'Todos') {
         matchStatus = true;

@@ -72,6 +72,8 @@ export default function SupervisorView({
           reports={shiftReports}
           submissions={submissions}
           openSubmissionForReview={openSubmissionForReview}
+        />
+      </div>
       {/* ── DASHBOARD PRINCIPAL CON GRÁFICAS ── */}
       <div className={activeTab === 'dashboard' ? 'block' : 'hidden'}>
         <AdminDashboard
