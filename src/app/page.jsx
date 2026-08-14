@@ -172,7 +172,7 @@ export default function Home() {
       unsubLogs();
       unsubReports();
     };
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     saveStoredSession(currentUser);

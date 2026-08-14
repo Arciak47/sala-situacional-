@@ -10,7 +10,8 @@ import {
   getDoc,
   query,
   orderBy,
-  limit
+  limit,
+  startAfter
 } from 'firebase/firestore';
 import { ref, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
@@ -229,6 +230,37 @@ export function subscribeSubmissions(onUpdate) {
     const localSubs = getStoredSubmissions();
     onUpdate(localSubs);
     return () => {};
+  }
+}
+
+export async function fetchInboxSubmissionsPaginated(lastDoc = null, pageSize = 20) {
+  try {
+    const colRef = collection(db, 'submissions');
+    let q;
+    if (lastDoc) {
+      q = query(colRef, orderBy('timestamp', 'desc'), startAfter(lastDoc), limit(pageSize));
+    } else {
+      q = query(colRef, orderBy('timestamp', 'desc'), limit(pageSize));
+    }
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+      return { data: [], lastDoc: null };
+    }
+    
+    const remoteSubs = snapshot.docs.map((d) => ({
+      ...d.data(),
+      firestoreId: d.id,
+    }));
+    remoteSubs.sort((a, b) => new Date(b.timestamp || b.fechaHora || 0) - new Date(a.timestamp || a.fechaHora || 0));
+
+    return {
+      data: remoteSubs,
+      lastDoc: snapshot.docs[snapshot.docs.length - 1]
+    };
+  } catch (err) {
+    console.error('Error fetching paginated submissions:', err);
+    return { data: [], lastDoc: null };
   }
 }
 
