@@ -12,6 +12,7 @@ export const SALAS_DISPONIBLES = [
   'Sala Posicionamiento de Gestión',
   'Sala Principal',
   'Sala Comunicacional',
+  'Sala de Análisis y Acción Estrategica',
 ];
 
 export const INITIAL_USERS = [
