@@ -43,6 +43,11 @@ export default function SubmissionInboxView({
     (s) => {
       if (s.archived) return false;
       
+      // Hide from inbox if it is pending a correction from the analyst
+      if (s.hasCorrection && s.correctionStatus === 'pending') {
+        return false;
+      }
+      
       let matchStatus = false;
       if (inboxFilter === 'Todos') {
         matchStatus = true;
