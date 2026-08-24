@@ -1292,7 +1292,8 @@ export default function Home() {
   if (isAdmin || isObserver) {
     tabs.push(
       { id: 'dashboard', label: '🏠 Dashboard' },
-      { id: 'inbox', label: '📥 Bandeja' }
+      { id: 'inbox', label: '📥 Bandeja' },
+      { id: 'messaging', label: '💬 Mensajería' }
     );
     if (!isObserver) {
       tabs.push({ id: 'shift', label: '📄 Reporte Turno' });
@@ -1301,8 +1302,8 @@ export default function Home() {
       { id: 'history', label: '📖 Historial Turnos' },
       { id: 'users', label: '👥 Usuarios' },
       { id: 'stats', label: '📊 Estadísticas' },
-      { id: 'profile', label: '👤 Mi Perfil' },
-      { id: 'attendance', label: '⏰ Asistencia' }
+      { id: 'attendance', label: '⏰ Asistencia' },
+      { id: 'profile', label: '👤 Mi Perfil' }
     );
     if (isAdmin) {
       tabs.push({ id: 'hr_admin', label: '👥 Control RRHH' });
@@ -1311,18 +1312,20 @@ export default function Home() {
     tabs.push(
       { id: 'dashboard', label: '🏠 Dashboard' },
       { id: 'forms', label: '📋 Formulario' },
-      { id: 'profile', label: '👤 Mi Perfil' },
-      { id: 'attendance', label: '⏰ Asistencia' }
+      { id: 'messaging', label: '💬 Mensajería' },
+      { id: 'attendance', label: '⏰ Asistencia' },
+      { id: 'profile', label: '👤 Mi Perfil' }
     );
   } else if (isSupervisor) {
     tabs.push(
       { id: 'dashboard', label: '🏠 Dashboard' },
       { id: 'inbox', label: '📥 Bandeja' },
+      { id: 'messaging', label: '💬 Mensajería' },
       { id: 'shift', label: '📄 Reporte Turno' },
       { id: 'history', label: '📖 Historial Turnos' },
       { id: 'users', label: '👥 Usuarios' },
-      { id: 'profile', label: '👤 Mi Perfil' },
-      { id: 'attendance', label: '⏰ Asistencia' }
+      { id: 'attendance', label: '⏰ Asistencia' },
+      { id: 'profile', label: '👤 Mi Perfil' }
     );
   }
 
