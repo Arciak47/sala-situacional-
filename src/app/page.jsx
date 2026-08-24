@@ -184,7 +184,7 @@ export default function Home() {
     });
 
     // Load stats initially
-    loadDashboardStats();
+    setTimeout(() => { loadDashboardStats(); }, 0);
 
     const unsubSubs = subscribeSubmissions((data) => {
       if (data) {
@@ -227,6 +227,24 @@ export default function Home() {
   useEffect(() => {
     saveStoredSession(currentUser);
   }, [currentUser]);
+
+  // ── Audit log helper ──
+  const addLog = (user, action, details, type = 'info') => {
+    const logItem = {
+      id: `log-${Date.now()}`,
+      timestamp:
+        new Date().toLocaleDateString('es-ES') +
+        ' ' +
+        new Date().toLocaleTimeString(),
+      user,
+      action,
+      details,
+      type,
+    };
+    setAuditLogs((prev) => [logItem, ...prev]);
+    addAuditLogToFirestore(logItem);
+  };
+
 
   const handleLogout = () => {
     if (currentUser) addLog(currentUser.email, 'Cierre de Sesión', 'Sesión terminada');
@@ -274,7 +292,7 @@ export default function Home() {
       localStorage.setItem('sdm_activeTab', activeTab);
       if (activeTab !== 'editor') {
         localStorage.removeItem('sdm_selectedSubmissionId');
-        setSelectedSubmission(null);
+        setTimeout(() => { setSelectedSubmission(null); }, 0);
       }
       
       // Update the URL hash without triggering a full reload, to support back button
@@ -392,22 +410,6 @@ export default function Home() {
   // Removed the activeTab useEffect that built elements to avoid race conditions.
   // Elements are now built synchronously when navigating to the editor.
 
-  // ── Audit log helper ──
-  const addLog = (user, action, details, type = 'info') => {
-    const logItem = {
-      id: `log-${Date.now()}`,
-      timestamp:
-        new Date().toLocaleDateString('es-ES') +
-        ' ' +
-        new Date().toLocaleTimeString(),
-      user,
-      action,
-      details,
-      type,
-    };
-    setAuditLogs((prev) => [logItem, ...prev]);
-    addAuditLogToFirestore(logItem);
-  };
 
   // ── Auth Handlers ──
   const handleLoginSuccess = (user) => {

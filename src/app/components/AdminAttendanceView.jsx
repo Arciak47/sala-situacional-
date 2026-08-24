@@ -43,14 +43,14 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
   // When weeklySchedules change or weekId changes, load the corresponding assignments
   useEffect(() => {
     if (!currentWeekId) {
-      setAssignments({});
+      setTimeout(() => { setAssignments({}); }, 0);
       return;
     }
     const found = weeklySchedules.find(s => s.id === currentWeekId);
     if (found) {
       setAssignments(found.assignments || {});
     } else {
-      setAssignments({});
+      setTimeout(() => { setAssignments({}); }, 0);
     }
   }, [currentWeekId, weeklySchedules]);
 

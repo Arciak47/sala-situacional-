@@ -251,7 +251,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
     let isActive = true;
     isLoadingDraftRef.current = true;
     autoFillPendingRef.current = false; // reset
-    setSaveStatus('idle');
+    setTimeout(() => { setSaveStatus('idle'); }, 0);
     setDraftLoadedAt(null);
 
     const loadDraft = async () => {

@@ -7,16 +7,18 @@ export default function AnalystAttendanceView({ currentUser, setToastMsg, addLog
   const [loading, setLoading] = useState(false);
   const [todayRecord, setTodayRecord] = useState(null);
 
-  useEffect(() => {
-    if (currentUser) {
-      loadTodayRecord();
-    }
-  }, [currentUser]);
+
 
   const loadTodayRecord = async () => {
     const record = await getTodayAttendanceForUser(currentUser.id);
     setTodayRecord(record);
   };
+
+  useEffect(() => {
+    if (currentUser) {
+      loadTodayRecord();
+    }
+  }, [currentUser]);
 
   const handleMarkAttendance = async (type) => {
     setLoading(true);
