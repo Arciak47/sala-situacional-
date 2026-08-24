@@ -30,25 +30,16 @@ export default function AnalistaView({
   dashboardLoading,
   loadReportForCorrection,
 }) {
-  const [isModalDismissed, setIsModalDismissed] = useState(false);
   const pendingCorrections = submissions.filter(
     (s) => s.analystId === currentUser?.id && s.hasCorrection === true && s.correctionStatus === 'pending'
   );
 
   return (
     <div className="space-y-6">
-      {/* ── ALERTA URGENTE DE CORRECCIÓN ── */}
-      {!isModalDismissed && pendingCorrections.length > 0 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
+      {/* ── ALERTA URGENTE DE CORRECCIÓN (BLOQUEO) ── */}
+      {pendingCorrections.length > 0 && activeTab !== 'forms' && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4">
           <div className="relative bg-white dark:bg-slate-900 border-2 border-red-500 p-8 rounded-3xl shadow-2xl max-w-lg w-full text-center animate-in fade-in zoom-in-95 duration-300">
-            <button
-              onClick={() => setIsModalDismissed(true)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
             <div className="w-20 h-20 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mx-auto mb-6">
               <span className="text-4xl">⚠️</span>
             </div>
@@ -56,7 +47,7 @@ export default function AnalistaView({
               Corrección Urgente Requerida
             </h2>
             <p className="text-slate-600 dark:text-slate-400 mb-6 font-medium">
-              El administrador ha solicitado correcciones en uno o más de tus reportes. Debes corregirlos antes de continuar.
+              El administrador ha solicitado correcciones en uno o más de tus reportes. Debes corregirlos obligatoriamente antes de poder continuar usando el sistema.
             </p>
             <div className="text-left bg-red-50 dark:bg-red-950/30 p-4 rounded-xl border border-red-200 dark:border-red-900/50 mb-6">
               <span className="text-xs font-black text-red-600 dark:text-red-400 uppercase tracking-wider block mb-1">
@@ -71,7 +62,6 @@ export default function AnalistaView({
             </div>
             <button
               onClick={() => {
-                setIsModalDismissed(true);
                 loadReportForCorrection(pendingCorrections[0]);
               }}
               className="w-full py-3.5 px-6 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl shadow-lg shadow-red-600/20 transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
