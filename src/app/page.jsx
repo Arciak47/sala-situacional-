@@ -1284,7 +1284,9 @@ export default function Home() {
   const isObserver = role === 'Observador';
   const stats = isAnalyst ? getStats() : null;
   const allStats = isAdmin || isSupervisor || isObserver ? dashboardStats : null;
-  const pendingCount = submissions.filter((s) => s.status === 'pendiente' && !s.archived).length;
+  const pendingCount = submissions.filter(
+    (s) => s.status === 'pendiente' && !s.archived && !(s.hasCorrection && s.correctionStatus === 'pending')
+  ).length;
   
   const activeSubmissions = submissions.filter(s => !s.archived);
 
