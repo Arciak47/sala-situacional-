@@ -13,6 +13,8 @@ import AnalistaView from './components/AnalistaView.jsx';
 import InteractiveBackground from './components/InteractiveBackground';
 import HeaderBar from './components/HeaderBar';
 import ShiftHistoryView from './components/ShiftHistoryView';
+import AnalystAttendanceView from './components/AnalystAttendanceView';
+import AdminAttendanceView from './components/AdminAttendanceView';
 
 import { EMPTY_REPORT } from './lib/constants';
 import { buildElements } from './lib/canvasHelpers';
@@ -46,6 +48,7 @@ import {
   addAuditLogToFirestore,
   getSubmissionImage,
   updateSubmissionStatus,
+  updateSubmissionFields,
   subscribeShiftReports,
   fetchGlobalStats,
   fetchAnalystStats,
@@ -125,6 +128,7 @@ export default function Home() {
   const [reportData, setReportData] = useState({ ...EMPTY_REPORT });
   const [isSaving, setIsSaving] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState(null); // { matches: [], pendingSub: obj }
+  const [editingCorrectionId, setEditingCorrectionId] = useState(null);
 
   // Ref to track unread messages count for notifications
   const prevUnreadRef = useRef(0);
@@ -684,7 +688,7 @@ export default function Home() {
     }
 
     setIsSaving(true);
-    const sub = forceStatus
+    let sub = forceStatus
       ? duplicateWarning?.pendingSub
         ? { ...duplicateWarning.pendingSub, status: forceStatus }
         : {
@@ -713,21 +717,34 @@ export default function Home() {
         };
     setDuplicateWarning(null);
     try {
-      await addSubmissionWithTimeout(sub, 7000); // Allow longer timeout for uploads
-      setSubmissions((prev) => [sub, ...prev]);
+      if (editingCorrectionId) {
+        // Find existing sub
+        const existingSub = submissions.find(s => s.id === editingCorrectionId);
+        if (existingSub) {
+          sub = { ...existingSub, reportData: { ...reportData }, status: 'pendiente', correctionStatus: 'resolved', editedAt: new Date().toISOString() };
+          await updateSubmissionFields(editingCorrectionId, { reportData: sub.reportData, status: sub.status, correctionStatus: sub.correctionStatus, editedAt: sub.editedAt });
+          setSubmissions(prev => prev.map(s => s.id === editingCorrectionId ? sub : s));
+          setToastMsg('✅ Corrección enviada al Supervisor.');
+        }
+      } else {
+        await addSubmissionWithTimeout(sub, 7000); // Allow longer timeout for uploads
+        setSubmissions((prev) => [sub, ...prev]);
+        setToastMsg(forceStatus === 'repetido' ? '🔁 Reporte enviado y marcado como repetido.' : '✅ Reporte enviado al Supervisor.');
+      }
+      
       addLog(
         currentUser.email,
-        'Reporte Enviado',
+        editingCorrectionId ? 'Reporte Corregido' : 'Reporte Enviado',
         `Municipio: ${reportData.municipio}`,
         'success'
       );
       setReportData({ ...EMPTY_REPORT });
+      setEditingCorrectionId(null);
       // Reset file input visually
       if (typeof document !== 'undefined') {
         const fileInput = document.getElementById('foto-evidencia');
         if (fileInput) fileInput.value = '';
       }
-      setToastMsg(forceStatus === 'repetido' ? '🔁 Reporte enviado y marcado como repetido.' : '✅ Reporte enviado al Supervisor.');
       setTimeout(() => setToastMsg(''), 4000);
     } catch (error) {
       console.error('Error estricto al enviar reporte:', error);
@@ -747,6 +764,32 @@ export default function Home() {
     }
     handleSubmitForm(action);
   };
+
+  const handleMarkForCorrection = async (subId, message) => {
+    try {
+      await updateSubmissionFields(subId, {
+        hasCorrection: true,
+        correctionMessage: message,
+        correctionStatus: 'pending',
+        status: 'pendiente' // Force it back to pending if it was reviewed
+      });
+      setSubmissions(prev => prev.map(s => 
+        s.id === subId ? { ...s, hasCorrection: true, correctionMessage: message, correctionStatus: 'pending', status: 'pendiente' } : s
+      ));
+      setToastMsg('✅ Solicitud de corrección enviada.');
+      setTimeout(() => setToastMsg(''), 3000);
+    } catch (err) {
+      console.error('Error al marcar corrección:', err);
+      alert('Error al enviar corrección.');
+    }
+  };
+
+  const loadReportForCorrection = (sub) => {
+    setReportData({ ...sub.reportData });
+    setEditingCorrectionId(sub.id);
+    setActiveTab('forms');
+  };
+
 
   const openSubmissionForReview = async (sub) => {
     setSelectedSubmission(sub);
@@ -1256,16 +1299,18 @@ export default function Home() {
       { id: 'history', label: '📖 Historial Turnos' },
       { id: 'users', label: '👥 Usuarios' },
       { id: 'stats', label: '📊 Estadísticas' },
-      { id: 'logs', label: '📜 Auditoría' },
-      { id: 'messaging', label: '💬 Mensajería' },
-      { id: 'profile', label: '👤 Mi Perfil' }
+      { id: 'profile', label: '👤 Mi Perfil' },
+      { id: 'attendance', label: '⏰ Asistencia' }
     );
+    if (isAdmin) {
+      tabs.push({ id: 'hr_admin', label: '👥 Control RRHH' });
+    }
   } else if (isAnalyst) {
     tabs.push(
       { id: 'dashboard', label: '🏠 Dashboard' },
       { id: 'forms', label: '📋 Formulario' },
-      { id: 'messaging', label: '💬 Mensajería' },
-      { id: 'profile', label: '👤 Mi Perfil' }
+      { id: 'profile', label: '👤 Mi Perfil' },
+      { id: 'attendance', label: '⏰ Asistencia' }
     );
   } else if (isSupervisor) {
     tabs.push(
@@ -1274,8 +1319,8 @@ export default function Home() {
       { id: 'shift', label: '📄 Reporte Turno' },
       { id: 'history', label: '📖 Historial Turnos' },
       { id: 'users', label: '👥 Usuarios' },
-      { id: 'messaging', label: '💬 Mensajería' },
-      { id: 'profile', label: '👤 Mi Perfil' }
+      { id: 'profile', label: '👤 Mi Perfil' },
+      { id: 'attendance', label: '⏰ Asistencia' }
     );
   }
 
@@ -1341,6 +1386,7 @@ export default function Home() {
             markAsReviewed={markAsReviewed}
             markAsRepeated={markAsRepeated}
             markAsReported={markAsReported}
+            handleMarkForCorrection={handleMarkForCorrection}
             shiftReports={shiftReports}
             deleteSubmission={deleteSubmission}
             elements={elements}
@@ -1364,6 +1410,9 @@ export default function Home() {
             onSendMessage={handleSendMessage}
             onMarkAsRead={handleMarkAsRead}
             isObserver={isObserver}
+            loadDashboardStats={loadDashboardStats}
+            dashboardLoading={dashboardLoading}
+            loadReportForCorrection={loadReportForCorrection}
           />
         )}
 
@@ -1379,6 +1428,7 @@ export default function Home() {
             markAsReviewed={markAsReviewed}
             markAsRepeated={markAsRepeated}
             markAsReported={markAsReported}
+            handleMarkForCorrection={handleMarkForCorrection}
             deleteSubmission={deleteSubmission}
             reportData={reportData}
             setReportData={setReportData}
@@ -1419,6 +1469,7 @@ export default function Home() {
             setReportData={setReportData}
             handleImageUpload={handleImageUpload}
             handleSubmitForm={handleSubmitForm}
+            loadReportForCorrection={loadReportForCorrection}
             stats={stats}
             allStats={allStats}
             loadDashboardStats={loadDashboardStats}
@@ -1429,6 +1480,21 @@ export default function Home() {
             messages={messages}
             onSendMessage={handleSendMessage}
             onMarkAsRead={handleMarkAsRead}
+          />
+        )}
+
+        {activeTab === 'attendance' && (
+          <AnalystAttendanceView
+            currentUser={currentUser}
+            setToastMsg={setToastMsg}
+            addLog={addLog}
+          />
+        )}
+
+        {activeTab === 'hr_admin' && isAdmin && (
+          <AdminAttendanceView
+            users={users}
+            setToastMsg={setToastMsg}
           />
         )}
       </main>

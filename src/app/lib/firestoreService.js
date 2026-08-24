@@ -322,15 +322,32 @@ export async function fetchAnalystStats(analysts) {
     const todayStr = `${y}-${mo}-${d}T00:00:00.000Z`;
 
     const statsPromises = analysts.map(async (a) => {
-      // Due to index limitations we might not be able to combine analystId + status + timestamp easily without composite indexes.
-      // If we don't have composite indexes, we can just fetch total and pending by analyst.
-      const [total, pending, reviewed, repeated, today] = await Promise.all([
-        getCountFromServer(query(colRef, where('analystEmail', '==', a.email))),
-        getCountFromServer(query(colRef, where('analystEmail', '==', a.email), where('status', '==', 'pendiente'))),
-        getCountFromServer(query(colRef, where('analystEmail', '==', a.email), where('status', 'in', ['revisado', 'reportar']))),
-        getCountFromServer(query(colRef, where('analystEmail', '==', a.email), where('status', '==', 'repetido'))),
-        getCountFromServer(query(colRef, where('analystEmail', '==', a.email), where('timestamp', '>=', todayStr)))
-      ]);
+      // Para evitar errores de índices compuestos en Firebase, hacemos una sola 
+      // consulta por 'analystEmail' (índice simple) y calculamos los contadores en memoria.
+      const analystDocs = await getDocs(query(colRef, where('analystEmail', '==', a.email)));
+      
+      let total = 0;
+      let pending = 0;
+      let reviewed = 0;
+      let repeated = 0;
+      let today = 0;
+
+      analystDocs.forEach((doc) => {
+        const data = doc.data();
+        total++;
+        
+        if (data.status === 'pendiente') {
+          pending++;
+        } else if (data.status === 'revisado' || data.status === 'reportar') {
+          reviewed++;
+        } else if (data.status === 'repetido') {
+          repeated++;
+        }
+
+        if (data.timestamp && data.timestamp >= todayStr) {
+          today++;
+        }
+      });
 
       const defaultEtiqueta = a.salaEtiqueta || (a.salaCodigo ? `${a.salaCodigo} - ${a.name}` : `${a.sala || 'Sala Comuna'} - ${a.name}`);
       return {
@@ -341,11 +358,11 @@ export async function fetchAnalystStats(analysts) {
         sala: a.sala || 'Sala Comuna',
         salaCodigo: a.salaCodigo || '',
         salaEtiqueta: defaultEtiqueta,
-        total: total.data().count,
-        today: today.data().count,
-        pending: pending.data().count,
-        reviewed: reviewed.data().count,
-        repeated: repeated.data().count,
+        total,
+        today,
+        pending,
+        reviewed,
+        repeated,
       };
     });
 
@@ -769,5 +786,20 @@ export function subscribeShiftReportDraft(fecha, turno, onUpdate) {
     console.warn('Error iniciando suscripción de borrador de turno:', err);
     onUpdate(null);
     return () => {};
+  }
+}
+
+export async function updateSubmissionFields(subId, fieldsToUpdate) {
+  try {
+    const docRef = doc(db, 'submissions', String(subId));
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) {
+      throw new Error("El reporte no existe.");
+    }
+    await updateDoc(docRef, sanitize(fieldsToUpdate));
+    return true;
+  } catch (error) {
+    console.error("Error en updateSubmissionFields:", error);
+    throw error;
   }
 }

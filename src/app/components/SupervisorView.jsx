@@ -21,6 +21,7 @@ export default function SupervisorView({
   markAsReviewed,
   markAsRepeated,
   markAsReported,
+  handleMarkForCorrection,
   deleteSubmission,
   reportData,
   setReportData,
@@ -135,6 +136,7 @@ export default function SupervisorView({
           markAsRepeated={markAsRepeated}
           markAsReported={markAsReported}
           handleImageUpload={handleImageUpload}
+          handleMarkForCorrection={handleMarkForCorrection}
         />
       </div>
 

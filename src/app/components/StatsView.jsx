@@ -135,8 +135,8 @@ export default function StatsView({
                   </tr>
                 </thead>
                 <tbody className="divide-y dark:divide-slate-800">
-            {stats.recent.map((s) => (
-                    <tr key={s.id}>
+            {stats.recent.map((s, index) => (
+                    <tr key={s.id ? `${s.id}-${index}` : `stat-${index}`}>
                       <td className="py-3 px-4 text-slate-500 font-mono">
                         {new Date(s.timestamp).toLocaleDateString('es-ES')}
                       </td>
@@ -212,11 +212,11 @@ export default function StatsView({
           <h4 className="text-base font-black border-b dark:border-slate-800 pb-3 mb-4 flex items-center justify-between">
             <span>👥 Rendimiento de Reportes por Analista</span>
             <span className="text-xs font-bold text-slate-400">
-              Total Analistas: {allStats.perAnalyst.length}
+              Total Analistas: {allStats.perAnalyst?.length || 0}
             </span>
           </h4>
 
-          {allStats.perAnalyst.length === 0 ? (
+          {!allStats.perAnalyst || allStats.perAnalyst.length === 0 ? (
             <p className="text-center text-xs text-slate-400 py-8">
               No hay usuarios con rol Analista registrados.
             </p>
@@ -236,7 +236,7 @@ export default function StatsView({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {allStats.perAnalyst.map((a) => (
+                  {allStats.perAnalyst?.map((a) => (
                     <tr key={a.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
                       <td className="py-4 px-4 font-black text-blue-600 dark:text-blue-400 text-xs">
                         🏢 {a.sala || 'Sala Comuna'}

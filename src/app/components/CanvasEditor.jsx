@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import FormFields from './FormFields';
 import { CW, CH, HR } from '../lib/constants';
 import {
@@ -35,7 +35,24 @@ export default function CanvasEditor({
   markAsReported,
   handleImageUpload,
   isObserver,
+  handleMarkForCorrection,
 }) {
+  const [correctionModalOpen, setCorrectionModalOpen] = useState(false);
+  const [correctionMessage, setCorrectionMessage] = useState('');
+
+  const submitCorrection = () => {
+    if (handleMarkForCorrection && selectedSubmission) {
+      handleMarkForCorrection(selectedSubmission.id, correctionMessage);
+      setCorrectionModalOpen(false);
+      setCorrectionMessage('');
+    }
+  };
+
+  const cancelCorrection = () => {
+    setCorrectionModalOpen(false);
+    setCorrectionMessage('');
+  };
+
   const isDragging = useRef(false);
   const isResizing = useRef(false);
   const activeHandle = useRef(null);
@@ -648,7 +665,44 @@ export default function CanvasEditor({
               {selectedSubmission.reportData.municipio} —{' '}
               {new Date(selectedSubmission.timestamp).toLocaleDateString('es-ES')}
             </div>
-            <div className="flex gap-2 mt-2">
+            
+            {/* CORRECTION MODAL IN EDITOR */}
+            {correctionModalOpen && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-2xl max-w-md w-full animate-in fade-in zoom-in-95 duration-200">
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">
+                    ✍️ Solicitar Corrección
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Describe qué debe corregir el analista en este reporte.
+                  </p>
+                  <textarea
+                    value={correctionMessage}
+                    onChange={(e) => setCorrectionMessage(e.target.value)}
+                    placeholder="Motivo de la corrección..."
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    rows="4"
+                  />
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={cancelCorrection}
+                      className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={submitCorrection}
+                      disabled={!correctionMessage.trim()}
+                      className="px-4 py-2 text-sm font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      Enviar Corrección
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2 mt-3">
               {!isObserver && (
                 <>
                   <button
@@ -683,6 +737,12 @@ export default function CanvasEditor({
                         className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-orange-400 hover:bg-orange-500 text-white cursor-pointer"
                       >
                         ⚠️ Marcar Repetido
+                      </button>
+                      <button
+                        onClick={() => setCorrectionModalOpen(true)}
+                        className="w-full sm:w-auto px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm bg-amber-500 hover:bg-amber-600 text-white cursor-pointer"
+                      >
+                        ✍️ Solicitar Corrección
                       </button>
                     </>
                   )}

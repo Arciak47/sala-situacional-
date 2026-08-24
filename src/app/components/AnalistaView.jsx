@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from 'react';
+
 import FormFields from '../components/FormFields';
 import StatsView from '../components/StatsView';
 import ProfileView from '../components/ProfileView';
@@ -26,9 +28,60 @@ export default function AnalistaView({
   onMarkAsRead,
   loadDashboardStats,
   dashboardLoading,
+  loadReportForCorrection,
 }) {
+  const [isModalDismissed, setIsModalDismissed] = useState(false);
+  const pendingCorrections = submissions.filter(
+    (s) => s.analystId === currentUser?.id && s.hasCorrection === true && s.correctionStatus === 'pending'
+  );
+
   return (
     <div className="space-y-6">
+      {/* ── ALERTA URGENTE DE CORRECCIÓN ── */}
+      {!isModalDismissed && pendingCorrections.length > 0 && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
+          <div className="relative bg-white dark:bg-slate-900 border-2 border-red-500 p-8 rounded-3xl shadow-2xl max-w-lg w-full text-center animate-in fade-in zoom-in-95 duration-300">
+            <button
+              onClick={() => setIsModalDismissed(true)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="w-20 h-20 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-4xl">⚠️</span>
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">
+              Corrección Urgente Requerida
+            </h2>
+            <p className="text-slate-600 dark:text-slate-400 mb-6 font-medium">
+              El administrador ha solicitado correcciones en uno o más de tus reportes. Debes corregirlos antes de continuar.
+            </p>
+            <div className="text-left bg-red-50 dark:bg-red-950/30 p-4 rounded-xl border border-red-200 dark:border-red-900/50 mb-6">
+              <span className="text-xs font-black text-red-600 dark:text-red-400 uppercase tracking-wider block mb-1">
+                Motivo de la corrección:
+              </span>
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                {pendingCorrections[0].correctionMessage}
+              </p>
+              <div className="mt-2 text-xs text-slate-500">
+                Reporte: {pendingCorrections[0].reportData?.municipio} - {pendingCorrections[0].reportData?.redSocial}
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setIsModalDismissed(true);
+                loadReportForCorrection(pendingCorrections[0]);
+              }}
+              className="w-full py-3.5 px-6 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl shadow-lg shadow-red-600/20 transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+            >
+              Ir a Corregir Reporte
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── DASHBOARD PRINCIPAL CON GRÁFICAS (Versión Analista) ── */}
       <div className={activeTab === 'dashboard' ? 'block' : 'hidden'}>
         <AdminDashboard
@@ -66,12 +119,6 @@ export default function AnalistaView({
                 className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
               >
                 📤 Enviar Reporte
-              </button>
-              <button
-                onClick={goToEditor}
-                className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 cursor-pointer"
-              >
-                🎨 Ir al Editor
               </button>
             </div>
           </div>

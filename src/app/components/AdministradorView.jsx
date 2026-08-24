@@ -57,6 +57,7 @@ export default function AdministradorView({
   onMarkAsRead,
   shiftReports,
   isObserver,
+  handleMarkForCorrection
 }) {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -89,12 +90,6 @@ export default function AdministradorView({
               >
                 📤 Enviar Reporte
               </button>
-              <button
-                onClick={goToEditor}
-                className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 cursor-pointer"
-              >
-                🎨 Ir al Editor
-              </button>
             </div>
           </div>
         </div>
@@ -124,6 +119,7 @@ export default function AdministradorView({
           markAsReviewed={markAsReviewed}
           markAsRepeated={markAsRepeated}
           markAsReported={markAsReported}
+          handleMarkForCorrection={handleMarkForCorrection}
           deleteSubmission={deleteSubmission}
           users={users}
           isObserver={isObserver}
@@ -154,6 +150,7 @@ export default function AdministradorView({
           markAsReported={markAsReported}
           handleImageUpload={handleImageUpload}
           isObserver={isObserver}
+          handleMarkForCorrection={handleMarkForCorrection}
         />
       </div>
 

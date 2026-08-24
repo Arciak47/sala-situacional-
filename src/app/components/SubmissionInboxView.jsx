@@ -13,6 +13,7 @@ export default function SubmissionInboxView({
   markAsReviewed,
   markAsRepeated,
   markAsReported,
+  handleMarkForCorrection,
   deleteSubmission,
   isObserver,
 }) {
@@ -80,6 +81,12 @@ export default function SubmissionInboxView({
   const allSelected =
     filteredSubmissions.length > 0 &&
     filteredSubmissions.every((s) => selectedIds.includes(s.id));
+
+  const handleBatchReview = () => {
+    if (!markAsReviewed) return;
+    selectedIds.forEach((id) => markAsReviewed(id));
+    setSelectedIds([]);
+  };
 
   const toggleSelectAll = () => {
     if (allSelected) {
@@ -256,7 +263,8 @@ export default function SubmissionInboxView({
 
         {/* SELECT ALL TOOLBAR */}
         {filteredSubmissions.length > 0 && (
-          <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex gap-2 bg-slate-100/80 dark:bg-slate-900/50 p-1.5 rounded-full border border-slate-200/60 dark:border-slate-700/50 flex-wrap">
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -278,6 +286,7 @@ export default function SubmissionInboxView({
               </button>
             )}
           </div>
+          </div>
         )}
 
         {/* SUBMISSIONS LIST */}
@@ -287,12 +296,12 @@ export default function SubmissionInboxView({
           </p>
         ) : (
           <div className="space-y-3">
-            {displayedSubmissions.map((sub) => {
+            {displayedSubmissions.map((sub, index) => {
               const isSelected = selectedIds.includes(sub.id);
 
               return (
                 <div
-                  key={sub.id}
+                  key={sub.id ? `${sub.id}-${index}` : `sub-${index}`}
                   className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 rounded-xl border transition-all gap-3 ${
                     isSelected
                       ? 'border-blue-500 dark:border-blue-600 bg-blue-50/40 dark:bg-blue-950/30 shadow-sm'
