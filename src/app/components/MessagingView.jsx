@@ -5,8 +5,8 @@ import { ROLE_BADGES } from '../lib/constants';
 
 export default function MessagingView({
   currentUser,
-  users,
-  messages,
+  users = [],
+  messages = [],
   onSendMessage,
   onMarkAsRead,
   isObserver
@@ -20,13 +20,6 @@ export default function MessagingView({
   // Available contacts (all users except current user)
   const contacts = users.filter((u) => u.id !== currentUser?.id);
 
-  // Set default active contact if none selected
-  useEffect(() => {
-    if (!activeContact && contacts.length > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setActiveContact(contacts[0]);
-    }
-  }, [contacts, activeContact]);
 
   // Mark unread messages from active contact as read when opening or receiving messages
   useEffect(() => {
