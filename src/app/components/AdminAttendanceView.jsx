@@ -216,7 +216,7 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
     filteredAttendance = filteredAttendance.filter(a => a.analystId === filterAnalyst);
   }
 
-  const analysts = users.filter(u => u.role === 'Analista');
+  const analysts = users.filter(u => u.role === 'Analista' || u.role === 'Supervisor');
 
   return (
     <div className="space-y-6 animate-fade-in pb-24">
@@ -292,7 +292,7 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
           {/* Matrix Builder (Exportable area) */}
           <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl overflow-x-auto" ref={scheduleRef}>
             <div className="min-w-[1000px]">
-              <h2 className="text-center font-bold text-xl text-black mb-6">HORARIO DE LOS MONITORES</h2>
+              <h2 className="text-center font-bold text-xl text-black mb-6">HORARIO DE MONITORES Y SUPERVISORES</h2>
               
               <table className="w-full border-collapse text-center">
                 <thead>
@@ -344,7 +344,7 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
                             {/* Dropdown for selecting an analyst */}
                             {isSelected && (
                               <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-300 rounded-lg shadow-2xl p-2 w-48 text-left" onClick={e => e.stopPropagation()}>
-                                <div className="text-xs font-bold text-slate-400 mb-2 uppercase">Asignar Monitor</div>
+                                <div className="text-xs font-bold text-slate-400 mb-2 uppercase">Asignar Personal</div>
                                 <div className="max-h-48 overflow-y-auto flex flex-col gap-1">
                                   {analysts.map(u => (
                                     <button 
@@ -391,7 +391,7 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
               onChange={e => setFilterAnalyst(e.target.value)}
               className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
             >
-              <option value="Todos">Todos los Analistas</option>
+              <option value="Todos">Todo el Personal</option>
               {analysts.map(u => (
                 <option key={u.id} value={u.id}>{u.name}</option>
               ))}
