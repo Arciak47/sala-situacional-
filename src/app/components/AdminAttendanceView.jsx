@@ -170,43 +170,16 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
     }
   };
 
-  // Helper for Punctuality
-  const getPunctualityStatus = (record) => {
-    if (record.type !== 'Entrada') return null;
-    
-    // Find the schedule for this record's date
-    const weeklySch = weeklySchedules.find(sch => sch.days?.some(d => d.date === record.fecha));
-    if (!weeklySch) return { label: 'Sin Horario', color: 'bg-slate-100 text-slate-600' };
-
-    // Determine day name
-    const dayObj = weeklySch.days.find(d => d.date === record.fecha);
-    if (!dayObj) return { label: 'Sin Horario', color: 'bg-slate-100 text-slate-600' };
-    
-    // Check which shift the user is in on this day
-    const dayAssignments = weeklySch.assignments[dayObj.name] || {};
-    let assignedShiftId = null;
-    for (const shiftId of Object.keys(dayAssignments)) {
-      if (dayAssignments[shiftId].includes(record.analystId)) {
-        assignedShiftId = shiftId;
-        break;
-      }
-    }
-
-    if (!assignedShiftId) return { label: 'Sin Horario', color: 'bg-slate-100 text-slate-600' };
-
-    // Check entry time
-    // Shift-1 (7:00 AM), Shift-2 (1:00 PM / 13:00), Shift-3 (7:00 PM / 19:00)
-    let expectedTime = '';
-    if (assignedShiftId === 'shift-1') expectedTime = '07:00';
-    if (assignedShiftId === 'shift-2') expectedTime = '13:00';
-    if (assignedShiftId === 'shift-3') expectedTime = '19:00';
-
-    if (record.horaLocal <= expectedTime) {
-      return { label: 'A Tiempo', color: 'bg-emerald-100 text-emerald-700' };
-    } else {
-      return { label: 'Tarde', color: 'bg-red-100 text-red-700' };
-    }
+  // Helper to format time to AM/PM
+  const formatTimeAMPM = (timeStr) => {
+    if (!timeStr) return '';
+    const [h, m] = timeStr.split(':');
+    const hours = parseInt(h, 10);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hours12 = hours % 12 || 12;
+    return `${String(hours12).padStart(2, '0')}:${m} ${ampm}`;
   };
+
 
   let filteredAttendance = attendance;
   if (filterDate) {
@@ -292,7 +265,7 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
           {/* Matrix Builder (Exportable area) */}
           <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl overflow-x-auto" ref={scheduleRef}>
             <div className="min-w-[1000px]">
-              <h2 className="text-center font-bold text-xl text-black mb-6">HORARIO DE MONITORES Y SUPERVISORES</h2>
+              <h2 className="text-center font-bold text-xl text-black mb-6">HORARIO DE LOS MONITORES</h2>
               
               <table className="w-full border-collapse text-center">
                 <thead>
@@ -412,7 +385,6 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
                     <th className="px-4 py-3">Analista</th>
                     <th className="px-4 py-3">Fecha y Hora</th>
                     <th className="px-4 py-3">Acción</th>
-                    <th className="px-4 py-3">Estado</th>
                     <th className="px-4 py-3">IP / Dispositivo</th>
                     <th className="px-4 py-3 text-right">Opciones</th>
                   </tr>
@@ -424,26 +396,16 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
                     </tr>
                   ) : (
                     filteredAttendance.map(rec => {
-                      const status = getPunctualityStatus(rec);
                       return (
                         <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                           <td className="px-4 py-3 font-bold">{rec.analystName} <br/><span className="text-[10px] font-normal text-slate-400">{rec.sala}</span></td>
                           <td className="px-4 py-3">
-                            {rec.fecha} <span className="font-bold text-blue-600 dark:text-blue-400">{rec.horaLocal}</span>
+                            {rec.fecha} <span className="font-bold text-blue-600 dark:text-blue-400">{formatTimeAMPM(rec.horaLocal)}</span>
                           </td>
                           <td className="px-4 py-3">
                             <span className={`px-2 py-1 rounded-full text-xs font-bold ${rec.type === 'Entrada' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
                               {rec.type === 'Entrada' ? '👋 Entrada' : '🚪 Salida'}
                             </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            {status ? (
-                              <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${status.color}`}>
-                                {status.label}
-                              </span>
-                            ) : (
-                              <span className="text-slate-400 text-xs">-</span>
-                            )}
                           </td>
                           <td className="px-4 py-3 text-[10px] font-mono text-slate-500 max-w-xs truncate" title={rec.userAgent}>
                             <div className="font-bold text-slate-700 dark:text-slate-300">{rec.ip}</div>
