@@ -1,5 +1,6 @@
 "use client";
 
+
 import { MUNICIPIOS, REDES_SOCIALES, AREAS, SENTIMIENTOS, VIRALIDADES } from '../lib/constants';
 import { formatDate, formatTime } from '../lib/canvasHelpers';
 

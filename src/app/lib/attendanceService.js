@@ -161,9 +161,9 @@ export async function getTodayAttendanceForUser(userId) {
         return timeB - timeA; // Descending
       });
       
-    return todayRecords.length > 0 ? todayRecords[0] : null;
+    return todayRecords; // Return all records for today
   } catch (error) {
     console.error('Error fetching today attendance:', error);
-    return null;
+    return [];
   }
 }

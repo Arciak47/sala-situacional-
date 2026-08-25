@@ -118,6 +118,7 @@ export default function Home() {
     createdAt: new Date().toISOString().split('T')[0],
     email: '',
     password: '',
+    cedula: '',
     role: 'Analista',
     department: 'Análisis de Redes Sociales',
   });
@@ -481,6 +482,7 @@ export default function Home() {
       createdAt: formData.createdAt || new Date().toISOString().split('T')[0],
       email: emailClean,
       password: formData.password.trim(),
+      cedula: formData.cedula?.trim() || '',
       role: selectedRole,
       department: formData.department?.trim() || 'Análisis de Redes Sociales',
       status: 'Activo',
@@ -504,6 +506,7 @@ export default function Home() {
       createdAt: new Date().toISOString().split('T')[0],
       email: '',
       password: '',
+      cedula: '',
       role: 'Analista',
       department: 'Análisis de Redes Sociales',
     });
@@ -769,17 +772,26 @@ export default function Home() {
 
   const handleMarkForCorrection = async (subId, message) => {
     try {
-      await updateSubmissionFields(subId, {
-        hasCorrection: true,
-        correctionMessage: message,
-        correctionStatus: 'pending',
-        status: 'pendiente' // Force it back to pending if it was reviewed
-      });
-      setSubmissions(prev => prev.map(s => 
-        s.id === subId ? { ...s, hasCorrection: true, correctionMessage: message, correctionStatus: 'pending', status: 'pendiente' } : s
-      ));
-      setToastMsg('✅ Solicitud de corrección enviada.');
-      setTimeout(() => setToastMsg(''), 3000);
+      const sub = submissions.find(s => s.id === subId);
+      if (sub) {
+        const receptorId = sub.analystId || sub.userId || 'unknown';
+        const newMsg = {
+          id: `msg-${Date.now()}`,
+          emisorId: currentUser?.id || 'admin',
+          emisorName: currentUser?.name || 'Administrador',
+          receptorId: receptorId,
+          texto: `🚨 CORRECCIÓN REQUERIDA:\nEl reporte de "${sub.reportData?.municipio || 'N/A'}" fue rechazado y eliminado.\nMotivo: ${message}`,
+          timestamp: new Date().toISOString(),
+          fecha: new Date().toISOString(),
+          leido: false
+        };
+        await addMessageToFirestore(newMsg);
+        
+        await deleteSubmissionFromFirestore(subId);
+        setSubmissions(prev => prev.filter(s => s.id !== subId));
+        setToastMsg('✅ Solicitud de corrección enviada al chat. Reporte eliminado.');
+        setTimeout(() => setToastMsg(''), 3000);
+      }
     } catch (err) {
       console.error('Error al marcar corrección:', err);
       alert('Error al enviar corrección.');

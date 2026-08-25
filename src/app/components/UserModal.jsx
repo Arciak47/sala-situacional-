@@ -248,6 +248,20 @@ export default function UserModal({
                 />
               </div>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Cédula de Identidad
+                </label>
+                <input
+                  type="text"
+                  placeholder="ej: V-12345678"
+                  value={formData.cedula || ''}
+                  onChange={(e) => setFormData({ ...formData, cedula: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 font-mono font-bold"
+                />
+              </div>
+            </div>
           </div>
 
           {/* CONTACTO Y DEPARTAMENTO */}

@@ -28,6 +28,7 @@ export default function EditUserModal({
   const [role, setRole] = useState('Analista');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
+  const [cedula, setCedula] = useState('');
   const [fechaNacimiento, setFechaNacimiento] = useState('');
   const [edad, setEdad] = useState('');
   const [createdAt, setCreatedAt] = useState('');
@@ -45,6 +46,7 @@ export default function EditUserModal({
       setRole(editingUser.role || 'Analista');
       setPassword(editingUser.password || '');
       setEmail(editingUser.email || '');
+      setCedula(editingUser.cedula || '');
       setFechaNacimiento(editingUser.fechaNacimiento || '');
       setEdad(editingUser.edad || '');
       setCreatedAt(editingUser.createdAt || new Date().toISOString().split('T')[0]);
@@ -116,6 +118,7 @@ export default function EditUserModal({
       salaEtiqueta: finalSalaEtiqueta,
       password: password.trim(),
       email: emailClean,
+      cedula: cedula.trim(),
       fechaNacimiento,
       edad,
       createdAt,
@@ -315,6 +318,20 @@ export default function EditUserModal({
                   value={createdAt}
                   onChange={(e) => setCreatedAt(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Cédula de Identidad
+                </label>
+                <input
+                  type="text"
+                  placeholder="ej: V-12345678"
+                  value={cedula}
+                  onChange={(e) => setCedula(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl text-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 font-mono font-bold"
                 />
               </div>
             </div>

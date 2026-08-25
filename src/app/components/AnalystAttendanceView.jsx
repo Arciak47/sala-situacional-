@@ -5,13 +5,13 @@ import { markAttendance, getTodayAttendanceForUser } from '../lib/attendanceServ
 
 export default function AnalystAttendanceView({ currentUser, setToastMsg, addLog }) {
   const [loading, setLoading] = useState(false);
-  const [todayRecord, setTodayRecord] = useState(null);
+  const [todayRecords, setTodayRecords] = useState([]);
 
 
 
   const loadTodayRecord = async () => {
-    const record = await getTodayAttendanceForUser(currentUser.id);
-    setTodayRecord(record);
+    const records = await getTodayAttendanceForUser(currentUser.id);
+    setTodayRecords(records);
   };
 
   useEffect(() => {
@@ -56,8 +56,8 @@ export default function AnalystAttendanceView({ currentUser, setToastMsg, addLog
       // 3. Save to Firestore (which will securely inject serverTimestamp)
       await markAttendance(record);
       
-      // Update local state
-      setTodayRecord(record);
+      // Update local state temporarily (will be overwritten by loadTodayRecord)
+      setTodayRecords(prev => [record, ...(Array.isArray(prev) ? prev : [])]);
       
       if (addLog) {
         addLog(currentUser.email, `Asistencia - ${type}`, `IP: ${clientIp}`, 'info');
@@ -77,8 +77,8 @@ export default function AnalystAttendanceView({ currentUser, setToastMsg, addLog
     }
   };
 
-  const hasEntrada = todayRecord && todayRecord.type === 'Entrada';
-  const hasSalida = todayRecord && todayRecord.type === 'Salida';
+  const hasEntrada = todayRecords?.some(r => r.type === 'Entrada');
+  const hasSalida = todayRecords?.some(r => r.type === 'Salida');
 
   return (
     <div className="space-y-6 animate-fade-in pb-24">

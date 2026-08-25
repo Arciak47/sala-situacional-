@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { subscribeWeeklySchedules, saveWeeklySchedule, subscribeAttendance, deleteAttendance } from '../lib/attendanceService';
-import html2canvas from 'html2canvas';
+import * as htmlToImage from 'html-to-image';
 
 const SHIFTS = [
   { id: 'shift-1', label: '7:00 AM - 1:00 PM', shortLabel: '7:00 AM a 1:00 PM' },
@@ -22,10 +22,12 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
   const [currentWeekId, setCurrentWeekId] = useState('');
   const [startDateStr, setStartDateStr] = useState(''); // YYYY-MM-DD
   const [assignments, setAssignments] = useState({}); // { [day]: { [shiftId]: [userIds] } }
+  const [isCreatingWeek, setIsCreatingWeek] = useState(false);
   
   // Selection State
   const [selectedCell, setSelectedCell] = useState(null); // { day, shiftId }
   const scheduleRef = useRef(null);
+  const signaturesRef = useRef(null);
 
   // Filters for history
   const [filterDate, setFilterDate] = useState('');
@@ -129,6 +131,7 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
         assignments,
         updatedAt: new Date().toISOString()
       });
+      setIsCreatingWeek(false);
       setToastMsg('✅ Planilla Semanal Guardada');
       setTimeout(() => setToastMsg(''), 4000);
     } catch (error) {
@@ -140,8 +143,7 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
   const handleExportPNG = async () => {
     if (!scheduleRef.current) return;
     try {
-      const canvas = await html2canvas(scheduleRef.current, { backgroundColor: '#ffffff', scale: 2 });
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = await htmlToImage.toPng(scheduleRef.current, { backgroundColor: '#ffffff', pixelRatio: 2 });
       const link = document.createElement('a');
       link.href = imgData;
       link.download = `Horario_${startDateStr || 'Semanal'}.png`;
@@ -149,6 +151,23 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
     } catch (err) {
       console.error(err);
       setToastMsg('❌ Error al exportar a PNG');
+      setTimeout(() => setToastMsg(''), 4000);
+    }
+  };
+
+  const handleExportSignaturesPNG = async () => {
+    if (!signaturesRef.current) return;
+    try {
+      const imgData = await htmlToImage.toPng(signaturesRef.current, { backgroundColor: '#ffffff', pixelRatio: 2 });
+      const link = document.createElement('a');
+      link.href = imgData;
+      link.download = `Listado_Asistencia_${new Date().toLocaleDateString('es-ES').replace(/\//g, '-')}.png`;
+      link.click();
+      setToastMsg('✅ Planilla exportada correctamente');
+      setTimeout(() => setToastMsg(''), 4000);
+    } catch (err) {
+      console.error(err);
+      setToastMsg('❌ Error al exportar planilla');
       setTimeout(() => setToastMsg(''), 4000);
     }
   };
@@ -191,6 +210,35 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
 
   const analysts = users.filter(u => u.role === 'Analista' || u.role === 'Supervisor');
 
+  // Compute export rows from filteredAttendance
+  const attendanceByUser = {};
+  filteredAttendance.forEach(rec => {
+    const key = `${rec.analystId}-${rec.fecha}`; // Group by user and date
+    if (!attendanceByUser[key]) {
+      attendanceByUser[key] = {
+        id: key,
+        name: rec.analystName,
+        entrada: null,
+        salida: null
+      };
+    }
+    // Track earliest Entrada and latest Salida
+    if (rec.type === 'Entrada') {
+      if (!attendanceByUser[key].entrada || rec.horaLocal < attendanceByUser[key].entrada) {
+        attendanceByUser[key].entrada = rec.horaLocal;
+      }
+    } else if (rec.type === 'Salida') {
+      if (!attendanceByUser[key].salida || rec.horaLocal > attendanceByUser[key].salida) {
+        attendanceByUser[key].salida = rec.horaLocal;
+      }
+    }
+  });
+
+  const exportRows = Object.values(attendanceByUser);
+  while (exportRows.length < 15) {
+    exportRows.push({ id: `empty-${exportRows.length}`, name: '', entrada: '', salida: '' });
+  }
+
   return (
     <div className="space-y-6 animate-fade-in pb-24">
       <div className="flex flex-wrap items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
@@ -220,27 +268,60 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-              <label className="font-bold text-slate-800 dark:text-slate-100">Fecha del Lunes:</label>
-              <input 
-                type="date" 
-                className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 font-bold text-slate-700 dark:text-slate-200 w-full md:w-auto"
-                value={startDateStr}
-                onChange={handleStartDateChange}
-              />
-              <select 
-                className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 font-bold text-slate-700 dark:text-slate-200 w-full md:w-auto"
-                value={currentWeekId}
-                onChange={(e) => {
-                  setCurrentWeekId(e.target.value);
-                  const s = weeklySchedules.find(x => x.id === e.target.value);
-                  if (s) setStartDateStr(s.startDate);
-                }}
-              >
-                <option value="">-- Semanas Guardadas --</option>
-                {weeklySchedules.map(s => (
-                  <option key={s.id} value={s.id}>Semana: {s.startDate}</option>
-                ))}
-              </select>
+              {!isCreatingWeek ? (
+                <>
+                  <label className="font-bold text-slate-800 dark:text-slate-100">Semana:</label>
+                  <select 
+                    className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 font-bold text-slate-700 dark:text-slate-200 w-full md:w-auto"
+                    value={currentWeekId}
+                    onChange={(e) => {
+                      setCurrentWeekId(e.target.value);
+                      const s = weeklySchedules.find(x => x.id === e.target.value);
+                      if (s) setStartDateStr(s.startDate);
+                    }}
+                  >
+                    <option value="">-- Selecciona una Semana --</option>
+                    {weeklySchedules.map(s => (
+                      <option key={s.id} value={s.id}>Semana del Lunes: {s.startDate}</option>
+                    ))}
+                  </select>
+                  <button 
+                    onClick={() => {
+                      setIsCreatingWeek(true);
+                      setAssignments({});
+                      setCurrentWeekId('');
+                    }}
+                    className="px-3 py-2 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 font-bold rounded-xl hover:bg-green-200 dark:hover:bg-green-800 transition-colors shadow-sm whitespace-nowrap"
+                  >
+                    ➕ Crear Nueva Semana
+                  </button>
+                </>
+              ) : (
+                <>
+                  <label className="font-bold text-slate-800 dark:text-slate-100">Fecha del Lunes (Nueva Semana):</label>
+                  <input 
+                    type="date" 
+                    className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 font-bold text-slate-700 dark:text-slate-200 w-full md:w-auto ring-2 ring-green-500"
+                    value={startDateStr}
+                    onChange={handleStartDateChange}
+                  />
+                  <button 
+                    onClick={() => {
+                      setIsCreatingWeek(false);
+                      if (weeklySchedules.length > 0) {
+                         setCurrentWeekId(weeklySchedules[0].id);
+                         setStartDateStr(weeklySchedules[0].startDate);
+                      } else {
+                         setStartDateStr('');
+                         setCurrentWeekId('');
+                      }
+                    }}
+                    className="px-3 py-2 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 font-bold rounded-xl hover:bg-red-200 dark:hover:bg-red-800 transition-colors shadow-sm whitespace-nowrap"
+                  >
+                    ❌ Cancelar
+                  </button>
+                </>
+              )}
             </div>
             <div className="flex gap-2">
               <button
@@ -375,6 +456,12 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
             >
               Limpiar
             </button>
+            <button 
+              onClick={handleExportSignaturesPNG}
+              className="bg-blue-600 text-white font-bold px-4 py-2 rounded-lg text-sm shadow-sm hover:bg-blue-700 transition-colors ml-auto flex items-center gap-2"
+            >
+              📸 Exportar Planilla PNG
+            </button>
           </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
@@ -398,7 +485,7 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
                     filteredAttendance.map(rec => {
                       return (
                         <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                          <td className="px-4 py-3 font-bold">{rec.analystName} <br/><span className="text-[10px] font-normal text-slate-400">{rec.sala}</span></td>
+                          <td className="px-4 py-3 font-bold">{rec.analystName}</td>
                           <td className="px-4 py-3">
                             {rec.fecha} <span className="font-bold text-blue-600 dark:text-blue-400">{formatTimeAMPM(rec.horaLocal)}</span>
                           </td>
@@ -430,6 +517,68 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
           </div>
         </div>
       )}
+
+      {/* Hidden Export Template for Signatures */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        <div ref={signaturesRef} className="bg-white p-10 w-[850px] text-black font-sans relative overflow-hidden" style={{ minHeight: '1100px' }}>
+          
+          {/* Top Ribbons */}
+          <div className="absolute top-0 right-0 w-[400px] h-12 flex -skew-x-[30deg] translate-x-10 translate-y-4 shadow-sm">
+             <div className="flex-1 bg-[#FAD201]"></div>
+             <div className="flex-1 bg-[#0033A0]"></div>
+             <div className="flex-1 bg-[#009C3B]"></div>
+          </div>
+
+          {/* Header */}
+          <div className="flex justify-between items-center mb-8 relative z-10 mt-6">
+            <div className="w-24 h-24 flex items-center justify-center">
+                 <img src="/logo.png" alt="Escudo" className="w-full h-full object-contain" onError={(e) => e.target.style.display = 'none'} />
+            </div>
+            <div className="text-center flex-1 mx-4">
+              <h1 className="text-base font-bold leading-tight">República Bolivariana de Venezuela</h1>
+              <h2 className="text-base font-bold leading-tight">Gobernación del Estado Bolivariano de Guárico</h2>
+              <h3 className="text-base font-bold leading-tight">Secretaría del Despacho del Gobernador</h3>
+            </div>
+            <div className="w-32 h-20 flex items-center justify-center">
+                 <img src="/logo.jpg" alt="Guárico" className="w-full h-full object-contain" onError={(e) => e.target.style.display = 'none'} />
+            </div>
+          </div>
+
+          <h2 className="text-center font-bold text-xl underline underline-offset-4 mb-4">LISTADOS DE ASISTENCIA</h2>
+          <div className="text-lg mb-4 text-slate-800 font-serif italic border-b border-transparent inline-block">
+            {filterDate ? new Date(filterDate + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' }) : new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })} Personal {filterAnalyst !== 'Todos' ? users.find(u => u.id === filterAnalyst)?.name : 'Sala Situacional'}.
+          </div>
+
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <th className="border border-black px-2 py-2 w-12 text-center font-bold">Nº</th>
+                <th className="border border-black px-2 py-2 font-bold text-left">NOMBRE Y APELLIDO</th>
+                <th className="border border-black px-2 py-2 w-40 font-bold text-center">HORA ENTRADA</th>
+                <th className="border border-black px-2 py-2 w-40 font-bold text-center">HORA SALIDA</th>
+              </tr>
+            </thead>
+            <tbody>
+              {exportRows.map((row, i) => (
+                <tr key={row.id}>
+                  <td className="border border-black px-2 py-3 text-center text-base">{row.name ? i + 1 : ''}</td>
+                  <td className="border border-black px-2 py-3 text-base font-medium" style={{ fontFamily: '"Comic Sans MS", "Chalkboard SE", "Marker Felt", sans-serif' }}>{row.name}</td>
+                  <td className="border border-black px-2 py-3 text-center text-base font-medium" style={{ fontFamily: '"Comic Sans MS", "Chalkboard SE", "Marker Felt", sans-serif' }}>{formatTimeAMPM(row.entrada)}</td>
+                  <td className="border border-black px-2 py-3 text-center text-base font-medium" style={{ fontFamily: '"Comic Sans MS", "Chalkboard SE", "Marker Felt", sans-serif' }}>{formatTimeAMPM(row.salida)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {/* Bottom Ribbons */}
+          <div className="absolute bottom-0 right-0 w-full h-8 flex shadow-sm">
+             <div className="w-1/2 bg-transparent"></div>
+             <div className="w-1/6 bg-[#009C3B] -skew-x-[30deg] translate-x-4"></div>
+             <div className="w-1/6 bg-[#FAD201] -skew-x-[30deg] translate-x-4"></div>
+             <div className="w-1/6 bg-[#0033A0] -skew-x-[30deg] translate-x-4"></div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
