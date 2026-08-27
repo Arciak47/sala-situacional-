@@ -1536,6 +1536,7 @@ export default function Home() {
             onSendMessage={handleSendMessage}
             onClearChat={handleClearChat}
             onMarkAsRead={handleMarkAsRead}
+            editingCorrectionId={editingCorrectionId}
           />
         )}
 

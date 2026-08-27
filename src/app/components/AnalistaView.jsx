@@ -30,6 +30,7 @@ export default function AnalistaView({
   loadDashboardStats,
   dashboardLoading,
   loadReportForCorrection,
+  editingCorrectionId,
 }) {
   const pendingCorrections = submissions.filter(
     (s) => s.analystId === currentUser?.id && s.hasCorrection === true && s.correctionStatus === 'pending'
@@ -38,7 +39,7 @@ export default function AnalistaView({
   return (
     <div className="space-y-6">
       {/* ── ALERTA URGENTE DE CORRECCIÓN (BLOQUEO) ── */}
-      {pendingCorrections.length > 0 && activeTab !== 'forms' && (
+      {pendingCorrections.length > 0 && !editingCorrectionId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4">
           <div className="relative bg-white dark:bg-slate-900 border-2 border-red-500 p-8 rounded-3xl shadow-2xl max-w-lg w-full text-center animate-in fade-in zoom-in-95 duration-300">
             <div className="w-20 h-20 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mx-auto mb-6">
