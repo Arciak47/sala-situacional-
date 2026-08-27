@@ -29,8 +29,13 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
   const scheduleRef = useRef(null);
   const signaturesRef = useRef(null);
 
+  const getTodayStr = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  };
+
   // Filters for history
-  const [filterDate, setFilterDate] = useState('');
+  const [filterDate, setFilterDate] = useState(getTodayStr());
   const [filterAnalyst, setFilterAnalyst] = useState('Todos');
 
   useEffect(() => {
@@ -203,6 +208,9 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
   let filteredAttendance = attendance;
   if (filterDate) {
     filteredAttendance = filteredAttendance.filter(a => a.fecha === filterDate);
+  } else {
+    // Si no hay fecha, no mostrar nada para evitar mezclar días
+    filteredAttendance = [];
   }
   if (filterAnalyst !== 'Todos') {
     filteredAttendance = filteredAttendance.filter(a => a.analystId === filterAnalyst);
@@ -451,7 +459,7 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
               ))}
             </select>
             <button 
-              onClick={() => { setFilterDate(''); setFilterAnalyst('Todos'); }}
+              onClick={() => { setFilterDate(getTodayStr()); setFilterAnalyst('Todos'); }}
               className="text-xs font-bold text-red-600 dark:text-red-400 hover:underline"
             >
               Limpiar

@@ -105,6 +105,7 @@ export default function AdministradorView({
           allStats={allStats}
           loadDashboardStats={loadDashboardStats}
           dashboardLoading={dashboardLoading}
+          messages={messages}
         />
       </div>
 
@@ -336,17 +337,7 @@ export default function AdministradorView({
         </div>
       </div>
 
-      {/* ── DASHBOARD PRINCIPAL CON GRÁFICAS ── */}
-      <div className={activeTab === 'dashboard' ? 'block' : 'hidden'}>
-        <AdminDashboard
-          currentUser={currentUser}
-          allStats={allStats}
-          submissions={submissions}
-          users={users}
-          auditLogs={auditLogs}
-          messages={messages}
-        />
-      </div>
+
 
       {/* ── MI PERFIL ── */}
       <div className={activeTab === 'profile' ? 'block' : 'hidden'}>

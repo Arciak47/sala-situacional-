@@ -149,7 +149,7 @@ export async function getTodayAttendanceForUser(userId) {
     );
     const snapshot = await getDocs(q);
     
-    if (snapshot.empty) return null;
+    if (snapshot.empty) return [];
 
     // Filtrar y ordenar en memoria para evitar errores de índice compuesto en Firebase
     const todayRecords = snapshot.docs
@@ -165,5 +165,47 @@ export async function getTodayAttendanceForUser(userId) {
   } catch (error) {
     console.error('Error fetching today attendance:', error);
     return [];
+  }
+}
+
+// Subscribe to a user's today attendance records to react to deletions
+export function subscribeTodayAttendanceForUser(userId, onUpdate) {
+  try {
+    const colRef = collection(db, 'asistencias');
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
+    const q = query(
+      colRef, 
+      where('analystId', '==', userId)
+    );
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (snapshot.empty) {
+        onUpdate([]);
+        return;
+      }
+      const todayRecords = snapshot.docs
+        .map(d => d.data())
+        .sort((a, b) => {
+          // Fallback to timestamp in ID if serverTime is null (e.g. pending local write)
+          const fallbackTimeA = parseInt(a.id?.split('-').pop()) || Date.now();
+          const fallbackTimeB = parseInt(b.id?.split('-').pop()) || Date.now();
+          const timeA = a.serverTime?.toMillis ? a.serverTime.toMillis() : fallbackTimeA;
+          const timeB = b.serverTime?.toMillis ? b.serverTime.toMillis() : fallbackTimeB;
+          return timeB - timeA;
+        })
+        .slice(0, 10); // Return the 10 most recent records
+      onUpdate(todayRecords);
+    }, (err) => {
+      console.error('Error subscribing today attendance:', err);
+      onUpdate([]);
+    });
+    
+    return unsubscribe;
+  } catch (error) {
+    console.error('Error init today attendance sub:', error);
+    onUpdate([]);
+    return () => {};
   }
 }

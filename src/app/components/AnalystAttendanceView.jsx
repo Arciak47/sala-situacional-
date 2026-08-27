@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { markAttendance, getTodayAttendanceForUser } from '../lib/attendanceService';
+import { markAttendance, subscribeTodayAttendanceForUser } from '../lib/attendanceService';
 
 export default function AnalystAttendanceView({ currentUser, setToastMsg, addLog }) {
   const [loading, setLoading] = useState(false);
@@ -9,14 +9,12 @@ export default function AnalystAttendanceView({ currentUser, setToastMsg, addLog
 
 
 
-  const loadTodayRecord = async () => {
-    const records = await getTodayAttendanceForUser(currentUser.id);
-    setTodayRecords(records);
-  };
-
   useEffect(() => {
     if (currentUser) {
-      loadTodayRecord();
+      const unsub = subscribeTodayAttendanceForUser(currentUser.id, (records) => {
+        setTodayRecords(records);
+      });
+      return () => unsub();
     }
   }, [currentUser]);
 
@@ -66,8 +64,7 @@ export default function AnalystAttendanceView({ currentUser, setToastMsg, addLog
       setToastMsg(`✅ ${type} registrada correctamente.`);
       setTimeout(() => setToastMsg(''), 4000);
       
-      // Reload record to fetch the latest state
-      await loadTodayRecord();
+      // We don't need to manually reload, subscription handles it
     } catch (err) {
       console.error(err);
       setToastMsg(`❌ Error al registrar asistencia: ${err.message}`);
@@ -77,8 +74,33 @@ export default function AnalystAttendanceView({ currentUser, setToastMsg, addLog
     }
   };
 
-  const hasEntrada = todayRecords?.some(r => r.type === 'Entrada');
-  const hasSalida = todayRecords?.some(r => r.type === 'Salida');
+  // Derivar estado de asistencia del registro más reciente (para soportar turnos que cruzan la medianoche)
+  const latestRecord = todayRecords && todayRecords.length > 0 ? todayRecords[0] : null;
+  
+  let hasEntrada = false;
+  let hasSalida = false;
+
+  if (latestRecord) {
+    const fallbackTime = parseInt(latestRecord.id?.split('-').pop()) || Date.now();
+    const recordTime = latestRecord.serverTime?.toMillis ? latestRecord.serverTime.toMillis() : fallbackTime;
+    const hoursSinceLast = (Date.now() - recordTime) / (1000 * 60 * 60);
+
+    if (latestRecord.type === 'Entrada') {
+      if (hoursSinceLast < 16) {
+        // Turno activo (menos de 16 hrs desde la entrada)
+        hasEntrada = true;
+        hasSalida = false;
+      }
+      // Si pasaron >16 hrs, asumimos que olvidó marcar salida, se reinicia para permitir nueva Entrada.
+    } else if (latestRecord.type === 'Salida') {
+      if (hoursSinceLast < 1) {
+        // Acaba de marcar salida (dentro de la última hora). Bloquear ambos botones temporalmente.
+        hasEntrada = true;
+        hasSalida = true;
+      }
+      // Si pasó >1 hr desde la salida, puede iniciar un nuevo turno.
+    }
+  }
 
   return (
     <div className="space-y-6 animate-fade-in pb-24">
