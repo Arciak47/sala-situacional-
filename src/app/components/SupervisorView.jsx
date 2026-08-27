@@ -170,7 +170,7 @@ export default function SupervisorView({
       </div>
 
       {/* ── MENSAJERÍA (CHAT INSTITUCIONAL) ── */}
-      <div className={activeTab === 'messaging' ? 'block' : 'hidden'}>
+      {activeTab === 'messaging' && (
         <MessagingView
           currentUser={currentUser}
           users={users}
@@ -179,7 +179,7 @@ export default function SupervisorView({
           onClearChat={onClearChat}
           onMarkAsRead={onMarkAsRead}
         />
-      </div>
+      )}
     </div>
   );
 }

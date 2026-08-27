@@ -352,7 +352,7 @@ export default function AdministradorView({
       </div>
 
       {/* ── MENSAJERÍA (CHAT INSTITUCIONAL) ── */}
-      <div className={activeTab === 'messaging' ? 'block' : 'hidden'}>
+      {activeTab === 'messaging' && (
         <MessagingView
           currentUser={currentUser}
           users={users}
@@ -362,7 +362,7 @@ export default function AdministradorView({
           onMarkAsRead={onMarkAsRead}
           isObserver={isObserver}
         />
-      </div>
+      )}
     </div>
   );
 }

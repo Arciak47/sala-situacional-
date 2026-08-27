@@ -131,7 +131,7 @@ export default function AnalistaView({
       </div>
 
       {/* ── MENSAJERÍA (CHAT INSTITUCIONAL) ── */}
-      <div className={activeTab === 'messaging' ? 'block' : 'hidden'}>
+      {activeTab === 'messaging' && (
         <MessagingView
           currentUser={currentUser}
           users={users}
@@ -140,7 +140,7 @@ export default function AnalistaView({
           onClearChat={onClearChat}
           onMarkAsRead={onMarkAsRead}
         />
-      </div>
+      )}
     </div>
   );
 }
