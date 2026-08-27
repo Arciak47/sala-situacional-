@@ -23,8 +23,25 @@ export default function MessagingView({
     return (Date.now() - new Date(lastActiveTime).getTime()) < (5 * 60 * 1000); // 5 minutes
   };
 
+  // Get last message preview for contact
+  const getLastMessage = (contactId) => {
+    if (!currentUser) return null;
+    const cId = [currentUser.id, contactId].sort().join('_');
+    const conversation = messages.filter((m) => m.chatId === cId);
+    if (conversation.length === 0) return null;
+    return conversation[conversation.length - 1];
+  };
+
   // Available contacts (all users except current user)
-  const contacts = users.filter((u) => u.id !== currentUser?.id);
+  const contacts = users
+    .filter((u) => u.id !== currentUser?.id)
+    .sort((a, b) => {
+      const lastMsgA = getLastMessage(a.id);
+      const lastMsgB = getLastMessage(b.id);
+      const timeA = lastMsgA ? new Date(lastMsgA.fecha).getTime() : 0;
+      const timeB = lastMsgB ? new Date(lastMsgB.fecha).getTime() : 0;
+      return timeB - timeA; // Descending order (newest first)
+    });
 
 
   // Mark unread messages from active contact as read when opening or receiving messages
@@ -64,13 +81,7 @@ export default function MessagingView({
     ).length;
   };
 
-  // Get last message preview for contact
-  const getLastMessage = (contactId) => {
-    const cId = [currentUser.id, contactId].sort().join('_');
-    const conversation = messages.filter((m) => m.chatId === cId);
-    if (conversation.length === 0) return null;
-    return conversation[conversation.length - 1];
-  };
+
 
   // Handle sending a message
   const handleSend = (e) => {
