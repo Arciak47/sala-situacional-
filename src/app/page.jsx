@@ -791,16 +791,23 @@ export default function Home() {
           emisorId: currentUser?.id || 'admin',
           emisorName: currentUser?.name || 'Administrador',
           receptorId: receptorId,
-          texto: `🚨 CORRECCIÓN REQUERIDA:\nEl reporte de "${sub.reportData?.municipio || 'N/A'}" fue rechazado y eliminado.\nMotivo: ${message}`,
+          texto: `🚨 CORRECCIÓN REQUERIDA:\nEl reporte de "${sub.reportData?.municipio || 'N/A'}" requiere corrección.\nMotivo: ${message}`,
           timestamp: new Date().toISOString(),
           fecha: new Date().toISOString(),
           leido: false
         };
         await addMessageToFirestore(newMsg);
         
-        await deleteSubmissionFromFirestore(subId);
-        setSubmissions(prev => prev.filter(s => s.id !== subId));
-        setToastMsg('✅ Solicitud de corrección enviada al chat. Reporte eliminado.');
+        await updateSubmissionFields(subId, { status: 'rechazado', hasCorrection: true, correctionStatus: 'pending', correctionMessage: message });
+        
+        setSubmissions(prev => prev.map(s => {
+          if (s.id === subId) {
+            return { ...s, status: 'rechazado', hasCorrection: true, correctionStatus: 'pending', correctionMessage: message };
+          }
+          return s;
+        }));
+        
+        setToastMsg('✅ Solicitud de corrección enviada. Reporte marcado para corrección.');
         setTimeout(() => setToastMsg(''), 3000);
       }
     } catch (err) {

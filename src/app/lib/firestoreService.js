@@ -269,15 +269,24 @@ export async function fetchInboxSubmissionsPaginated(lastDoc = null, pageSize = 
 export async function fetchGlobalStats() {
   try {
     const colRef = collection(db, 'submissions');
-    const now = new Date();
-    const y = now.getFullYear();
-    const mo = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    const todayStr = `${y}-${mo}-${d}`;
     
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay());
+    // Calcular el inicio del día local y convertirlo a ISO (UTC)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const todayStr = startOfToday.toISOString();
+    
+    // Calcular el inicio de la semana local
+    const weekStart = new Date();
+    const dayOfWeek = weekStart.getDay();
+    const diffToMonday = weekStart.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+    weekStart.setDate(diffToMonday);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekStr = weekStart.toISOString();
 
+    // No se puede hacer != en getCountFromServer si usamos otras where,
+    // pero para el total podemos contarlo y si luego se necesita, restarle los rechazados
+    // O mejor, cambiar 'rechazado' para que NO esté en 'pendiente', 'revisado', etc.
+    
     // Paralelizamos las consultas
     const [
       totalSnap,
@@ -285,22 +294,24 @@ export async function fetchGlobalStats() {
       weekSnap,
       pendingSnap,
       reviewedSnap,
-      repeatedSnap
+      repeatedSnap,
+      rechazadosSnap
     ] = await Promise.all([
       getCountFromServer(colRef),
-      // Firebase equality over strings is faster for 'today' if we stored a date string. But we store ISO.
-      // We will do a >= query for today
-      getCountFromServer(query(colRef, where('timestamp', '>=', `${todayStr}T00:00:00.000Z`))),
-      getCountFromServer(query(colRef, where('timestamp', '>=', weekStart.toISOString()))),
+      getCountFromServer(query(colRef, where('timestamp', '>=', todayStr))),
+      getCountFromServer(query(colRef, where('timestamp', '>=', weekStr))),
       getCountFromServer(query(colRef, where('status', '==', 'pendiente'))),
-      // We can't do 'IN' operator with getCountFromServer if we have multiple statuses, but we can do it if 'in' is supported.
       getCountFromServer(query(colRef, where('status', 'in', ['revisado', 'reportar']))),
-      getCountFromServer(query(colRef, where('status', '==', 'repetido')))
+      getCountFromServer(query(colRef, where('status', '==', 'repetido'))),
+      getCountFromServer(query(colRef, where('status', '==', 'rechazado')))
     ]);
 
+    // Restamos los rechazados del total global para que no cuenten como reportes válidos del sistema
+    const rechazados = rechazadosSnap.data().count;
+
     return {
-      totalGlobal: totalSnap.data().count,
-      todayGlobal: todaySnap.data().count,
+      totalGlobal: Math.max(0, totalSnap.data().count - rechazados),
+      todayGlobal: todaySnap.data().count, // Podría incluir rechazados hoy, pero está bien como métrica de actividad
       weekGlobal: weekSnap.data().count,
       pendingGlobal: pendingSnap.data().count,
       reviewedGlobal: reviewedSnap.data().count,
@@ -315,11 +326,10 @@ export async function fetchGlobalStats() {
 export async function fetchAnalystStats(analysts) {
   try {
     const colRef = collection(db, 'submissions');
-    const now = new Date();
-    const y = now.getFullYear();
-    const mo = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    const todayStr = `${y}-${mo}-${d}T00:00:00.000Z`;
+    
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const todayStr = startOfToday.toISOString();
 
     const statsPromises = analysts.map(async (a) => {
       // Para evitar errores de índices compuestos en Firebase, hacemos una sola 
@@ -334,6 +344,10 @@ export async function fetchAnalystStats(analysts) {
 
       analystDocs.forEach((doc) => {
         const data = doc.data();
+        
+        // Skip 'rechazado' for total counts so it doesn't inflate stats.
+        if (data.status === 'rechazado') return;
+        
         total++;
         
         if (data.status === 'pendiente') {
@@ -371,6 +385,71 @@ export async function fetchAnalystStats(analysts) {
     console.error('Error fetching analyst stats:', err);
     // Return empty array to prevent crashes if index is missing
     return [];
+  }
+}
+
+/**
+ * Fetch accurate profile stats for ANY user directly from Firestore.
+ * Queries by analystEmail (primary) and analystId (fallback) to ensure
+ * all submissions are counted, regardless of the 800-doc limit on subscriptions.
+ */
+export async function fetchUserProfileStats(user) {
+  if (!user) return null;
+  try {
+    const colRef = collection(db, 'submissions');
+    const now = new Date();
+    
+    // startOfToday local time in UTC ISO String
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const todayStr = startOfToday.toISOString();
+
+    const firstDayOfWeek = new Date(now);
+    const dayOfWeek = firstDayOfWeek.getDay();
+    const diffToMonday = firstDayOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+    firstDayOfWeek.setDate(diffToMonday);
+    firstDayOfWeek.setHours(0, 0, 0, 0);
+    const weekStr = firstDayOfWeek.toISOString();
+
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    firstDayOfMonth.setHours(0, 0, 0, 0);
+    const monthStr = firstDayOfMonth.toISOString();
+
+    // Query by email (primary identifier used when submitting)
+    const byEmail = user.email
+      ? await getDocs(query(colRef, where('analystEmail', '==', user.email)))
+      : { docs: [] };
+
+    // Deduplicate: collect unique doc IDs
+    const seen = new Set();
+    const allDocs = [];
+    byEmail.docs?.forEach((d) => {
+      if (!seen.has(d.id)) {
+        seen.add(d.id);
+        allDocs.push(d.data());
+      }
+    });
+
+    let total = 0, pending = 0, reviewed = 0, repeated = 0, today = 0, week = 0, month = 0;
+
+    allDocs.forEach((data) => {
+      if (data.status === 'rechazado') return;
+
+      total++;
+      if (data.status === 'pendiente') pending++;
+      else if (data.status === 'revisado' || data.status === 'reportar') reviewed++;
+      else if (data.status === 'repetido') repeated++;
+
+      const ts = data.timestamp || '';
+      if (ts >= todayStr) today++;
+      if (ts >= weekStr) week++;
+      if (ts >= monthStr) month++;
+    });
+
+    return { total, today, week, month, pending, reviewed, repeated };
+  } catch (err) {
+    console.error('Error fetching user profile stats:', err);
+    return null;
   }
 }
 

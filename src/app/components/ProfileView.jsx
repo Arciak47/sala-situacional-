@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ROLE_BADGES } from '../lib/constants';
+import { fetchUserProfileStats, fetchGlobalStats } from '../lib/firestoreService';
 
 function calcAge(birthDateStr) {
   if (!birthDateStr) return '';
@@ -38,6 +39,40 @@ export default function ProfileView({
 
   const role = currentUser?.role || 'Analista';
   const badge = ROLE_BADGES[role] || ROLE_BADGES.Analista;
+
+  // ── Load accurate stats directly from Firestore ──
+  const [profileStats, setProfileStats] = useState(null);
+  const [profileStatsLoading, setProfileStatsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadStats = async () => {
+      setProfileStatsLoading(true);
+      try {
+        if (role === 'Analista') {
+          const s = await fetchUserProfileStats(currentUser);
+          if (!cancelled && s) setProfileStats(s);
+        } else {
+          // Supervisors/Admins: load global stats + their own personal stats
+          const [globalData, personalData] = await Promise.all([
+            fetchGlobalStats(),
+            fetchUserProfileStats(currentUser),
+          ]);
+          if (!cancelled) {
+            setProfileStats({
+              ...(globalData || {}),
+              personal: personalData,
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error loading profile stats:', err);
+      }
+      if (!cancelled) setProfileStatsLoading(false);
+    };
+    if (currentUser) loadStats();
+    return () => { cancelled = true; };
+  }, [currentUser?.id]);
 
   const handleBirthDateChange = (e) => {
     const val = e.target.value;
@@ -350,7 +385,11 @@ export default function ProfileView({
               <span>📈</span> Resumen de Actividad
             </h3>
 
-            {role === 'Analista' && stats && (
+            {profileStatsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-8 h-8 rounded-full border-3 border-red-500 border-t-transparent animate-spin" />
+              </div>
+            ) : profileStats ? (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
@@ -358,107 +397,92 @@ export default function ProfileView({
                       Total Reportes
                     </div>
                     <div className="text-2xl font-black text-red-600 dark:text-red-500 mt-1">
-                      {stats.total}
+                      {role === 'Analista' ? profileStats.total : (profileStats.totalGlobal ?? profileStats.total ?? 0)}
                     </div>
                   </div>
 
                   <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
                     <div className="text-slate-500 text-[11px] font-semibold">
-                      Enviados Hoy
+                      Pendientes
                     </div>
                     <div className="text-2xl font-black text-amber-600 dark:text-amber-500 mt-1">
-                      {stats.today}
+                      {role === 'Analista' ? profileStats.pending : (profileStats.pendingGlobal ?? profileStats.pending ?? 0)}
                     </div>
                   </div>
 
                   <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
                     <div className="text-slate-500 text-[11px] font-semibold">
-                      Esta Semana
-                    </div>
-                    <div className="text-2xl font-black text-blue-600 dark:text-blue-500 mt-1">
-                      {stats.week}
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
-                    <div className="text-slate-500 text-[11px] font-semibold">
-                      Este Mes
+                      Revisados
                     </div>
                     <div className="text-2xl font-black text-emerald-600 dark:text-emerald-500 mt-1">
-                      {stats.month}
+                      {role === 'Analista' ? profileStats.reviewed : (profileStats.reviewedGlobal ?? profileStats.reviewed ?? 0)}
                     </div>
                   </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+                    <div className="text-slate-500 text-[11px] font-semibold">
+                      {role === 'Analista' ? 'Enviados Hoy' : 'Recibidos Hoy'}
+                    </div>
+                    <div className="text-2xl font-black text-blue-600 dark:text-blue-500 mt-1">
+                      {role === 'Analista' ? profileStats.today : (profileStats.todayGlobal ?? profileStats.today ?? 0)}
+                    </div>
+                  </div>
+
+                  {role === 'Analista' && (
+                    <>
+                      <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+                        <div className="text-slate-500 text-[11px] font-semibold">
+                          Esta Semana
+                        </div>
+                        <div className="text-2xl font-black text-blue-600 dark:text-blue-500 mt-1">
+                          {profileStats.week ?? 0}
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+                        <div className="text-slate-500 text-[11px] font-semibold">
+                          Este Mes
+                        </div>
+                        <div className="text-2xl font-black text-emerald-600 dark:text-emerald-500 mt-1">
+                          {profileStats.month ?? 0}
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <div className="col-span-2 bg-orange-50 dark:bg-orange-950/30 p-4 rounded-2xl border border-orange-200/60 dark:border-orange-900/50">
                     <div className="text-orange-600 dark:text-orange-400 text-[11px] font-semibold">
                       🔁 Repetidas
                     </div>
                     <div className="text-2xl font-black text-orange-600 dark:text-orange-400 mt-1">
-                      {stats.repeated || 0}
+                      {role === 'Analista' ? (profileStats.repeated ?? 0) : (profileStats.repeatedGlobal ?? profileStats.repeated ?? 0)}
                     </div>
                   </div>
                 </div>
 
-                {/* Resumen informativo de repetidas */}
-                <div className="bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-1">
-                  <div className="flex justify-between">
-                    <span className="font-semibold">Total subidos:</span>
-                    <span className="font-black text-slate-900 dark:text-white">{stats.total}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-semibold">✅ Revisados:</span>
-                    <span className="font-black text-emerald-600">{stats.reviewed || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-semibold">🔁 Repetidas:</span>
-                    <span className="font-black text-orange-600">{stats.repeated || 0}</span>
-                  </div>
-                  {(stats.repeated || 0) > 0 && (
+                {role === 'Analista' && (profileStats.repeated || 0) > 0 && (
+                  <div className="bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                    <div className="flex justify-between">
+                      <span className="font-semibold">Total subidos:</span>
+                      <span className="font-black text-slate-900 dark:text-white">{profileStats.total}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold">✅ Revisados:</span>
+                      <span className="font-black text-emerald-600">{profileStats.reviewed || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold">🔁 Repetidas:</span>
+                      <span className="font-black text-orange-600">{profileStats.repeated || 0}</span>
+                    </div>
                     <div className="pt-1 text-[11px] text-orange-600 dark:text-orange-400 font-bold border-t border-orange-200 dark:border-orange-900/50">
-                      ⚠️ Subiste {stats.total} reporte{stats.total !== 1 ? 's' : ''}, {stats.reviewed || 0} revisado{(stats.reviewed || 0) !== 1 ? 's' : ''} y {stats.repeated} marcado{(stats.repeated || 0) !== 1 ? 's' : ''} como repetido{(stats.repeated || 0) !== 1 ? 's' : ''}.
+                      ⚠️ Subiste {profileStats.total} reporte{profileStats.total !== 1 ? 's' : ''}, {profileStats.reviewed || 0} revisado{(profileStats.reviewed || 0) !== 1 ? 's' : ''} y {profileStats.repeated} marcado{(profileStats.repeated || 0) !== 1 ? 's' : ''} como repetido{(profileStats.repeated || 0) !== 1 ? 's' : ''}.
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
-            )}
-
-            {(role === 'Supervisor' || role === 'Administrador') && allStats && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
-                  <div className="text-slate-500 text-[11px] font-semibold">
-                    Total Formularios
-                  </div>
-                  <div className="text-2xl font-black text-red-600 dark:text-red-500 mt-1">
-                    {allStats.totalGlobal}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
-                  <div className="text-slate-500 text-[11px] font-semibold">
-                    Pendientes
-                  </div>
-                  <div className="text-2xl font-black text-amber-600 dark:text-amber-500 mt-1">
-                    {allStats.pendingGlobal}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
-                  <div className="text-slate-500 text-[11px] font-semibold">
-                    Revisados
-                  </div>
-                  <div className="text-2xl font-black text-emerald-600 dark:text-emerald-500 mt-1">
-                    {allStats.reviewedGlobal}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800">
-                  <div className="text-slate-500 text-[11px] font-semibold">
-                    {role === 'Administrador' ? 'Usuarios Sistema' : 'Recibidos Hoy'}
-                  </div>
-                  <div className="text-2xl font-black text-blue-600 dark:text-blue-500 mt-1">
-                    {role === 'Administrador' ? usersCount : allStats.todayGlobal}
-                  </div>
-                </div>
+            ) : (
+              <div className="text-center text-xs text-slate-400 py-6">
+                No hay datos disponibles.
               </div>
             )}
 
