@@ -54,6 +54,7 @@ export default function AdministradorView({
   onUpdateProfile,
   messages,
   onSendMessage,
+  onClearChat,
   onMarkAsRead,
   shiftReports,
   isObserver,
@@ -357,6 +358,7 @@ export default function AdministradorView({
           users={users}
           messages={messages}
           onSendMessage={onSendMessage}
+          onClearChat={onClearChat}
           onMarkAsRead={onMarkAsRead}
           isObserver={isObserver}
         />

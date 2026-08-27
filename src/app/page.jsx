@@ -52,6 +52,8 @@ import {
   subscribeShiftReports,
   fetchGlobalStats,
   fetchAnalystStats,
+  updateUserPresence,
+  deleteMessageFromFirestore,
 } from './lib/firestoreService';
 
 export default function Home() {
@@ -264,7 +266,16 @@ export default function Home() {
     let timeoutId;
     const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 minutes
 
+    let lastPingTime = 0;
+    const PING_INTERVAL = 3 * 60 * 1000; // 3 minutes
+
     const resetTimer = () => {
+      const now = Date.now();
+      if (now - lastPingTime > PING_INTERVAL) {
+        updateUserPresence(currentUser.id);
+        lastPingTime = now;
+      }
+
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         handleLogout();
@@ -1364,6 +1375,16 @@ export default function Home() {
     );
   }
 
+  const handleClearChat = async (chatId) => {
+    if (!chatId) return;
+    const msgsToDelete = messages.filter((m) => m.chatId === chatId);
+    for (const m of msgsToDelete) {
+      await deleteMessageFromFirestore(m.id);
+    }
+    setToastMsg('✅ Chat vaciado exitosamente.');
+    setTimeout(() => setToastMsg(''), 3000);
+  };
+
   // ── MAIN DASHBOARD VIEW ──
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col md:flex-row font-sans transition-colors duration-300 relative bg-radar-grid overflow-x-hidden">
@@ -1433,6 +1454,7 @@ export default function Home() {
             onUpdateProfile={handleUpdateProfile}
             messages={messages}
             onSendMessage={handleSendMessage}
+            onClearChat={handleClearChat}
             onMarkAsRead={handleMarkAsRead}
             isObserver={isObserver}
             loadDashboardStats={loadDashboardStats}
@@ -1478,6 +1500,7 @@ export default function Home() {
             onUpdateProfile={handleUpdateProfile}
             messages={messages}
             onSendMessage={handleSendMessage}
+            onClearChat={handleClearChat}
             onMarkAsRead={handleMarkAsRead}
             auditLogs={auditLogs}
             handleBackupAndClear={handleBackupAndClear}
@@ -1504,6 +1527,7 @@ export default function Home() {
             onUpdateProfile={handleUpdateProfile}
             messages={messages}
             onSendMessage={handleSendMessage}
+            onClearChat={handleClearChat}
             onMarkAsRead={handleMarkAsRead}
           />
         )}

@@ -8,14 +8,20 @@ export default function MessagingView({
   users = [],
   messages = [],
   onSendMessage,
+  onClearChat,
   onMarkAsRead,
-  isObserver
+  isObserver = false
 }) {
   const [activeContact, setActiveContact] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [textInput, setTextInput] = useState('');
   const [attachedImage, setAttachedImage] = useState(null);
   const chatEndRef = useRef(null);
+
+  const isTrulyActive = (lastActiveTime) => {
+    if (!lastActiveTime) return false;
+    return (Date.now() - new Date(lastActiveTime).getTime()) < (5 * 60 * 1000); // 5 minutes
+  };
 
   // Available contacts (all users except current user)
   const contacts = users.filter((u) => u.id !== currentUser?.id);
@@ -185,7 +191,7 @@ export default function MessagingView({
                     </div>
                     <span
                       className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 ${
-                        c.status === 'Activo' ? 'bg-emerald-500' : 'bg-slate-400'
+                        isTrulyActive(c.lastActive) ? 'bg-emerald-500' : 'bg-slate-400'
                       }`}
                     />
                   </div>
@@ -266,10 +272,23 @@ export default function MessagingView({
               </div>
             </div>
 
-            <div className="text-right text-[10px] text-slate-400 hidden sm:block">
-              <span className="font-bold text-emerald-600">
-                ● {activeContact.status}
-              </span>
+            <div className="flex items-center gap-3">
+              <div className="text-right text-[10px] text-slate-400 hidden sm:block">
+                <span className={`font-bold ${isTrulyActive(activeContact.lastActive) ? 'text-emerald-500' : 'text-slate-400'}`}>
+                  ● {isTrulyActive(activeContact.lastActive) ? 'Activo' : 'Desconectado'}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  if (confirm(`¿Estás seguro de que deseas vaciar el chat con ${activeContact.name}? Esta acción no se puede deshacer.`)) {
+                    if (onClearChat) onClearChat(currentChatId);
+                  }
+                }}
+                className="p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer"
+                title="Vaciar Chat"
+              >
+                🗑️
+              </button>
             </div>
           </div>
 

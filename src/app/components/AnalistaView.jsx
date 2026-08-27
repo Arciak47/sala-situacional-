@@ -25,6 +25,7 @@ export default function AnalistaView({
   onUpdateProfile,
   messages,
   onSendMessage,
+  onClearChat,
   onMarkAsRead,
   loadDashboardStats,
   dashboardLoading,
@@ -136,6 +137,7 @@ export default function AnalistaView({
           users={users}
           messages={messages}
           onSendMessage={onSendMessage}
+          onClearChat={onClearChat}
           onMarkAsRead={onMarkAsRead}
         />
       </div>

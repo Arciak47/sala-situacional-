@@ -803,3 +803,30 @@ export async function updateSubmissionFields(subId, fieldsToUpdate) {
     throw error;
   }
 }
+
+export async function updateUserPresence(userId) {
+  if (!userId) return;
+  try {
+    const userRef = doc(db, 'users', String(userId));
+    await updateDoc(userRef, { lastActive: Date.now() });
+  } catch (err) {
+    console.warn('Error updating user presence:', err);
+  }
+}
+
+export async function deleteMessageFromFirestore(msgId) {
+  if (!msgId) return;
+  
+  // Update local cache
+  const localMsgs = getStoredMessages();
+  const updatedMsgs = localMsgs.filter((m) => String(m.id) !== String(msgId));
+  saveStoredMessages(updatedMsgs);
+
+  // Update Firestore
+  try {
+    const msgRef = doc(db, 'messages', String(msgId));
+    await deleteDoc(msgRef);
+  } catch (err) {
+    console.warn('Error deleting message from Firestore:', err);
+  }
+}

@@ -44,6 +44,7 @@ export default function SupervisorView({
   onUpdateProfile,
   messages,
   onSendMessage,
+  onClearChat,
   onMarkAsRead,
   auditLogs = [],
   handleBackupAndClear,
@@ -175,6 +176,7 @@ export default function SupervisorView({
           users={users}
           messages={messages}
           onSendMessage={onSendMessage}
+          onClearChat={onClearChat}
           onMarkAsRead={onMarkAsRead}
         />
       </div>
