@@ -15,9 +15,12 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Faltan fechas' }, { status: 400 });
     }
 
-    // Set ISO boundaries to include full days
-    const startISO = `${startDate}T00:00:00.000Z`;
-    const endISO = `${endDate}T23:59:59.999Z`;
+    // Set ISO boundaries for Venezuela time (UTC-4)
+    // 00:00:00 local is 04:00:00 UTC
+    const startISO = `${startDate}T04:00:00.000Z`;
+    // For end date, add 1 day and use 03:59:59.999Z
+    const nextDay = new Date(new Date(endDate).getTime() + 24*60*60*1000);
+    const endISO = `${nextDay.toISOString().split('T')[0]}T03:59:59.999Z`;
 
     // Fetch documents
     const documents = [];
@@ -83,6 +86,13 @@ export async function GET(request) {
       currDate.setUTCDate(currDate.getUTCDate() + 1);
     }
 
+    // Helper to get local Venezuela time from ISO string
+    function toVenezuelaDate(isoStr) {
+      const d = new Date(isoStr);
+      d.setUTCHours(d.getUTCHours() - 4);
+      return d;
+    }
+
     const analysts = {};
     
     filteredDocs.forEach(d => {
@@ -94,11 +104,11 @@ export async function GET(request) {
         sentimiento = d.reportData.sentimiento.toUpperCase();
       }
 
-      const dt = new Date(d.timestamp || d.fechaHora);
-      const day = String(dt.getDate()).padStart(2, '0');
-      const month = String(dt.getMonth() + 1).padStart(2, '0');
+      const dt = toVenezuelaDate(d.timestamp || d.fechaHora);
+      const day = String(dt.getUTCDate()).padStart(2, '0');
+      const month = String(dt.getUTCMonth() + 1).padStart(2, '0');
       const dateStr = `${day}/${month}`;
-      const hourStr = dt.getHours();
+      const hourStr = dt.getUTCHours();
 
       if (!analysts[name]) {
         analysts[name] = { 
