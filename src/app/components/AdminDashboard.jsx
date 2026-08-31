@@ -262,14 +262,18 @@ export default function AdminDashboard({
     if (analystDateFrom || analystDateTo) {
       // Custom date range overrides global timeFilter
       analystSubs = targetSubmissions.filter((s) => {
-        const localDate = toLocalDateStr(s.timestamp);
+        const localDate = toLocalDateStr(s.timestamp || s.fechaHora);
         const fromOk = analystDateFrom ? localDate >= analystDateFrom : true;
         const toOk = analystDateTo ? localDate <= analystDateTo : true;
-        return (s.analystId === a.id || s.analystEmail === a.email) && fromOk && toOk;
+        return (
+          (s.analystId === a.id || s.analystEmail === a.email || (s.analystName && s.analystName.trim() === a.name.trim())) &&
+          fromOk &&
+          toOk
+        );
       });
     } else {
       analystSubs = allFilteredSubmissions.filter(
-        (s) => s.analystId === a.id || s.analystEmail === a.email
+        (s) => s.analystId === a.id || s.analystEmail === a.email || (s.analystName && s.analystName.trim() === a.name.trim())
       );
     }
 

@@ -91,30 +91,51 @@ export async function GET(request) {
       else break;
     }
 
-    const filteredDocs = documents.filter(d => {
-      const ts = d.timestamp || d.fechaHora;
-      return ts && ts >= startISO && ts <= endISO;
+    // Helper: getEventTimestamp (Matches Dashboard)
+    const getEventTimestamp = (obj) => {
+      if (!obj) return 0;
+      try {
+        const fechaRaw = obj.reportData?.fechaRaw || obj.fechaRaw;
+        const horaRaw = obj.reportData?.horaRaw || obj.horaRaw;
+        if (fechaRaw && horaRaw) {
+          const dateStr = `${fechaRaw}T${horaRaw}`;
+          const time = new Date(dateStr).getTime();
+          if (!isNaN(time)) return time;
+        }
+      } catch (err) {}
+      const ts = obj.timestamp || obj.fechaHora || obj.fecha;
+      if (ts) {
+        const time = new Date(ts).getTime();
+        if (!isNaN(time)) return time;
+      }
+      return 0;
+    };
+
+    const toLocalDateStr = (tsNumber) => {
+      if (!tsNumber) return '';
+      const d = new Date(tsNumber);
+      const y = d.getFullYear();
+      const mo = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${mo}-${day}`;
+    };
+
+    const filteredDocs = parsedDocs.filter(d => {
+      const eventTs = getEventTimestamp(d) || new Date(d.timestamp || d.fechaHora).getTime();
+      const localDate = toLocalDateStr(eventTs);
+      return localDate && localDate >= startDate && localDate <= endDate && d.status !== 'repetido';
     });
 
     // Generate dates array strictly based on selection
     const allDates = [];
-    let currDate = new Date(startDate);
-    const lastDate = new Date(endDate);
-    currDate.setUTCHours(0,0,0,0);
-    lastDate.setUTCHours(0,0,0,0);
+    let currDate = new Date(startDate + 'T12:00:00Z');
+    const lastDate = new Date(endDate + 'T12:00:00Z');
 
     while (currDate <= lastDate) {
       const day = String(currDate.getUTCDate()).padStart(2, '0');
       const month = String(currDate.getUTCMonth() + 1).padStart(2, '0');
       allDates.push(`${day}/${month}`);
       currDate.setUTCDate(currDate.getUTCDate() + 1);
-    }
-
-    // Helper to get local Venezuela time from ISO string
-    function toVenezuelaDate(isoStr) {
-      const d = new Date(isoStr);
-      d.setUTCHours(d.getUTCHours() - 4);
-      return d;
     }
 
     // Group by Sala
@@ -131,11 +152,11 @@ export async function GET(request) {
         sentimiento = d.reportData.sentimiento.toUpperCase();
       }
 
-      const dt = toVenezuelaDate(d.timestamp || d.fechaHora);
-      const day = String(dt.getUTCDate()).padStart(2, '0');
-      const month = String(dt.getUTCMonth() + 1).padStart(2, '0');
-      const dateStr = `${day}/${month}`;
-      const hourStr = dt.getUTCHours();
+      const eventTs = getEventTimestamp(d) || new Date(d.timestamp || d.fechaHora).getTime();
+      const localDate = toLocalDateStr(eventTs); // "YYYY-MM-DD"
+      const dateParts = localDate.split('-'); // [YYYY, MM, DD]
+      const dateStr = `${dateParts[2]}/${dateParts[1]}`;
+      const hourStr = new Date(eventTs).getHours();
 
       if (!salas[salaName]) {
         salas[salaName] = { 
