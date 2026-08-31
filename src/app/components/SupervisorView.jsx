@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState } from 'react';
 import CanvasEditor from '../components/CanvasEditor';
 import StatsView from '../components/StatsView';
 import ProfileView from '../components/ProfileView';
@@ -52,10 +53,99 @@ export default function SupervisorView({
   loadDashboardStats,
   dashboardLoading,
 }) {
+  const [reportStartDate, setReportStartDate] = useState('');
+  const [reportEndDate, setReportEndDate] = useState('');
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [isDownloadingPdfSalas, setIsDownloadingPdfSalas] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (!reportStartDate || !reportEndDate) {
+      alert("Por favor selecciona una fecha de inicio y fin para el reporte.");
+      return;
+    }
+    setIsDownloadingPdf(true);
+    try {
+      const response = await fetch(`/api/generate-pdf?startDate=${reportStartDate}&endDate=${reportEndDate}`);
+      if (!response.ok) throw new Error("Error al generar PDF");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Reporte_Analistas_${reportStartDate}_al_${reportEndDate}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch(err) {
+      console.error(err);
+      alert("Error al descargar el PDF. Asegúrate de que el servidor está corriendo correctamente.");
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
+  const handleDownloadPdfSalas = async () => {
+    if (!reportStartDate || !reportEndDate) {
+      alert("Por favor selecciona una fecha de inicio y fin para el reporte.");
+      return;
+    }
+    setIsDownloadingPdfSalas(true);
+    try {
+      const response = await fetch(`/api/generate-pdf-salas?startDate=${reportStartDate}&endDate=${reportEndDate}`);
+      if (!response.ok) throw new Error("Error al generar PDF");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Reporte_Salas_${reportStartDate}_al_${reportEndDate}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch(err) {
+      console.error(err);
+      alert("Error al descargar el PDF. Asegúrate de que el servidor está corriendo correctamente.");
+    } finally {
+      setIsDownloadingPdfSalas(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* ── HEADER ACCIONES GLOBALES ── */}
-      <div className="flex justify-end mb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+        <div className="flex flex-wrap items-center gap-2 bg-white p-2 rounded-lg shadow-sm border border-slate-200">
+          <input
+            type="date"
+            value={reportStartDate}
+            onChange={e => setReportStartDate(e.target.value)}
+            className="text-xs p-1 border border-slate-300 rounded"
+            title="Fecha Inicio"
+          />
+          <span className="text-slate-500 text-xs">hasta</span>
+          <input
+            type="date"
+            value={reportEndDate}
+            onChange={e => setReportEndDate(e.target.value)}
+            className="text-xs p-1 border border-slate-300 rounded"
+            title="Fecha Fin"
+          />
+          <button
+            onClick={handleDownloadPdf}
+            disabled={isDownloadingPdf}
+            className={`flex items-center gap-2 py-1.5 px-3 rounded text-xs font-bold text-white shadow-sm transition-colors ${
+              isDownloadingPdf ? 'bg-slate-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 cursor-pointer'
+            }`}
+          >
+            {isDownloadingPdf ? '⏳...' : '📄 Reporte Analistas'}
+          </button>
+          <button
+            onClick={handleDownloadPdfSalas}
+            disabled={isDownloadingPdfSalas}
+            className={`flex items-center gap-2 py-1.5 px-3 rounded text-xs font-bold text-white shadow-sm transition-colors ${
+              isDownloadingPdfSalas ? 'bg-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 cursor-pointer'
+            }`}
+          >
+            {isDownloadingPdfSalas ? '⏳...' : '🏢 Reporte Salas'}
+          </button>
+        </div>
+
         <button
           onClick={handleBackupAndClear}
           className="flex items-center gap-2 py-2 px-4 rounded-full text-xs font-bold text-white bg-red-600 hover:bg-red-700 shadow-md cursor-pointer"
