@@ -52,7 +52,7 @@ export async function GET(request) {
       const json = await res.json();
       if (json.documents) {
         users.push(...json.documents.map(doc => {
-          const data = {};
+          const data = { id: doc.name.split('/').pop() };
           for (const [k, v] of Object.entries(doc.fields || {})) data[k] = parseFirestoreValue(v);
           return data;
         }));
@@ -61,12 +61,14 @@ export async function GET(request) {
       else break;
     }
 
-    // Map analyst names to sala
+    // Map analyst ID to sala
     const userToSalaMap = {};
     users.forEach(u => {
-      const name = (u.name || u.nombres || '').trim();
-      const sala = (u.sala || 'Sin Sala').trim();
-      if (name) userToSalaMap[name] = sala;
+      const id = u.id;
+      let sala = (u.sala || 'Sin Sala').trim();
+      if (sala === 'Sala Posicionamiento de Gestión') sala = 'Sala Gestión';
+      if (sala === 'Sala de Análisis y Acción Estrategica') sala = 'Sala SAAE';
+      if (id) userToSalaMap[id] = sala;
     });
 
     // 2. Fetch Submissions
@@ -119,10 +121,10 @@ export async function GET(request) {
     const salas = {};
     
     filteredDocs.forEach(d => {
-      const analystName = (d.analystName || d.nombre || 'Desconocido').trim();
+      const analystId = d.analystId;
       
       // Determine the sala for this submission
-      const salaName = userToSalaMap[analystName] || 'Sin Sala';
+      const salaName = (analystId && userToSalaMap[analystId]) ? userToSalaMap[analystId] : (d.analystSala || 'Sin Sala');
       
       let sentimiento = 'NEUTRO';
       if (d.reportData && d.reportData.sentimiento) {

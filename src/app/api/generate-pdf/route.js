@@ -61,6 +61,31 @@ export async function GET(request) {
       return `https://quickchart.io/chart?w=450&h=250&c=${encodeURIComponent(JSON.stringify(config))}`;
     }
 
+    // 1. Fetch Users
+    const users = [];
+    let usersToken = '';
+    while (true) {
+      let url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users?pageSize=300`;
+      if (usersToken) url += `&pageToken=${encodeURIComponent(usersToken)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Users fetch error! status: ${res.status}`);
+      const json = await res.json();
+      if (json.documents) {
+        users.push(...json.documents.map(doc => {
+          const data = { id: doc.name.split('/').pop() };
+          for (const [k, v] of Object.entries(doc.fields || {})) data[k] = parseFirestoreValue(v);
+          return data;
+        }));
+      }
+      if (json.nextPageToken) usersToken = json.nextPageToken;
+      else break;
+    }
+
+    const userMap = {};
+    users.forEach(u => {
+      if (u.id) userMap[u.id] = u;
+    });
+
     const parsedDocs = documents.map(doc => {
       const data = {};
       for (const [k, v] of Object.entries(doc.fields || {})) data[k] = parseFirestoreValue(v);
@@ -96,8 +121,15 @@ export async function GET(request) {
     const analysts = {};
     
     filteredDocs.forEach(d => {
-      const name = (d.analystName || d.nombre || 'Desconocido').trim();
-      const email = (d.analystEmail || d.email || 'N/A').trim();
+      let analystName = (d.analystName || d.nombre || 'Desconocido').trim();
+      let email = d.analystEmail || '';
+      
+      const analystId = d.analystId;
+      if (analystId && userMap[analystId]) {
+        const u = userMap[analystId];
+        analystName = (u.name || u.nombres || analystName).trim();
+        email = u.email || email;
+      }
       
       let sentimiento = 'NEUTRO';
       if (d.reportData && d.reportData.sentimiento) {
