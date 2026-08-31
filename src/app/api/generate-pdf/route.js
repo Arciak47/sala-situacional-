@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium-min';
 
 export const maxDuration = 60; // Allow more time on Vercel Pro if deployed
 export const dynamic = 'force-dynamic';
@@ -263,7 +264,17 @@ export async function GET(request) {
     html += `</body></html>`;
     
     // Launch Puppeteer headless and generate buffer
-    const browser = await puppeteer.launch({ headless: 'new' });
+    const isLocal = !!process.env.NEXT_PUBLIC_IS_LOCAL;
+    const browser = await puppeteer.launch({
+      args: isLocal ? [] : chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: isLocal 
+        ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+        : await chromium.executablePath(
+            `https://github.com/Sparticuz/chromium/releases/download/v121.0.0/chromium-v121.0.0-pack.tar`
+          ),
+      headless: chromium.headless,
+    });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
     
