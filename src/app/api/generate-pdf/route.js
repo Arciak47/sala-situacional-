@@ -10,6 +10,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate'); // YYYY-MM-DD
     const endDate = searchParams.get('endDate'); // YYYY-MM-DD
+    const shift = searchParams.get('shift') || 'all'; // 'all', 't1', 't2', 't3'
 
     if (!startDate || !endDate) {
       return NextResponse.json({ error: 'Faltan fechas' }, { status: 400 });
@@ -124,7 +125,16 @@ export async function GET(request) {
     const filteredDocs = parsedDocs.filter(d => {
       const eventTs = getEventTimestamp(d) || new Date(d.timestamp || d.fechaHora).getTime();
       const localDate = toLocalDateStr(eventTs);
-      return localDate && localDate >= startDate && localDate <= endDate && d.status !== 'repetido';
+      
+      let isDateValid = localDate && localDate >= startDate && localDate <= endDate && d.status !== 'repetido';
+      if (!isDateValid) return false;
+
+      if (shift === 'all') return true;
+      const hour = new Date(eventTs).getHours();
+      if (shift === 't1') return hour >= 7 && hour <= 12;
+      if (shift === 't2') return hour >= 13 && hour <= 18;
+      if (shift === 't3') return hour >= 19 && hour <= 23;
+      return true;
     });
 
     // Generate dates array strictly based on selection
@@ -163,29 +173,29 @@ export async function GET(request) {
       const dateStr = `${dateParts[2]}/${dateParts[1]}`;
       const hourStr = new Date(eventTs).getHours();
 
-      if (!analysts[name]) {
-        analysts[name] = { 
+      if (!analysts[analystName]) {
+        analysts[analystName] = { 
           email, 
           total: 0, 
           sentimiento: { POSITIVO: 0, NEGATIVO: 0, NEUTRO: 0 }, 
           byDate: {}, 
           byHour: Array(24).fill(0) 
         };
-        allDates.forEach(d => analysts[name].byDate[d] = 0);
+        allDates.forEach(d => analysts[analystName].byDate[d] = 0);
       }
       
-      analysts[name].total++;
+      analysts[analystName].total++;
       
-      if (analysts[name].sentimiento[sentimiento] !== undefined) {
-        analysts[name].sentimiento[sentimiento]++;
+      if (analysts[analystName].sentimiento[sentimiento] !== undefined) {
+        analysts[analystName].sentimiento[sentimiento]++;
       } else {
-        analysts[name].sentimiento.NEUTRO++;
+        analysts[analystName].sentimiento.NEUTRO++;
       }
       
-      if(analysts[name].byDate[dateStr] !== undefined) {
-        analysts[name].byDate[dateStr]++;
+      if(analysts[analystName].byDate[dateStr] !== undefined) {
+        analysts[analystName].byDate[dateStr]++;
       }
-      analysts[name].byHour[hourStr]++;
+      analysts[analystName].byHour[hourStr]++;
     });
 
     let html = `
@@ -214,7 +224,7 @@ export async function GET(request) {
       </div>
     `;
 
-    for (const [name, data] of Object.entries(analysts).sort((a,b) => b[1].total - a[1].total)) {
+    for (const [analystName, data] of Object.entries(analysts).sort((a,b) => b[1].total - a[1].total)) {
       if (data.total === 0) continue;
       
       const maxSentiment = Object.keys(data.sentimiento).reduce((a, b) => data.sentimiento[a] > data.sentimiento[b] ? a : b);
@@ -281,7 +291,7 @@ export async function GET(request) {
       <div class="page break-inside-avoid">
         <div class="flex items-center justify-between border-b-2 border-slate-200 pb-2 mb-4">
           <div>
-            <h2 class="text-3xl font-bold text-slate-800">${name}</h2>
+            <h2 class="text-3xl font-bold text-slate-800">${analystName}</h2>
             <p class="text-slate-500">${data.email}</p>
           </div>
           <div class="text-right">

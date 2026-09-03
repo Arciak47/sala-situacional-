@@ -10,6 +10,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate'); // YYYY-MM-DD
     const endDate = searchParams.get('endDate'); // YYYY-MM-DD
+    const shift = searchParams.get('shift') || 'all'; // 'all', 't1', 't2', 't3'
 
     if (!startDate || !endDate) {
       return NextResponse.json({ error: 'Faltan fechas' }, { status: 400 });
@@ -123,7 +124,16 @@ export async function GET(request) {
     const filteredDocs = documents.filter(d => {
       const eventTs = getEventTimestamp(d) || new Date(d.timestamp || d.fechaHora).getTime();
       const localDate = toLocalDateStr(eventTs);
-      return localDate && localDate >= startDate && localDate <= endDate && d.status !== 'repetido';
+      
+      let isDateValid = localDate && localDate >= startDate && localDate <= endDate && d.status !== 'repetido';
+      if (!isDateValid) return false;
+
+      if (shift === 'all') return true;
+      const hour = new Date(eventTs).getHours();
+      if (shift === 't1') return hour >= 7 && hour <= 12;
+      if (shift === 't2') return hour >= 13 && hour <= 18;
+      if (shift === 't3') return hour >= 19 && hour <= 23;
+      return true;
     });
 
     // Generate dates array strictly based on selection

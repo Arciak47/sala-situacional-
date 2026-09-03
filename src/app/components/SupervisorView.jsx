@@ -57,6 +57,7 @@ export default function SupervisorView({
   const [reportEndDate, setReportEndDate] = useState('');
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [isDownloadingPdfSalas, setIsDownloadingPdfSalas] = useState(false);
+  const [reportShift, setReportShift] = useState('all');
 
   const handleDownloadPdf = async () => {
     if (!reportStartDate || !reportEndDate) {
@@ -65,7 +66,7 @@ export default function SupervisorView({
     }
     setIsDownloadingPdf(true);
     try {
-      const response = await fetch(`/api/generate-pdf?startDate=${reportStartDate}&endDate=${reportEndDate}`);
+      const response = await fetch(`/api/generate-pdf?startDate=${reportStartDate}&endDate=${reportEndDate}&shift=${reportShift}`);
       if (!response.ok) throw new Error("Error al generar PDF");
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -89,7 +90,7 @@ export default function SupervisorView({
     }
     setIsDownloadingPdfSalas(true);
     try {
-      const response = await fetch(`/api/generate-pdf-salas?startDate=${reportStartDate}&endDate=${reportEndDate}`);
+      const response = await fetch(`/api/generate-pdf-salas?startDate=${reportStartDate}&endDate=${reportEndDate}&shift=${reportShift}`);
       if (!response.ok) throw new Error("Error al generar PDF");
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -126,6 +127,17 @@ export default function SupervisorView({
             className="text-xs p-1 border border-slate-300 rounded"
             title="Fecha Fin"
           />
+          <select
+            value={reportShift}
+            onChange={e => setReportShift(e.target.value)}
+            className="text-xs p-1 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            title="Seleccionar Turno"
+          >
+            <option value="all">Jornada Completa</option>
+            <option value="t1">T1 (07am - 01pm)</option>
+            <option value="t2">T2 (01pm - 07pm)</option>
+            <option value="t3">T3 (07pm - 12am)</option>
+          </select>
           <button
             onClick={handleDownloadPdf}
             disabled={isDownloadingPdf}
