@@ -120,7 +120,7 @@ export async function GET(request) {
       return `${y}-${mo}-${day}`;
     };
 
-    const filteredDocs = parsedDocs.filter(d => {
+    const filteredDocs = documents.filter(d => {
       const eventTs = getEventTimestamp(d) || new Date(d.timestamp || d.fechaHora).getTime();
       const localDate = toLocalDateStr(eventTs);
       return localDate && localDate >= startDate && localDate <= endDate && d.status !== 'repetido';
