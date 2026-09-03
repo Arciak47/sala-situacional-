@@ -237,34 +237,6 @@ export async function GET(request) {
       activeHoursList.sort((a,b) => b.count - a.count);
       const topHours = activeHoursList.slice(0, 3).map(h => `${h.hour}:00 (${h.count} reps)`).join(', ');
 
-      const dailyData = allDates.map(d => data.byDate[d]);
-      const dailyChartUrl = getChartUrl({
-        type: 'line',
-        data: {
-          labels: allDates,
-          datasets: [{
-            label: 'Reportes por Día',
-            data: dailyData,
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-            fill: true
-          }]
-        },
-        options: { title: {display: true, text: 'Actividad Diaria'}, legend: {display: false} }
-      });
-
-      const sentimentChartUrl = getChartUrl({
-        type: 'doughnut',
-        data: {
-          labels: ['Positivo', 'Negativo', 'Neutro'],
-          datasets: [{
-            data: [data.sentimiento.POSITIVO, data.sentimiento.NEGATIVO, data.sentimiento.NEUTRO],
-            backgroundColor: ['#10b981', '#ef4444', '#f59e0b']
-          }]
-        },
-        options: { title: {display: true, text: 'Sentimiento'} }
-      });
-
       let rowsHtml = '';
       const numRows = Math.ceil(allDates.length / 2);
       for (let i = 0; i < numRows; i++) {
@@ -305,12 +277,17 @@ export async function GET(request) {
           <p class="text-base mt-1"><strong>Horas de Mayor Actividad:</strong> ${topHours || 'N/A'}.</p>
         </div>
 
-        <div class="flex flex-row justify-center gap-4 mb-4" style="height: 250px;">
-          <div class="w-1/2 flex items-center justify-center">
-            <img src="${dailyChartUrl}" alt="Tendencia" class="max-w-full max-h-full object-contain border rounded-lg shadow-sm bg-white">
+        <div class="mb-6">
+          <h3 class="text-sm font-bold mb-2 text-slate-700">Distribución de Sentimiento</h3>
+          <div class="w-full flex h-4 rounded-full overflow-hidden bg-slate-200">
+            <div style="width: ${(data.sentimiento.POSITIVO/data.total)*100}%" class="bg-emerald-500"></div>
+            <div style="width: ${(data.sentimiento.NEUTRO/data.total)*100}%" class="bg-amber-500"></div>
+            <div style="width: ${(data.sentimiento.NEGATIVO/data.total)*100}%" class="bg-rose-500"></div>
           </div>
-          <div class="w-1/2 flex items-center justify-center">
-            <img src="${sentimentChartUrl}" alt="Sentimiento" class="max-w-full max-h-full object-contain border rounded-lg shadow-sm bg-white">
+          <div class="flex justify-between text-xs text-slate-600 mt-2 font-medium">
+            <span class="text-emerald-600">Positivo: ${data.sentimiento.POSITIVO}</span>
+            <span class="text-amber-600">Neutro: ${data.sentimiento.NEUTRO}</span>
+            <span class="text-rose-600">Negativo: ${data.sentimiento.NEGATIVO}</span>
           </div>
         </div>
 
