@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { exportSubmissionsToHDPDF } from '../lib/exportUtils';
 import { AREAS, getEventHour, getEventTimestamp } from '../lib/constants';
 import { collection, query, where, orderBy, limit, startAfter, onSnapshot, getCountFromServer, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '@/lib/firebase';
 
 export default function SubmissionInboxView({
   submissions = [], // Mantenido por compatibilidad si se sigue pasando la prop
