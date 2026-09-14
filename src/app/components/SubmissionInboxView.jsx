@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { exportSubmissionsToHDPDF } from '../lib/exportUtils';
 import { AREAS, getEventHour, getEventTimestamp } from '../lib/constants';
-import { collection, query, where, orderBy, limit, startAfter, onSnapshot, getCountFromServer, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export default function SubmissionInboxView({
@@ -29,113 +29,24 @@ export default function SubmissionInboxView({
 
   // Server-side state
   const [serverSubmissions, setServerSubmissions] = useState([]);
-  const [lastDoc, setLastDoc] = useState(null);
-  const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
 
-  // Función para construir la query base para Firebase (Solo fecha para evitar necesidad de índices compuestos no existentes)
-  const buildBaseQuery = () => {
-    const colRef = collection(db, 'submissions');
-    // Si no hay filtro de fecha, solo ordenamos por timestamp
-    if (!fechaInicio && !fechaFin) {
-      return query(colRef, orderBy('timestamp', 'desc'));
-    }
-
-    let q = query(colRef);
-    if (fechaInicio) {
-      const dateStart = new Date(fechaInicio);
-      dateStart.setHours(0, 0, 0, 0);
-      q = query(q, where('timestamp', '>=', dateStart.toISOString()));
-    }
-    if (fechaFin) {
-      const dateEnd = new Date(fechaFin);
-      dateEnd.setHours(23, 59, 59, 999);
-      q = query(q, where('timestamp', '<=', dateEnd.toISOString()));
-    }
-    // Siempre ordenamos por el mismo campo del filtro de rango
-    q = query(q, orderBy('timestamp', 'desc'));
-    return q;
-  };
-
-  // 1. & 4. Limpieza de Listeners y Paginación Inicial
   useEffect(() => {
-    let unsubscribe = () => {};
-    
-    const fetchInitial = async () => {
-      setIsLoading(true);
-      try {
-        const baseQ = buildBaseQuery();
-        
-        // 3. Conteo Eficiente
-        const snapshotCount = await getCountFromServer(baseQ);
-        setTotalCount(snapshotCount.data().count);
-
-        // Consulta inicial con límite de 50
-        const qList = query(baseQ, limit(50));
-        
-        unsubscribe = onSnapshot(qList, (snapshot) => {
-          const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          
-          // Mantener la lista actualizada y ordenar
-          setServerSubmissions(docs);
-          
-          if (snapshot.docs.length > 0) {
-            setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-          } else {
-            setLastDoc(null);
-          }
-          
-          setHasMore(snapshot.docs.length === 50);
-          setIsLoading(false);
-        }, (error) => {
-          console.error("Error fetching submissions:", error);
-          setIsLoading(false);
-        });
-      } catch (error) {
-        console.error("Error setting up listener:", error);
-        setIsLoading(false);
-      }
-    };
-
-    fetchInitial();
-
-    // Limpieza de Listener al desmontar o cambiar filtro de fecha
-    return () => {
-      unsubscribe();
-    };
-  }, [fechaInicio, fechaFin]);
-
-  // Cargar siguientes 25 registros bajo demanda con startAfter
-  const handleLoadMore = async () => {
-    if (!lastDoc || isLoading) return;
     setIsLoading(true);
+    const colRef = collection(db, 'submissions');
+    const qList = query(colRef, orderBy('timestamp', 'desc'));
     
-    try {
-      const baseQ = buildBaseQuery();
-      const nextQ = query(baseQ, startAfter(lastDoc), limit(25));
-      
-      const snapshot = await getDocs(nextQ);
-      const newDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      setServerSubmissions(prev => {
-        // Evitar duplicados por si un onSnapshot se cruzó
-        const prevIds = new Set(prev.map(item => item.id));
-        const filteredNewDocs = newDocs.filter(doc => !prevIds.has(doc.id));
-        return [...prev, ...filteredNewDocs];
-      });
-      
-      if (snapshot.docs.length > 0) {
-        setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-      }
-      
-      setHasMore(snapshot.docs.length === 25);
-    } catch (error) {
-      console.error("Error loading more:", error);
-    }
-    
-    setIsLoading(false);
-  };
+    const unsubscribe = onSnapshot(qList, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setServerSubmissions(docs);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching submissions:", error);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const toLocalDateStr = (isoStr) => {
     if (!isoStr) return '';
@@ -146,7 +57,7 @@ export default function SubmissionInboxView({
     return `${y}-${mo}-${day}`;
   };
 
-  // Filtrado Client-Side para los demás campos
+  // Filtrado Client-Side
   const filteredSubmissions = serverSubmissions.filter(
     (s) => {
       if (s.archived) return false;
@@ -154,6 +65,13 @@ export default function SubmissionInboxView({
       // Hide from inbox if it is pending a correction from the analyst
       if (s.hasCorrection && s.correctionStatus === 'pending') {
         return false;
+      }
+      
+      // Date filter
+      if (fechaInicio || fechaFin) {
+        const sDateStr = toLocalDateStr(s.timestamp || s.createdAt);
+        if (fechaInicio && sDateStr < fechaInicio) return false;
+        if (fechaFin && sDateStr > fechaFin) return false;
       }
       
       let matchStatus = false;
@@ -382,7 +300,7 @@ export default function SubmissionInboxView({
                 disabled={filteredSubmissions.length === 0}
               />
               <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Seleccionar todos ({totalCount})
+                Seleccionar todos ({filteredSubmissions.length})
               </span>
             </label>
 
@@ -532,17 +450,6 @@ export default function SubmissionInboxView({
           </div>
         )}
 
-        {hasMore && (
-          <div className="mt-6 flex justify-center">
-            <button
-              onClick={handleLoadMore}
-              disabled={isLoading}
-              className={`px-6 py-2 rounded-full text-sm font-bold text-white transition-all shadow-md ${isLoading ? 'bg-slate-500 cursor-not-allowed' : 'bg-slate-800 hover:bg-slate-700 cursor-pointer'}`}
-            >
-              {isLoading ? 'Cargando...' : 'Cargar más reportes (25)'}
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
