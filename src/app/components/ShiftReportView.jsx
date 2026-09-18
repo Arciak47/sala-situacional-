@@ -506,6 +506,7 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
       : 'COMPLETO';
 
   useEffect(() => {
+    let debounceTimer;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -517,12 +518,19 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
 
     const bgImg = new Image();
     bgImg.src = '/canvas-bg.png';
-    bgImg.onload = () => drawFullReport();
-    bgImg.onerror = () => drawFullReport();
+    bgImg.onload = () => triggerDraw();
+    bgImg.onerror = () => triggerDraw();
 
     const logoImg = new Image();
     logoImg.src = '/logo.png';
-    logoImg.onload = () => drawFullReport();
+    logoImg.onload = () => triggerDraw();
+
+    function triggerDraw() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        drawFullReport();
+      }, 150);
+    }
 
     function drawFullReport() {
       if (bgImg.complete && bgImg.naturalWidth) {
@@ -723,7 +731,9 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
       drawWrappedText(ctx, recommendationsText, 630, 495, 500, 22);
     }
 
-    drawFullReport();
+    triggerDraw();
+
+    return () => clearTimeout(debounceTimer);
   }, [
     selectedDate,
     selectedShift,

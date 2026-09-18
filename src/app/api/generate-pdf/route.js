@@ -29,8 +29,14 @@ export async function GET(request) {
     const projectId = 'sala-de-monitoreo';
     const collectionName = 'submissions';
     
+    const fieldsToFetch = [
+      'timestamp', 'fechaHora', 'fecha', 'fechaRaw', 'horaRaw',
+      'reportData', 'status', 'analystName', 'nombre', 'analystEmail', 'analystId'
+    ];
+    const maskParams = fieldsToFetch.map(f => `mask.fieldPaths=${f}`).join('&');
+
     while (true) {
-      let url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?pageSize=300`;
+      let url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?pageSize=300&${maskParams}`;
       if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
