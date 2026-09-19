@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { markAttendance, subscribeTodayAttendanceForUser } from '../lib/attendanceService';
+import { markAttendance, subscribeTodayAttendanceForUser, getVenezuelaDateString, getVenezuelaTimeString } from '../lib/attendanceService';
 
 export default function AnalystAttendanceView({ currentUser, setToastMsg, addLog }) {
   const [loading, setLoading] = useState(false);
@@ -33,9 +33,8 @@ export default function AnalystAttendanceView({ currentUser, setToastMsg, addLog
       
       const clientUserAgent = navigator.userAgent;
 
-      const now = new Date();
-      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const todayStr = getVenezuelaDateString();
+      const timeStr = getVenezuelaTimeString();
 
       // 2. Prepare record data
       const record = {

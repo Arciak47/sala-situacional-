@@ -30,8 +30,12 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
   const signaturesRef = useRef(null);
 
   const getTodayStr = () => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const options = { timeZone: 'America/Caracas', year: 'numeric', month: '2-digit', day: '2-digit' };
+    const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(new Date());
+    const year = parts.find(p => p.type === 'year').value;
+    const month = parts.find(p => p.type === 'month').value;
+    const day = parts.find(p => p.type === 'day').value;
+    return `${year}-${month}-${day}`;
   };
 
   // Filters for history
@@ -40,12 +44,15 @@ export default function AdminAttendanceView({ users, setToastMsg }) {
 
   useEffect(() => {
     const unsubSchedules = subscribeWeeklySchedules(setWeeklySchedules);
-    const unsubAttendance = subscribeAttendance(setAttendance);
     return () => {
       unsubSchedules();
-      unsubAttendance();
     };
   }, []);
+
+  useEffect(() => {
+    const unsubAttendance = subscribeAttendance(filterDate, setAttendance);
+    return () => unsubAttendance();
+  }, [filterDate]);
 
   // When weeklySchedules change or weekId changes, load the corresponding assignments
   useEffect(() => {

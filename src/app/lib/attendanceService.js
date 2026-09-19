@@ -13,6 +13,23 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
+export function getVenezuelaDateString() {
+  const options = { timeZone: 'America/Caracas', year: 'numeric', month: '2-digit', day: '2-digit' };
+  const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(new Date());
+  const year = parts.find(p => p.type === 'year').value;
+  const month = parts.find(p => p.type === 'month').value;
+  const day = parts.find(p => p.type === 'day').value;
+  return `${year}-${month}-${day}`;
+}
+
+export function getVenezuelaTimeString() {
+  const options = { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', hour12: false };
+  const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(new Date());
+  const hour = parts.find(p => p.type === 'hour').value;
+  const minute = parts.find(p => p.type === 'minute').value;
+  return `${hour}:${minute}`;
+}
+
 // ==========================================
 // PLANILLAS SEMANALES (Weekly Schedules)
 // ==========================================
@@ -74,10 +91,15 @@ export async function getWeeklyScheduleForDate(dateStr) {
 // ASISTENCIAS (Attendance)
 // ==========================================
 
-export function subscribeAttendance(onUpdate) {
+export function subscribeAttendance(dateStr, onUpdate) {
   try {
     const colRef = collection(db, 'asistencias');
-    const q = query(colRef, limit(300));
+    let q;
+    if (dateStr) {
+      q = query(colRef, where('fecha', '==', dateStr));
+    } else {
+      q = query(colRef, limit(300));
+    }
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       let remoteAttendance = snapshot.empty ? [] : snapshot.docs.map((d) => ({
@@ -140,8 +162,7 @@ export async function deleteAttendance(recordId) {
 export async function getTodayAttendanceForUser(userId) {
   try {
     const colRef = collection(db, 'asistencias');
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todayStr = getVenezuelaDateString();
     
     const q = query(
       colRef, 
@@ -172,8 +193,7 @@ export async function getTodayAttendanceForUser(userId) {
 export function subscribeTodayAttendanceForUser(userId, onUpdate) {
   try {
     const colRef = collection(db, 'asistencias');
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todayStr = getVenezuelaDateString();
     
     const q = query(
       colRef, 
@@ -187,6 +207,7 @@ export function subscribeTodayAttendanceForUser(userId, onUpdate) {
       }
       const todayRecords = snapshot.docs
         .map(d => d.data())
+        .filter(d => d.fecha === todayStr)
         .sort((a, b) => {
           // Fallback to timestamp in ID if serverTime is null (e.g. pending local write)
           const fallbackTimeA = parseInt(a.id?.split('-').pop()) || Date.now();
