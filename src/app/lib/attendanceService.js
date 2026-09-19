@@ -207,7 +207,6 @@ export function subscribeTodayAttendanceForUser(userId, onUpdate) {
       }
       const todayRecords = snapshot.docs
         .map(d => d.data())
-        .filter(d => d.fecha === todayStr)
         .sort((a, b) => {
           // Fallback to timestamp in ID if serverTime is null (e.g. pending local write)
           const fallbackTimeA = parseInt(a.id?.split('-').pop()) || Date.now();

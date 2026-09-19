@@ -81,8 +81,8 @@ export default function AnalystAttendanceView({ currentUser, setToastMsg, addLog
 
   if (latestRecord) {
     const fallbackTime = parseInt(latestRecord.id?.split('-').pop()) || Date.now();
-    const recordTime = latestRecord.serverTime?.toMillis ? latestRecord.serverTime.toMillis() : fallbackTime;
-    const hoursSinceLast = (Date.now() - recordTime) / (1000 * 60 * 60);
+    // Use fallbackTime for local duration calculation to avoid local clock skew issues against serverTime
+    const hoursSinceLast = (Date.now() - fallbackTime) / (1000 * 60 * 60);
 
     if (latestRecord.type === 'Entrada') {
       if (hoursSinceLast < 16) {
