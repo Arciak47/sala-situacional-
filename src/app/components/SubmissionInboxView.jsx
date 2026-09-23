@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { exportSubmissionsToHDPDF } from '../lib/exportUtils';
 import { AREAS, getEventHour, getEventTimestamp } from '../lib/constants';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, limit, startAfter, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+
+const PAGE_SIZE = 300;
 
 export default function SubmissionInboxView({
   submissions = [], // Mantenido por compatibilidad si se sigue pasando la prop
@@ -30,23 +32,52 @@ export default function SubmissionInboxView({
   // Server-side state
   const [serverSubmissions, setServerSubmissions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const lastDocRef = useRef(null);
 
+  // Initial load: first 300 records
   useEffect(() => {
-    setIsLoading(true);
-    const colRef = collection(db, 'submissions');
-    const qList = query(colRef, orderBy('timestamp', 'desc'));
-    
-    const unsubscribe = onSnapshot(qList, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setServerSubmissions(docs);
-      setIsLoading(false);
-    }, (error) => {
-      console.error("Error fetching submissions:", error);
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
+    let cancelled = false;
+    const loadInitial = async () => {
+      setIsLoading(true);
+      try {
+        const colRef = collection(db, 'submissions');
+        const q = query(colRef, orderBy('timestamp', 'desc'), limit(PAGE_SIZE));
+        const snapshot = await getDocs(q);
+        if (cancelled) return;
+        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setServerSubmissions(docs);
+        lastDocRef.current = snapshot.docs[snapshot.docs.length - 1] || null;
+        setHasMore(snapshot.docs.length === PAGE_SIZE);
+      } catch (error) {
+        if (!cancelled) console.error('Error fetching submissions:', error);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+    loadInitial();
+    return () => { cancelled = true; };
   }, []);
+
+  // Load next page of 300
+  const handleLoadMore = async () => {
+    if (isLoadingMore || !hasMore || !lastDocRef.current) return;
+    setIsLoadingMore(true);
+    try {
+      const colRef = collection(db, 'submissions');
+      const q = query(colRef, orderBy('timestamp', 'desc'), startAfter(lastDocRef.current), limit(PAGE_SIZE));
+      const snapshot = await getDocs(q);
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setServerSubmissions(prev => [...prev, ...docs]);
+      lastDocRef.current = snapshot.docs[snapshot.docs.length - 1] || null;
+      setHasMore(snapshot.docs.length === PAGE_SIZE);
+    } catch (error) {
+      console.error('Error loading more submissions:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   const toLocalDateStr = (isoStr) => {
     if (!isoStr) return '';
@@ -447,6 +478,39 @@ export default function SubmissionInboxView({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* LOAD MORE BUTTON */}
+        {serverSubmissions.length > 0 && (hasMore || isLoadingMore) && (
+          <div className="flex flex-col items-center gap-2 pt-4 pb-2">
+            <button
+              onClick={handleLoadMore}
+              disabled={isLoadingMore}
+              className="px-6 py-2.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-slate-700 to-slate-900 dark:from-slate-600 dark:to-slate-800 hover:from-slate-800 hover:to-black disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+            >
+              {isLoadingMore ? (
+                <>
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Cargando...
+                </>
+              ) : (
+                <>
+                  <span>📂</span>
+                  Ver {PAGE_SIZE} más
+                  <span className="text-[10px] font-medium opacity-70">({serverSubmissions.length} cargados)</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* END OF LIST INDICATOR */}
+        {serverSubmissions.length > 0 && !hasMore && !isLoadingMore && (
+          <div className="flex items-center justify-center pt-4 pb-2">
+            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-600 bg-slate-100 dark:bg-slate-800/60 px-4 py-1.5 rounded-full">
+              ✅ Todos los registros cargados ({serverSubmissions.length} en total)
+            </span>
           </div>
         )}
 
