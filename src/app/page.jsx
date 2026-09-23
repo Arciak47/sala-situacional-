@@ -976,11 +976,11 @@ export default function Home() {
         if (existing) {
           const updatedSub = { ...existing, status: 'revisado' };
           setSubmissions((prev) => prev.map((s) => (s.id === subId ? updatedSub : s)));
-          await Promise.race([
-            updateSubmissionStatus(subId, 'revisado'),
-            new Promise(r => setTimeout(r, 4000))
-          ]);
         }
+        await Promise.race([
+          updateSubmissionStatus(subId, 'revisado'),
+          new Promise(r => setTimeout(r, 4000))
+        ]);
       }
       addLog(currentUser.email, 'Reporte Revisado', `ID: ${subId}`, 'success');
       setToastMsg('✅ Marcado como revisado.');
@@ -1007,11 +1007,11 @@ export default function Home() {
         if (existing) {
           const updatedSub = { ...existing, status: 'repetido' };
           setSubmissions((prev) => prev.map((s) => (s.id === subId ? updatedSub : s)));
-          await Promise.race([
-            updateSubmissionStatus(subId, 'repetido'),
-            new Promise(r => setTimeout(r, 4000))
-          ]);
         }
+        await Promise.race([
+          updateSubmissionStatus(subId, 'repetido'),
+          new Promise(r => setTimeout(r, 4000))
+        ]);
       }
       addLog(currentUser.email, 'Reporte Repetido', `ID: ${subId}`, 'warning');
       setToastMsg('⚠️ Marcado como repetido.');
@@ -1040,11 +1040,11 @@ export default function Home() {
         if (existing) {
           const updatedSub = { ...existing, status: 'reportar' };
           setSubmissions((prev) => prev.map((s) => (s.id === subId ? updatedSub : s)));
-          await Promise.race([
-            updateSubmissionStatus(subId, 'reportar'),
-            new Promise(r => setTimeout(r, 4000))
-          ]);
         }
+        await Promise.race([
+          updateSubmissionStatus(subId, 'reportar'),
+          new Promise(r => setTimeout(r, 4000))
+        ]);
       }
       addLog(currentUser.email, 'Reporte para Reportar', `ID: ${subId}`, 'info');
       setToastMsg('📢 Marcado para reportar correctamente.');
