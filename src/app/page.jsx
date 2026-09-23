@@ -54,6 +54,7 @@ import {
   fetchAnalystStats,
   updateUserPresence,
   deleteMessageFromFirestore,
+  fetchAllActiveSubmissionsForBackup,
 } from './lib/firestoreService';
 
 export default function Home() {
@@ -1083,10 +1084,18 @@ export default function Home() {
         
         const zip = new JSZip();
         
-        const activeToArchive = submissions.filter(s => !s.archived);
+        setToastMsg('📦 Obteniendo historial completo de reportes activos... (Esto puede tomar unos segundos)');
+        // FETCH ALL ACTIVE REPORTS FROM FIRESTORE DIRECTLY (ignoring local 500 limit)
+        const activeToArchive = await fetchAllActiveSubmissionsForBackup();
         
+        if (activeToArchive.length === 0) {
+           setToastMsg('⚠️ No hay reportes pendientes por respaldar.');
+           return;
+        }
+
+        setToastMsg(`📦 Respaldando ${activeToArchive.length} reportes...`);
         // Agregar Excel en vez de JSON (mantiene toda la data cargada)
-        const excelBlob = getExcelBlob(submissions);
+        const excelBlob = getExcelBlob(activeToArchive);
         if (excelBlob) {
           zip.file("Base_de_Datos.xls", excelBlob);
         }
@@ -1120,12 +1129,17 @@ export default function Home() {
         setToastMsg('✅ Respaldo generado. Limpiando base de datos...');
         
         // ARCHIVAR TODOS LOS REPORTES (LIBERA LA BASE DE DATOS Y FIREBASE STORAGE PERO MANTIENE ESTADÍSTICAS)
-        for (const sub of submissions) {
+        for (const sub of activeToArchive) {
           if (!sub.archived) {
             archiveSubmissionInFirestore(sub.id);
           }
         }
-        setSubmissions(prev => prev.map(s => ({ ...s, archived: true })));
+        
+        // Update local state to reflect them as archived so they disappear from inbox
+        setSubmissions(prev => {
+          const archivedIds = new Set(activeToArchive.map(a => String(a.id)));
+          return prev.map(s => archivedIds.has(String(s.id)) ? { ...s, archived: true } : s);
+        });
         
         addLog(currentUser?.email, 'Cierre del Sistema', 'Se generó respaldo y se limpió la base de datos', 'warning');
         setToastMsg('🚀 Archivo ZIP generado y base de datos limpia.');

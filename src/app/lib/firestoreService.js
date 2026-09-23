@@ -269,6 +269,24 @@ export async function fetchInboxSubmissionsPaginated(lastDoc = null, pageSize = 
   }
 }
 
+export async function fetchAllActiveSubmissionsForBackup() {
+  try {
+    const colRef = collection(db, 'submissions');
+    const snapshot = await getDocs(colRef);
+    if (snapshot.empty) return [];
+    
+    const allDocs = snapshot.docs.map((d) => ({ ...d.data(), firestoreId: d.id, id: d.data().id || d.id }));
+    const activeDocs = allDocs.filter((d) => !d.archived);
+    
+    activeDocs.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+    return activeDocs;
+  } catch (err) {
+    console.error('fetchAllActiveSubmissionsForBackup err:', err);
+    return [];
+  }
+}
+
+
 export async function fetchGlobalStats() {
   try {
     const colRef = collection(db, 'submissions');
