@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { exportCombinedReportAndFichasHDPDF } from '../lib/exportUtils';
 import { addShiftReportRecord, saveShiftReportDraft, getShiftReportDraft } from '../lib/firestoreService';
 import { getEventHour } from '../lib/constants';
@@ -144,6 +144,9 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
   const saveTimerRef = useRef(null);
   const isLoadingDraftRef = useRef(false);
 
+  // Estado del proceso de exportación PDF (bloquea el botón y muestra feedback)
+  const [isExporting, setIsExporting] = useState(false);
+
   const canvasRef = useRef(null);
   const [loadedLogos, setLoadedLogos] = useState({});
 
@@ -172,21 +175,9 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
     });
   }, []);
 
-  // DEBUG: log all submissions with their parsed date/status to diagnose filter issues
-  useEffect(() => {
-    console.group('[ShiftReportView] Submissions recibidas:', submissions.length);
-    submissions.forEach(s => {
-      let subDate = s.reportData?.fechaRaw || s.reportData?.fecha || (s.timestamp ? s.timestamp.split('T')[0] : 'SIN-FECHA');
-      if (subDate.includes('/')) {
-        const parts = subDate.split('/');
-        if (parts.length === 3) subDate = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-      } else if (subDate.includes('T')) {
-        subDate = subDate.split('T')[0];
-      }
-      console.log(`  ID: ${s.id} | status: "${s.status}" | fecha parseada: "${subDate}" | selectedDate: "${selectedDate}" | match: ${subDate === selectedDate}`);
-    });
-    console.groupEnd();
-  }, [submissions, selectedDate]);
+  // [DEBUG BLOCK REMOVED] — El useEffect de console.group fue eliminado porque
+  // iteraba sobre todas las submissions en cada actualización de Firestore,
+  // bloqueando el hilo principal en producción.
 
   // ── AUTO-GUARDADO CON DEBOUNCE (1.5s) ──────────────────────────────────
   // Observa todos los campos del formulario y guarda el borrador en Firestore
@@ -802,40 +793,52 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
 
   const handleExportCombinedPDF = async () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    // Filter the selected submissions from the full list
-    const selectedFichas = submissions.filter(s => selectedFichasIds.includes(s.id));
-    
-    await exportCombinedReportAndFichasHDPDF(canvas, selectedFichas, `Reporte_Completo_${selectedDate}`);
-    
-    // Guardar el registro en el historial de turnos
+    if (!canvas || isExporting) return;
+
+    // ── Activar estado de exportación: bloquea el botón y muestra feedback ──
+    setIsExporting(true);
+
+    // Notificar al sistema de sesión que hay actividad activa para evitar
+    // que el timer de auto-logout expire durante el proceso de exportación.
+    window.dispatchEvent(new MouseEvent('mousemove'));
+
     try {
-      const fichasDetails = selectedFichas.map(f => ({
-        id: f.id,
-        title: f.reportData?.postTitle || 'Ficha sin título',
-        status: f.status || '',
-        imageSrc: f.reportData?.evidenceImageSrc || ''
-      }));
+      // Filter the selected submissions from the full list
+      const selectedFichas = submissions.filter(s => selectedFichasIds.includes(s.id));
 
-      // Extraer imagen miniatura del reporte completo
-      const reportImage = canvas.toDataURL('image/jpeg', 0.5);
+      await exportCombinedReportAndFichasHDPDF(canvas, selectedFichas, `Reporte_Completo_${selectedDate}`);
 
-      const record = {
-        id: Date.now().toString(),
-        fecha: selectedDate,
-        hora: new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
-        creadoPor: currentUser ? `${currentUser.name} (${currentUser.email})` : 'Desconocido',
-        totalFichas: selectedFichas.length,
-        fichasIds: selectedFichasIds,
-        fichasDetails: fichasDetails,
-        reportImage: reportImage,
-        timestamp: new Date().toISOString()
-      };
-      
-      await addShiftReportRecord(record);
-    } catch (error) {
-      console.warn("Error al guardar el historial del turno:", error);
+      // Guardar el registro en el historial de turnos
+      try {
+        const fichasDetails = selectedFichas.map(f => ({
+          id: f.id,
+          title: f.reportData?.postTitle || 'Ficha sin título',
+          status: f.status || '',
+          imageSrc: f.reportData?.evidenceImageSrc || ''
+        }));
+
+        // Extraer imagen miniatura del reporte completo (calidad reducida para Firestore)
+        const reportImage = canvas.toDataURL('image/jpeg', 0.4);
+
+        const record = {
+          id: Date.now().toString(),
+          fecha: selectedDate,
+          hora: new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+          creadoPor: currentUser ? `${currentUser.name} (${currentUser.email})` : 'Desconocido',
+          totalFichas: selectedFichas.length,
+          fichasIds: selectedFichasIds,
+          fichasDetails: fichasDetails,
+          reportImage: reportImage,
+          timestamp: new Date().toISOString()
+        };
+
+        await addShiftReportRecord(record);
+      } catch (error) {
+        console.warn("Error al guardar el historial del turno:", error);
+      }
+    } finally {
+      // Siempre liberar el estado de exportación, incluso si hubo un error
+      setIsExporting(false);
     }
   };
 
@@ -908,63 +911,22 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
             <p className="text-xs text-slate-500 mt-0.5">
               Soporte ampliado para hasta 14 Salas Externas en 2 columnas, valores en 0 y logos oficiales
             </p>
-            {/* Badge de submissions disponibles para la fecha/turno activo */}
-            {(() => {
-              const allForBadge = submissions.filter((s) => {
-                let subDate = '';
-                if (s.reportData?.fechaRaw) {
-                  subDate = s.reportData.fechaRaw;
-                } else if (s.reportData?.fecha) {
-                  subDate = s.reportData.fecha;
-                } else if (s.timestamp) {
-                  const d = new Date(s.timestamp);
-                  if (!isNaN(d)) {
-                    const yyyy = d.getFullYear();
-                    const mm = String(d.getMonth() + 1).padStart(2, '0');
-                    const dd = String(d.getDate()).padStart(2, '0');
-                    subDate = `${yyyy}-${mm}-${dd}`;
-                  } else {
-                    subDate = s.timestamp.split('T')[0];
-                  }
-                }
-
-                if (subDate.includes('/')) {
-                  const parts = subDate.split('/');
-                  if (parts.length === 3) subDate = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-                } else if (subDate.includes('T')) { subDate = subDate.split('T')[0]; }
-                
-                if (selectedDate && subDate !== selectedDate) return false;
-                if (selectedShift === 'all') return true;
-                
-                const hour = getEventHour(s);
-                
-                if (selectedShift === 't1') return hour >= 7 && hour <= 12;
-                if (selectedShift === 't2') return hour >= 13 && hour <= 18;
-                if (selectedShift === 't3') return hour >= 19 && hour <= 23;
-                return true;
-              });
-              
-              const countForBadge = allForBadge.filter(s => (s.status || '').toLowerCase().trim() !== 'repetido').length;
-              const repeatedCount = allForBadge.length - countForBadge;
-              
-              return (
-                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
-                    📊 {countForBadge} reportes {repeatedCount > 0 && `(+${repeatedCount} repetidos)`} en la BD para este turno
-                  </span>
-                  {countForBadge > 0 && !draftLoadedAt && (
-                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-900/40">
-                      ✅ Auto-llenado activo
-                    </span>
-                  )}
-                  {draftLoadedAt && (
-                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-900/40">
-                      📂 Borrador cargado
-                    </span>
-                  )}
-                </div>
-              );
-            })()}
+            {/* Badge de submissions disponibles para la fecha/turno activo (calculado con useMemo) */}
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
+                📊 {badgeStats.countForBadge} reportes {badgeStats.repeatedCount > 0 && `(+${badgeStats.repeatedCount} repetidos)`} en la BD para este turno
+              </span>
+              {badgeStats.countForBadge > 0 && !draftLoadedAt && (
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-900/40">
+                  ✅ Auto-llenado activo
+                </span>
+              )}
+              {draftLoadedAt && (
+                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-900/40">
+                  📂 Borrador cargado
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -1393,9 +1355,35 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
             </button>
             <button
               onClick={handleExportCombinedPDF}
-              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+              disabled={isExporting}
+              className={`px-4 py-2 rounded-xl text-white font-black text-xs shadow-md transition-all flex items-center gap-1.5 ${
+                isExporting
+                  ? 'bg-red-400 cursor-not-allowed opacity-75'
+                  : 'bg-red-600 hover:bg-red-700 cursor-pointer'
+              }`}
+              title={isExporting ? 'Generando PDF, por favor espere…' : 'Exportar reporte + fichas como PDF HD'}
             >
-              <span>📄</span> Exportar Reporte + Fichas (PDF HD)
+              {isExporting ? (
+                <>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: '12px',
+                      height: '12px',
+                      border: '2px solid rgba(255,255,255,0.4)',
+                      borderTopColor: '#fff',
+                      borderRadius: '50%',
+                      animation: 'spin 0.7s linear infinite',
+                    }}
+                  />
+                  Generando PDF…
+                  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                </>
+              ) : (
+                <>
+                  <span>📄</span> Exportar Reporte + Fichas (PDF HD)
+                </>
+              )}
             </button>
           </div>
         </div>

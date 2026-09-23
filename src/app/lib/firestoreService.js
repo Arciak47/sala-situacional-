@@ -207,7 +207,10 @@ export async function saveUsersBatchToFirestore(users) {
 export function subscribeSubmissions(onUpdate) {
   try {
     const colRef = collection(db, 'submissions');
-    const q = query(colRef, orderBy('timestamp', 'desc'));
+    // Limit to the most recent 500 submissions to avoid loading the entire
+    // collection into memory on every real-time update. Historical records
+    // beyond this window are fetched on-demand via fetchInboxSubmissionsPaginated.
+    const q = query(colRef, orderBy('timestamp', 'desc'), limit(500));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const remoteSubs = snapshot.empty
         ? []
