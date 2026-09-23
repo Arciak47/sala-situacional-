@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { exportSubmissionsToHDPDF } from '../lib/exportUtils';
 import { AREAS, getEventHour, getEventTimestamp } from '../lib/constants';
-import { collection, query, orderBy, limit, startAfter, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, startAfter, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 const PAGE_SIZE = 300;
@@ -29,38 +29,44 @@ export default function SubmissionInboxView({
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
 
-  // Server-side state
-  const [serverSubmissions, setServerSubmissions] = useState([]);
+  // Primeros 300 en tiempo real (onSnapshot para que markAsReviewed etc. actualicen la UI)
+  const [liveSubmissions, setLiveSubmissions] = useState([]);
+  // Páginas adicionales cargadas con "Ver más" (estáticas)
+  const [extraSubmissions, setExtraSubmissions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const lastDocRef = useRef(null);
 
-  // Initial load: first 300 records
+  // Combinar live + extra, eliminando duplicados por id
+  const serverSubmissions = (() => {
+    const liveIds = new Set(liveSubmissions.map(s => s.id));
+    const deduped = extraSubmissions.filter(s => !liveIds.has(s.id));
+    return [...liveSubmissions, ...deduped];
+  })();
+
+  // Listener en tiempo real para los primeros 300
   useEffect(() => {
-    let cancelled = false;
-    const loadInitial = async () => {
-      setIsLoading(true);
-      try {
-        const colRef = collection(db, 'submissions');
-        const q = query(colRef, orderBy('timestamp', 'desc'), limit(PAGE_SIZE));
-        const snapshot = await getDocs(q);
-        if (cancelled) return;
-        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setServerSubmissions(docs);
-        lastDocRef.current = snapshot.docs[snapshot.docs.length - 1] || null;
-        setHasMore(snapshot.docs.length === PAGE_SIZE);
-      } catch (error) {
-        if (!cancelled) console.error('Error fetching submissions:', error);
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-    loadInitial();
-    return () => { cancelled = true; };
+    setIsLoading(true);
+    const colRef = collection(db, 'submissions');
+    const q = query(colRef, orderBy('timestamp', 'desc'), limit(PAGE_SIZE));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setLiveSubmissions(docs);
+      // Guardar cursor del último doc para paginación
+      lastDocRef.current = snapshot.docs[snapshot.docs.length - 1] || null;
+      setHasMore(snapshot.docs.length === PAGE_SIZE);
+      setIsLoading(false);
+    }, (error) => {
+      console.error('Error fetching submissions:', error);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  // Load next page of 300
+  // Cargar siguiente página de 300 (estática, solo lectura)
   const handleLoadMore = async () => {
     if (isLoadingMore || !hasMore || !lastDocRef.current) return;
     setIsLoadingMore(true);
@@ -69,8 +75,12 @@ export default function SubmissionInboxView({
       const q = query(colRef, orderBy('timestamp', 'desc'), startAfter(lastDocRef.current), limit(PAGE_SIZE));
       const snapshot = await getDocs(q);
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setServerSubmissions(prev => [...prev, ...docs]);
-      lastDocRef.current = snapshot.docs[snapshot.docs.length - 1] || null;
+      setExtraSubmissions(prev => {
+        const existingIds = new Set(prev.map(s => s.id));
+        const newDocs = docs.filter(d => !existingIds.has(d.id));
+        return [...prev, ...newDocs];
+      });
+      lastDocRef.current = snapshot.docs[snapshot.docs.length - 1] || lastDocRef.current;
       setHasMore(snapshot.docs.length === PAGE_SIZE);
     } catch (error) {
       console.error('Error loading more submissions:', error);
