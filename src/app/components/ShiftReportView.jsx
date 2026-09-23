@@ -899,6 +899,43 @@ export default function ShiftReportView({ submissions = [], users = [], currentU
     return true;
   });
 
+  // ── Memoizar el cálculo del badge para no repetirlo en cada render ──
+  // Depende solo de submissions, selectedDate y selectedShift.
+  const badgeStats = useMemo(() => {
+    const allForBadge = submissions.filter((s) => {
+      let subDate = '';
+      if (s.reportData?.fechaRaw) {
+        subDate = s.reportData.fechaRaw;
+      } else if (s.reportData?.fecha) {
+        subDate = s.reportData.fecha;
+      } else if (s.timestamp) {
+        const d = new Date(s.timestamp);
+        if (!isNaN(d)) {
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          subDate = `${yyyy}-${mm}-${dd}`;
+        } else {
+          subDate = s.timestamp.split('T')[0];
+        }
+      }
+      if (subDate.includes('/')) {
+        const parts = subDate.split('/');
+        if (parts.length === 3) subDate = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+      } else if (subDate.includes('T')) { subDate = subDate.split('T')[0]; }
+      if (selectedDate && subDate !== selectedDate) return false;
+      if (selectedShift === 'all') return true;
+      const hour = getEventHour(s);
+      if (selectedShift === 't1') return hour >= 7 && hour <= 12;
+      if (selectedShift === 't2') return hour >= 13 && hour <= 18;
+      if (selectedShift === 't3') return hour >= 19 && hour <= 23;
+      return true;
+    });
+    const countForBadge = allForBadge.filter(s => (s.status || '').toLowerCase().trim() !== 'repetido').length;
+    const repeatedCount = allForBadge.length - countForBadge;
+    return { countForBadge, repeatedCount };
+  }, [submissions, selectedDate, selectedShift]);
+
   return (
     <div className="space-y-6">
       {/* ── HEADER & QUICK EXPORT ACTIONS ── */}
