@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { exportSubmissionsToHDPDF } from '../lib/exportUtils';
 import { AREAS, getEventHour, getEventTimestamp } from '../lib/constants';
-import { collection, query, orderBy, limit, startAfter, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, limit, startAfter, getDocs, onSnapshot, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 const PAGE_SIZE = 300;
@@ -29,65 +29,149 @@ export default function SubmissionInboxView({
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
 
-  // Primeros 300 en tiempo real (onSnapshot para que markAsReviewed etc. actualicen la UI)
+  // ─── Modo SIN filtro de fecha: live top-300 + extra páginas ───
   const [liveSubmissions, setLiveSubmissions] = useState([]);
-  // Páginas adicionales cargadas con "Ver más" (estáticas)
   const [extraSubmissions, setExtraSubmissions] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const lastDocRef = useRef(null);
 
-  // Combinar live + extra, eliminando duplicados por id
+  // ─── Modo CON filtro de fecha: query dedicado a Firestore ───
+  const [dateFilteredSubmissions, setDateFilteredSubmissions] = useState([]);
+  const [isLoadingDate, setIsLoadingDate] = useState(false);
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  const dateFilterActive = !!(fechaInicio || fechaFin);
+
+  // Combinar live + extra (sin fechas), deduplicando
   const serverSubmissions = (() => {
+    if (dateFilterActive) return dateFilteredSubmissions;
     const liveIds = new Set(liveSubmissions.map(s => s.id));
     const deduped = extraSubmissions.filter(s => !liveIds.has(s.id));
     return [...liveSubmissions, ...deduped];
   })();
 
-  // Listener en tiempo real para los primeros 300
+  // ─── Listener tiempo real: primeros 300 (sin filtro de fecha) ───
   useEffect(() => {
     setIsLoading(true);
     const colRef = collection(db, 'submissions');
     const q = query(colRef, orderBy('timestamp', 'desc'), limit(PAGE_SIZE));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsub = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setLiveSubmissions(docs);
-      // Guardar cursor del último doc para paginación
       lastDocRef.current = snapshot.docs[snapshot.docs.length - 1] || null;
       setHasMore(snapshot.docs.length === PAGE_SIZE);
       setIsLoading(false);
-    }, (error) => {
-      console.error('Error fetching submissions:', error);
+    }, (err) => {
+      console.error('Error fetching submissions:', err);
       setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
-  // Cargar siguiente página de 300 (estática, solo lectura)
+  // ─── Listener por rango de fechas (se activa cuando hay filtro de fecha) ───
+  useEffect(() => {
+    if (!dateFilterActive) {
+      setDateFilteredSubmissions([]);
+      return;
+    }
+    setIsLoadingDate(true);
+    const colRef = collection(db, 'submissions');
+    const constraints = [orderBy('timestamp', 'desc')];
+
+    if (fechaInicio) {
+      const start = new Date(fechaInicio + 'T00:00:00').toISOString();
+      constraints.push(where('timestamp', '>=', start));
+    }
+    if (fechaFin) {
+      const end = new Date(fechaFin + 'T23:59:59').toISOString();
+      constraints.push(where('timestamp', '<=', end));
+    }
+
+    const q = query(colRef, ...constraints);
+    const unsub = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setDateFilteredSubmissions(docs);
+      setIsLoadingDate(false);
+    }, (err) => {
+      console.error('Error en query por fecha:', err);
+      setIsLoadingDate(false);
+    });
+
+    return () => unsub();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fechaInicio, fechaFin]);
+
+  // ─── Cargar siguiente página de 300 ───
   const handleLoadMore = async () => {
     if (isLoadingMore || !hasMore || !lastDocRef.current) return;
     setIsLoadingMore(true);
     try {
       const colRef = collection(db, 'submissions');
-      const q = query(colRef, orderBy('timestamp', 'desc'), startAfter(lastDocRef.current), limit(PAGE_SIZE));
+      const q = query(
+        colRef,
+        orderBy('timestamp', 'desc'),
+        startAfter(lastDocRef.current),
+        limit(PAGE_SIZE)
+      );
       const snapshot = await getDocs(q);
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setExtraSubmissions(prev => {
-        const existingIds = new Set(prev.map(s => s.id));
-        const newDocs = docs.filter(d => !existingIds.has(d.id));
-        return [...prev, ...newDocs];
+        const existing = new Set(prev.map(s => s.id));
+        return [...prev, ...docs.filter(d => !existing.has(d.id))];
       });
       lastDocRef.current = snapshot.docs[snapshot.docs.length - 1] || lastDocRef.current;
       setHasMore(snapshot.docs.length === PAGE_SIZE);
-    } catch (error) {
-      console.error('Error loading more submissions:', error);
+    } catch (err) {
+      console.error('Error loading more:', err);
     } finally {
       setIsLoadingMore(false);
     }
   };
+
+  // ─── Actualizar estado local de extraSubmissions y dateFiltered optimistamente ───
+  const updateLocalStatus = useCallback((subId, newStatus) => {
+    setExtraSubmissions(prev =>
+      prev.map(s => s.id === subId ? { ...s, status: newStatus } : s)
+    );
+    setDateFilteredSubmissions(prev =>
+      prev.map(s => s.id === subId ? { ...s, status: newStatus } : s)
+    );
+  }, []);
+
+  const removeLocal = useCallback((subId) => {
+    setExtraSubmissions(prev => prev.filter(s => s.id !== subId));
+    setDateFilteredSubmissions(prev => prev.filter(s => s.id !== subId));
+  }, []);
+
+  // ─── Wrappers de acciones: actualizan local + llaman al handler de page.jsx ───
+  const handleMarkReviewed = useCallback(async (subId) => {
+    updateLocalStatus(subId, 'revisado');
+    if (markAsReviewed) await markAsReviewed(subId);
+  }, [markAsReviewed, updateLocalStatus]);
+
+  const handleMarkRepeated = useCallback(async (subId) => {
+    updateLocalStatus(subId, 'repetido');
+    if (markAsRepeated) await markAsRepeated(subId);
+  }, [markAsRepeated, updateLocalStatus]);
+
+  const handleMarkReported = useCallback(async (subId) => {
+    updateLocalStatus(subId, 'reportar');
+    if (markAsReported) await markAsReported(subId);
+  }, [markAsReported, updateLocalStatus]);
+
+  const handleDelete = useCallback(async (subId) => {
+    if (
+      typeof window !== 'undefined' &&
+      window.confirm('¿Estás seguro de que deseas eliminar este reporte? Esta acción no se puede deshacer.')
+    ) {
+      removeLocal(subId);
+      if (deleteSubmission) deleteSubmission(subId);
+    }
+  }, [deleteSubmission, removeLocal]);
 
   const toLocalDateStr = (isoStr) => {
     if (!isoStr) return '';
@@ -99,8 +183,7 @@ export default function SubmissionInboxView({
   };
 
   // Filtrado Client-Side
-  const filteredSubmissions = serverSubmissions.filter(
-    (s) => {
+  const filteredSubmissions = serverSubmissions.filter((s) => {
       if (s.archived) return false;
       
       // Hide from inbox if it is pending a correction from the analyst
@@ -134,9 +217,8 @@ export default function SubmissionInboxView({
         else if (shiftFilter === 't3') matchShift = hour >= 19 && hour <= 23;
       }
 
-      return matchStatus && matchSentiment && matchArea && matchShift;
-    }
-  );
+    return matchStatus && matchSentiment && matchArea && matchShift;
+  });
 
   const allSelected =
     filteredSubmissions.length > 0 &&
@@ -144,7 +226,7 @@ export default function SubmissionInboxView({
 
   const handleBatchReview = () => {
     if (!markAsReviewed) return;
-    selectedIds.forEach((id) => markAsReviewed(id));
+    selectedIds.forEach((id) => handleMarkReviewed(id));
     setSelectedIds([]);
   };
 
@@ -174,6 +256,8 @@ export default function SubmissionInboxView({
     exportSubmissionsToHDPDF(selectedList);
   };
 
+  const loading = isLoading || isLoadingDate;
+
   return (
     <div className="space-y-5">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-xl">
@@ -185,6 +269,11 @@ export default function SubmissionInboxView({
               {selectedIds.length > 0 && (
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                   {selectedIds.length} Seleccionado{selectedIds.length > 1 ? 's' : ''}
+                </span>
+              )}
+              {dateFilterActive && (
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                  📅 Filtro por fecha activo
                 </span>
               )}
             </h3>
@@ -357,7 +446,14 @@ export default function SubmissionInboxView({
         </div>
 
         {/* SUBMISSIONS LIST */}
-        {filteredSubmissions.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-16 gap-3">
+            <span className="inline-block w-5 h-5 border-2 border-slate-300 border-t-red-500 rounded-full animate-spin" />
+            <span className="text-sm font-bold text-slate-400">
+              {isLoadingDate ? 'Buscando registros en el rango de fechas...' : 'Cargando formularios...'}
+            </span>
+          </div>
+        ) : filteredSubmissions.length === 0 ? (
           <p className="text-center text-sm text-slate-400 py-12">
             {isLoading ? 'Cargando formularios...' : 'No hay formularios en esta categoría.'}
           </p>
@@ -453,7 +549,7 @@ export default function SubmissionInboxView({
                     </button>
                     {!isObserver && sub.status !== 'revisado' && (
                         <button
-                          onClick={() => markAsReviewed(sub.id)}
+                          onClick={() => handleMarkReviewed(sub.id)}
                           className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border dark:border-emerald-900 cursor-pointer"
                         >
                           ✅ Revisado
@@ -461,7 +557,7 @@ export default function SubmissionInboxView({
                     )}
                     {!isObserver && sub.status !== 'repetido' && (
                         <button
-                          onClick={() => markAsRepeated && markAsRepeated(sub.id)}
+                          onClick={() => handleMarkRepeated(sub.id)}
                           className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 border dark:border-orange-900 cursor-pointer"
                         >
                           ⚠️ Repetido
@@ -469,7 +565,7 @@ export default function SubmissionInboxView({
                     )}
                     {!isObserver && sub.status !== 'reportar' && (
                         <button
-                          onClick={() => markAsReported && markAsReported(sub.id)}
+                          onClick={() => handleMarkReported(sub.id)}
                           className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border dark:border-purple-900 cursor-pointer"
                         >
                           📢 Reportar
@@ -477,7 +573,7 @@ export default function SubmissionInboxView({
                     )}
                     {!isObserver && (
                       <button
-                        onClick={() => deleteSubmission && deleteSubmission(sub.id)}
+                        onClick={() => handleDelete(sub.id)}
                         className="px-3 py-1.5 rounded-full text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/60 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200 dark:border-red-900/50 cursor-pointer transition-all"
                         title="Eliminar reporte permanentemente"
                       >
@@ -491,8 +587,8 @@ export default function SubmissionInboxView({
           </div>
         )}
 
-        {/* LOAD MORE BUTTON */}
-        {serverSubmissions.length > 0 && (hasMore || isLoadingMore) && (
+        {/* LOAD MORE BUTTON (solo en modo sin filtro de fecha) */}
+        {!dateFilterActive && serverSubmissions.length > 0 && (hasMore || isLoadingMore) && (
           <div className="flex flex-col items-center gap-2 pt-4 pb-2">
             <button
               onClick={handleLoadMore}
@@ -515,11 +611,20 @@ export default function SubmissionInboxView({
           </div>
         )}
 
-        {/* END OF LIST INDICATOR */}
-        {serverSubmissions.length > 0 && !hasMore && !isLoadingMore && (
+        {/* END OF LIST (solo sin filtro de fecha) */}
+        {!dateFilterActive && serverSubmissions.length > 0 && !hasMore && !isLoadingMore && (
           <div className="flex items-center justify-center pt-4 pb-2">
             <span className="text-[11px] font-bold text-slate-400 dark:text-slate-600 bg-slate-100 dark:bg-slate-800/60 px-4 py-1.5 rounded-full">
               ✅ Todos los registros cargados ({serverSubmissions.length} en total)
+            </span>
+          </div>
+        )}
+
+        {/* INFO DE FECHAS */}
+        {dateFilterActive && !isLoadingDate && (
+          <div className="flex items-center justify-center pt-4 pb-2">
+            <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-4 py-1.5 rounded-full border border-amber-200 dark:border-amber-900/50">
+              📅 Mostrando {filteredSubmissions.length} registros del rango de fechas seleccionado
             </span>
           </div>
         )}
