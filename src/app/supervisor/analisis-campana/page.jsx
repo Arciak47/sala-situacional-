@@ -109,7 +109,34 @@ export default function AnalisisCampanaPage() {
         createdAt: serverTimestamp(),
       });
 
-      setSuccessMessage('El Análisis de Campaña ha sido registrado exitosamente.');
+      setSuccessMessage('El Análisis de Campaña ha sido registrado exitosamente. Generando PDF con diseño...');
+      
+      // 4. Generar y descargar el PDF con el diseño especial
+      try {
+        const pdfRes = await fetch('/api/generate-analisis-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...formData,
+            fechaStr: new Date().toLocaleDateString('es-VE')
+          }),
+        });
+        if (pdfRes.ok) {
+          const blob = await pdfRes.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Analisis_Campana_${new Date().toLocaleDateString('es-VE').replace(/\//g, '-')}.pdf`;
+          a.click();
+          window.URL.revokeObjectURL(url);
+          setSuccessMessage('¡El Análisis de Campaña se guardó y el PDF se generó exitosamente!');
+        } else {
+          console.error('Error del servidor al generar PDF:', await pdfRes.text());
+          alert('Se guardó el registro, pero ocurrió un error generando el PDF visual.');
+        }
+      } catch (pdfErr) {
+        console.error('Error generando PDF:', pdfErr);
+      }
       
       // Reset form
       setCuentasMatriz('');
