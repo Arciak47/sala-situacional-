@@ -158,12 +158,20 @@ export default function SupervisorView({
           </button>
         </div>
 
-        <button
-          onClick={handleBackupAndClear}
-          className="flex items-center gap-2 py-2 px-4 rounded-full text-xs font-bold text-white bg-red-600 hover:bg-red-700 shadow-md cursor-pointer"
-        >
-          📦 Cierre de Día (Respaldar y Limpiar)
-        </button>
+        <div className="flex items-center gap-2">
+          <a
+            href="/supervisor/analisis-campana"
+            className="flex items-center gap-2 py-2 px-4 rounded-full text-xs font-bold text-white shadow-md cursor-pointer bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all active:scale-95"
+          >
+            ⚠️ Análisis de Campaña
+          </a>
+          <button
+            onClick={handleBackupAndClear}
+            className="flex items-center gap-2 py-2 px-4 rounded-full text-xs font-bold text-white bg-red-600 hover:bg-red-700 shadow-md cursor-pointer"
+          >
+            📦 Cierre de Día (Respaldar y Limpiar)
+          </button>
+        </div>
       </div>
 
       {/* ── REPORTE DE TURNO ── */}
