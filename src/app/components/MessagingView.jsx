@@ -372,7 +372,10 @@ export default function MessagingView({
                         }`}
                       >
                         <span>
-                          {new Date(msg.fecha).toLocaleTimeString([], {
+                          {new Date(msg.fecha).toLocaleDateString([], {
+                            month: 'short',
+                            day: 'numeric'
+                          })} {new Date(msg.fecha).toLocaleTimeString([], {
                             hour: '2-digit',
                             minute: '2-digit',
                           })}
