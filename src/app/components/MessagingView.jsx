@@ -371,10 +371,10 @@ export default function MessagingView({
                             : 'text-slate-400 dark:text-slate-500'
                         }`}
                       >
-                        <span>
+                        <span className="whitespace-nowrap">
                           {new Date(msg.fecha).toLocaleDateString([], {
-                            month: 'short',
-                            day: 'numeric'
+                            day: '2-digit',
+                            month: '2-digit'
                           })} {new Date(msg.fecha).toLocaleTimeString([], {
                             hour: '2-digit',
                             minute: '2-digit',
