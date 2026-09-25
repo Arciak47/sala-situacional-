@@ -1283,12 +1283,14 @@ export default function Home() {
     if (!receptor) return;
 
     const chatId = [currentUser.id, receptorId].sort().join('_');
+    const uniqueSuffix = Math.random().toString(36).slice(2, 8);
     const newMsg = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${Date.now()}-${uniqueSuffix}`,
       chatId,
       emisorId: currentUser.id,
       emisorNombre: currentUser.name,
       receptorId,
+      receptorNombre,
       mensaje,
       imagen: imagen || null,
       fecha: new Date().toISOString(),

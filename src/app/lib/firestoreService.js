@@ -647,13 +647,22 @@ export async function getSubmissionImage(imageId) {
 export function subscribeMessages(onUpdate) {
   try {
     const colRef = collection(db, 'messages');
-    // Messages use 'fecha' as their timestamp field
-    const q = query(colRef, orderBy('fecha', 'asc'), limit(200));
+    // NOTE: No orderBy here — Firestore requires a composite index for orderBy
+    // on a collection-wide query. We sort client-side instead to avoid silent
+    // failures that cause messages to only show from local cache.
+    const q = query(colRef, limit(500));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const remoteMsgs = snapshot.empty ? [] : snapshot.docs.map((d) => ({
         ...d.data(),
         firestoreId: d.id,
       }));
+
+      // Sort by fecha ascending (client-side)
+      remoteMsgs.sort((a, b) => {
+        const tA = a.fecha ? new Date(a.fecha).getTime() : 0;
+        const tB = b.fecha ? new Date(b.fecha).getTime() : 0;
+        return tA - tB;
+      });
 
       saveStoredMessages(remoteMsgs);
       onUpdate(remoteMsgs);
