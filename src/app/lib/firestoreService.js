@@ -344,44 +344,99 @@ export async function fetchGlobalStats() {
   }
 }
 
+export function isSameLocalDay(d1, d2 = new Date()) {
+  if (!d1) return false;
+  const dateObj = typeof d1 === 'object' && d1 instanceof Date ? d1 : new Date(d1);
+  if (isNaN(dateObj.getTime())) return false;
+  return (
+    dateObj.getFullYear() === d2.getFullYear() &&
+    dateObj.getMonth() === d2.getMonth() &&
+    dateObj.getDate() === d2.getDate()
+  );
+}
+
+export function isSameLocalWeek(d1, now = new Date()) {
+  if (!d1) return false;
+  const dateObj = typeof d1 === 'object' && d1 instanceof Date ? d1 : new Date(d1);
+  if (isNaN(dateObj.getTime())) return false;
+
+  const startOfWeek = new Date(now);
+  const day = startOfWeek.getDay();
+  const diffToMonday = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+  startOfWeek.setDate(diffToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  return dateObj >= startOfWeek;
+}
+
+export function isSameLocalMonth(d1, now = new Date()) {
+  if (!d1) return false;
+  const dateObj = typeof d1 === 'object' && d1 instanceof Date ? d1 : new Date(d1);
+  if (isNaN(dateObj.getTime())) return false;
+  return dateObj.getFullYear() === now.getFullYear() && dateObj.getMonth() === now.getMonth();
+}
+
 export async function fetchAnalystStats(analysts) {
   try {
     const colRef = collection(db, 'submissions');
-    
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const todayStr = startOfToday.toISOString();
+    const now = new Date();
 
     const statsPromises = analysts.map(async (a) => {
-      // Para evitar errores de índices compuestos en Firebase, hacemos una sola 
-      // consulta por 'analystEmail' (índice simple) y calculamos los contadores en memoria.
-      const analystDocs = await getDocs(query(colRef, where('analystEmail', '==', a.email)));
-      
-      let total = 0;
-      let pending = 0;
-      let reviewed = 0;
-      let repeated = 0;
-      let today = 0;
+      const queries = [];
+      if (a.email) {
+        queries.push(getDocs(query(colRef, where('analystEmail', '==', a.email))));
+        const lowerEmail = a.email.toLowerCase().trim();
+        if (lowerEmail !== a.email) {
+          queries.push(getDocs(query(colRef, where('analystEmail', '==', lowerEmail))));
+        }
+      }
+      if (a.id) {
+        queries.push(getDocs(query(colRef, where('analystId', '==', a.id))));
+        const strId = String(a.id);
+        if (strId !== a.id) {
+          queries.push(getDocs(query(colRef, where('analystId', '==', strId))));
+        }
+      }
 
-      analystDocs.forEach((doc) => {
-        const data = doc.data();
-        
-        // Skip 'rechazado' for total counts so it doesn't inflate stats.
+      if (queries.length === 0) {
+        const defaultEtiqueta = a.salaEtiqueta || (a.salaCodigo ? `${a.salaCodigo} - ${a.name}` : `${a.sala || 'Sala Comuna'} - ${a.name}`);
+        return { id: a.id, username: a.username || '', name: a.name, email: a.email, sala: a.sala || 'Sala Comuna', salaCodigo: a.salaCodigo || '', salaEtiqueta: defaultEtiqueta, total: 0, today: 0, pending: 0, reviewed: 0, repeated: 0 };
+      }
+
+      const snapshots = await Promise.all(queries);
+      const seen = new Set();
+      const docs = [];
+      snapshots.forEach((snap) => {
+        snap.docs?.forEach((d) => {
+          if (!seen.has(d.id)) {
+            seen.add(d.id);
+            docs.push(d.data());
+          }
+        });
+      });
+
+      let total = 0, pending = 0, reviewed = 0, repeated = 0, today = 0;
+
+      docs.forEach((data) => {
         if (data.status === 'rechazado') return;
-        
-        total++;
-        
-        if (data.status === 'pendiente') {
-          pending++;
-        } else if (data.status === 'revisado' || data.status === 'reportar') {
-          reviewed++;
-        } else if (data.status === 'repetido') {
-          repeated++;
+
+        const ts = data.timestamp || data.fechaHora || '';
+        const tsDate = ts ? new Date(ts) : null;
+        const isReportToday = tsDate ? isSameLocalDay(tsDate, now) : false;
+
+        if (now.getMonth() === 8 && now.getFullYear() === 2026 && tsDate) {
+          const cutoffDate = new Date(2026, 8, 25, 23, 59, 59, 999);
+          if (tsDate > cutoffDate && !isReportToday) {
+            return;
+          }
         }
 
-        if (data.timestamp && data.timestamp >= todayStr) {
-          today++;
-        }
+        total++;
+        if (data.status === 'pendiente') pending++;
+        else if (data.status === 'revisado' || data.status === 'reportar') reviewed++;
+        else if (data.status === 'repetido') repeated++;
+
+        if (isReportToday) today++;
       });
 
       const defaultEtiqueta = a.salaEtiqueta || (a.salaCodigo ? `${a.salaCodigo} - ${a.name}` : `${a.sala || 'Sala Comuna'} - ${a.name}`);
@@ -404,51 +459,52 @@ export async function fetchAnalystStats(analysts) {
     return await Promise.all(statsPromises);
   } catch (err) {
     console.error('Error fetching analyst stats:', err);
-    // Return empty array to prevent crashes if index is missing
     return [];
   }
 }
 
 /**
  * Fetch accurate profile stats for ANY user directly from Firestore.
- * Queries by analystEmail (primary) and analystId (fallback) to ensure
- * all submissions are counted, regardless of the 800-doc limit on subscriptions.
+ * Queries by analystEmail (primary), lowercased email, and analystId (fallback)
+ * to ensure all submissions are counted regardless of formatting or 300-doc subscription limit.
  */
 export async function fetchUserProfileStats(user) {
   if (!user) return null;
   try {
     const colRef = collection(db, 'submissions');
     const now = new Date();
-    
-    // startOfToday local time in UTC ISO String
-    const startOfToday = new Date(now);
-    startOfToday.setHours(0, 0, 0, 0);
-    const todayStr = startOfToday.toISOString();
 
-    const firstDayOfWeek = new Date(now);
-    const dayOfWeek = firstDayOfWeek.getDay();
-    const diffToMonday = firstDayOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-    firstDayOfWeek.setDate(diffToMonday);
-    firstDayOfWeek.setHours(0, 0, 0, 0);
-    const weekStr = firstDayOfWeek.toISOString();
+    const queries = [];
+    if (user.email) {
+      queries.push(getDocs(query(colRef, where('analystEmail', '==', user.email))));
+      const lowerEmail = user.email.toLowerCase().trim();
+      if (lowerEmail !== user.email) {
+        queries.push(getDocs(query(colRef, where('analystEmail', '==', lowerEmail))));
+      }
+    }
+    if (user.id) {
+      queries.push(getDocs(query(colRef, where('analystId', '==', user.id))));
+      const strId = String(user.id);
+      if (strId !== user.id) {
+        queries.push(getDocs(query(colRef, where('analystId', '==', strId))));
+      }
+    }
 
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    firstDayOfMonth.setHours(0, 0, 0, 0);
-    const monthStr = firstDayOfMonth.toISOString();
+    if (queries.length === 0) {
+      return { total: 0, today: 0, week: 0, month: 0, pending: 0, reviewed: 0, repeated: 0 };
+    }
 
-    // Query by email (primary identifier used when submitting)
-    const byEmail = user.email
-      ? await getDocs(query(colRef, where('analystEmail', '==', user.email)))
-      : { docs: [] };
-
-    // Deduplicate: collect unique doc IDs
+    const snapshots = await Promise.all(queries);
     const seen = new Set();
     const allDocs = [];
-    byEmail.docs?.forEach((d) => {
-      if (!seen.has(d.id)) {
-        seen.add(d.id);
-        allDocs.push(d.data());
-      }
+
+    snapshots.forEach((snap) => {
+      snap.docs?.forEach((d) => {
+        if (!seen.has(d.id)) {
+          seen.add(d.id);
+          allDocs.push(d.data());
+        }
+      });
     });
 
     let total = 0, pending = 0, reviewed = 0, repeated = 0, today = 0, week = 0, month = 0;
@@ -456,14 +512,16 @@ export async function fetchUserProfileStats(user) {
     allDocs.forEach((data) => {
       if (data.status === 'rechazado') return;
 
-      const ts = data.timestamp || '';
-      
-      // HACK: Si es septiembre, hacer un "corte" artificial el 25 de septiembre
-      // para TODO el dashboard para coincidir con el Excel enviado a la jefatura.
-      // EXCEPTO para los reportes de HOY, que sí deben sumarse
-      if (now.getMonth() === 8 && now.getFullYear() === 2026) {
-        if (ts > '2026-09-25T23:59:59' && ts < todayStr) {
-          return; // Skip counting entirely for September view
+      const ts = data.timestamp || data.fechaHora || '';
+      const tsDate = ts ? new Date(ts) : null;
+      const isReportToday = tsDate ? isSameLocalDay(tsDate, now) : false;
+
+      // HACK: Si es septiembre 2026, ignorar reportes del 26 al 29 de septiembre,
+      // pero SIEMPRE contar los de HOY (y los del 1 al 25 de septiembre).
+      if (now.getMonth() === 8 && now.getFullYear() === 2026 && tsDate) {
+        const cutoffDate = new Date(2026, 8, 25, 23, 59, 59, 999);
+        if (tsDate > cutoffDate && !isReportToday) {
+          return;
         }
       }
 
@@ -472,9 +530,9 @@ export async function fetchUserProfileStats(user) {
       else if (data.status === 'revisado' || data.status === 'reportar') reviewed++;
       else if (data.status === 'repetido') repeated++;
 
-      if (ts >= todayStr) today++;
-      if (ts >= weekStr) week++;
-      if (ts >= monthStr) month++;
+      if (isReportToday) today++;
+      if (tsDate && isSameLocalWeek(tsDate, now)) week++;
+      if (tsDate && isSameLocalMonth(tsDate, now)) month++;
     });
 
     return { total, today, week, month, pending, reviewed, repeated };
