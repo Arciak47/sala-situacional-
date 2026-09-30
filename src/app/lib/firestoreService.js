@@ -460,8 +460,9 @@ export async function fetchUserProfileStats(user) {
       
       // HACK: Si es septiembre, hacer un "corte" artificial el 25 de septiembre
       // para TODO el dashboard para coincidir con el Excel enviado a la jefatura.
+      // EXCEPTO para los reportes de HOY, que sí deben sumarse
       if (now.getMonth() === 8 && now.getFullYear() === 2026) {
-        if (ts > '2026-09-25T23:59:59') {
+        if (ts > '2026-09-25T23:59:59' && ts < todayStr) {
           return; // Skip counting entirely for September view
         }
       }
