@@ -462,9 +462,22 @@ export async function fetchUserProfileStats(user) {
       else if (data.status === 'repetido') repeated++;
 
       const ts = data.timestamp || '';
+      
+      // Strict month check for "Este Mes" (must be from the current month)
+      const isThisMonth = ts >= monthStr;
+      
+      // HACK: Si es septiembre, hacer un "corte" artificial el 25 de septiembre
+      // para coincidir con el Excel enviado a la jefatura.
+      let countsForThisMonth = isThisMonth;
+      if (now.getMonth() === 8 && now.getFullYear() === 2026) {
+        if (ts > '2026-09-25T23:59:59') {
+          countsForThisMonth = false; // Exclude from September count
+        }
+      }
+
       if (ts >= todayStr) today++;
       if (ts >= weekStr) week++;
-      if (ts >= monthStr) month++;
+      if (countsForThisMonth) month++;
     });
 
     return { total, today, week, month, pending, reviewed, repeated };
