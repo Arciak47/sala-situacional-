@@ -52,6 +52,7 @@ import {
   subscribeShiftReports,
   fetchGlobalStats,
   fetchAnalystStats,
+  fetchUserProfileStats,
   updateUserPresence,
   deleteMessageFromFirestore,
   fetchAllActiveSubmissionsForBackup,
@@ -79,17 +80,17 @@ export default function Home() {
     try {
       if (isAnalyst) {
         // Analysts only need their own stats
-        const analystsStats = await fetchAnalystStats([currentUser]);
-        if (analystsStats && analystsStats.length > 0) {
+        const profileStats = await fetchUserProfileStats(currentUser);
+        if (profileStats) {
           setDashboardStats({
-            total: analystsStats[0].total,
-            today: analystsStats[0].today,
-            pending: analystsStats[0].pending,
-            reviewed: analystsStats[0].reviewed,
-            repeated: analystsStats[0].repeated,
-            // Since we don't have week/month/year via getCountFromServer easily for analysts, we set them to N/A or compute differently.
-            // For now, we just pass the available ones.
-            week: 'N/A', month: 'N/A', year: 'N/A'
+            total: profileStats.total,
+            today: profileStats.today,
+            week: profileStats.week,
+            month: profileStats.month,
+            year: profileStats.year || 'N/A',
+            pending: profileStats.pending,
+            reviewed: profileStats.reviewed,
+            repeated: profileStats.repeated,
           });
         }
       } else {
@@ -762,6 +763,7 @@ export default function Home() {
         const fileInput = document.getElementById('foto-evidencia');
         if (fileInput) fileInput.value = '';
       }
+      loadDashboardStats();
       setTimeout(() => setToastMsg(''), 4000);
     } catch (error) {
       console.error('Error estricto al enviar reporte:', error);
