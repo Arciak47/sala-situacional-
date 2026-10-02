@@ -291,12 +291,11 @@ export async function fetchGlobalStats() {
   try {
     const colRef = collection(db, 'submissions');
     
-    // Calcular el inicio del día local y convertirlo a ISO (UTC)
+    // Calcular el inicio del día y semana locales
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     const todayStr = startOfToday.toISOString();
     
-    // Calcular el inicio de la semana local
     const weekStart = new Date();
     const dayOfWeek = weekStart.getDay();
     const diffToMonday = weekStart.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
@@ -304,39 +303,39 @@ export async function fetchGlobalStats() {
     weekStart.setHours(0, 0, 0, 0);
     const weekStr = weekStart.toISOString();
 
-    // No se puede hacer != en getCountFromServer si usamos otras where,
-    // pero para el total podemos contarlo y si luego se necesita, restarle los rechazados
-    // O mejor, cambiar 'rechazado' para que NO esté en 'pendiente', 'revisado', etc.
-    
-    // Paralelizamos las consultas
+    // Consultas de un solo campo — sin índices compuestos necesarios
     const [
-      totalSnap,
-      todaySnap,
-      weekSnap,
       pendingSnap,
       reviewedSnap,
       repeatedSnap,
-      rechazadosSnap
+      rechazadosSnap,
+      todaySnap,
+      weekSnap
     ] = await Promise.all([
-      getCountFromServer(colRef),
-      getCountFromServer(query(colRef, where('timestamp', '>=', todayStr))),
-      getCountFromServer(query(colRef, where('timestamp', '>=', weekStr))),
       getCountFromServer(query(colRef, where('status', '==', 'pendiente'))),
       getCountFromServer(query(colRef, where('status', 'in', ['revisado', 'reportar']))),
       getCountFromServer(query(colRef, where('status', '==', 'repetido'))),
-      getCountFromServer(query(colRef, where('status', '==', 'rechazado')))
+      getCountFromServer(query(colRef, where('status', '==', 'rechazado'))),
+      // Conteos por fecha — usan solo el campo timestamp (single-field query)
+      getCountFromServer(query(colRef, where('timestamp', '>=', todayStr))),
+      getCountFromServer(query(colRef, where('timestamp', '>=', weekStr)))
     ]);
 
-    // Restamos los rechazados del total global para que no cuenten como reportes válidos del sistema
+    const pending = pendingSnap.data().count;
+    const reviewed = reviewedSnap.data().count;
+    const repeated = repeatedSnap.data().count;
     const rechazados = rechazadosSnap.data().count;
+    // Total válido = todos menos rechazados
+    const total = pending + reviewed + repeated;
 
     return {
-      totalGlobal: Math.max(0, totalSnap.data().count - rechazados),
-      todayGlobal: todaySnap.data().count, // Podría incluir rechazados hoy, pero está bien como métrica de actividad
+      totalGlobal: total,
+      todayGlobal: todaySnap.data().count,
       weekGlobal: weekSnap.data().count,
-      pendingGlobal: pendingSnap.data().count,
-      reviewedGlobal: reviewedSnap.data().count,
-      repeatedGlobal: repeatedSnap.data().count,
+      pendingGlobal: pending,
+      reviewedGlobal: reviewed,
+      repeatedGlobal: repeated,
+      rechazadosGlobal: rechazados,
     };
   } catch (err) {
     console.error('Error fetching global stats:', err);
@@ -415,7 +414,7 @@ export async function fetchAnalystStats(analysts) {
         });
       });
 
-      let total = 0, pending = 0, reviewed = 0, repeated = 0, today = 0;
+      let total = 0, pending = 0, reviewed = 0, repeated = 0, today = 0, week = 0;
 
       docs.forEach((data) => {
         if (data.status === 'rechazado') return;
@@ -424,19 +423,13 @@ export async function fetchAnalystStats(analysts) {
         const tsDate = ts ? new Date(ts) : null;
         const isReportToday = tsDate ? isSameLocalDay(tsDate, now) : false;
 
-        if (now.getMonth() === 8 && now.getFullYear() === 2026 && tsDate) {
-          const cutoffDate = new Date(2026, 8, 25, 23, 59, 59, 999);
-          if (tsDate > cutoffDate && !isReportToday) {
-            return;
-          }
-        }
-
         total++;
         if (data.status === 'pendiente') pending++;
         else if (data.status === 'revisado' || data.status === 'reportar') reviewed++;
         else if (data.status === 'repetido') repeated++;
 
         if (isReportToday) today++;
+        if (tsDate && isSameLocalWeek(tsDate, now)) week++;
       });
 
       const defaultEtiqueta = a.salaEtiqueta || (a.salaCodigo ? `${a.salaCodigo} - ${a.name}` : `${a.sala || 'Sala Comuna'} - ${a.name}`);
@@ -450,6 +443,7 @@ export async function fetchAnalystStats(analysts) {
         salaEtiqueta: defaultEtiqueta,
         total,
         today,
+        week,
         pending,
         reviewed,
         repeated,
@@ -491,7 +485,7 @@ export async function fetchUserProfileStats(user) {
     }
 
     if (queries.length === 0) {
-      return { total: 0, today: 0, week: 0, month: 0, pending: 0, reviewed: 0, repeated: 0 };
+      return { total: 0, today: 0, week: 0, month: 0, year: 0, pending: 0, reviewed: 0, repeated: 0, recent: [] };
     }
 
     const snapshots = await Promise.all(queries);
@@ -507,7 +501,7 @@ export async function fetchUserProfileStats(user) {
       });
     });
 
-    let total = 0, pending = 0, reviewed = 0, repeated = 0, today = 0, week = 0, month = 0;
+    let total = 0, pending = 0, reviewed = 0, repeated = 0, today = 0, week = 0, month = 0, year = 0;
 
     allDocs.forEach((data) => {
       if (data.status === 'rechazado') return;
@@ -515,15 +509,6 @@ export async function fetchUserProfileStats(user) {
       const ts = data.timestamp || data.fechaHora || '';
       const tsDate = ts ? new Date(ts) : null;
       const isReportToday = tsDate ? isSameLocalDay(tsDate, now) : false;
-
-      // HACK: Si es septiembre 2026, ignorar reportes del 26 al 29 de septiembre,
-      // pero SIEMPRE contar los de HOY (y los del 1 al 25 de septiembre).
-      if (now.getMonth() === 8 && now.getFullYear() === 2026 && tsDate) {
-        const cutoffDate = new Date(2026, 8, 25, 23, 59, 59, 999);
-        if (tsDate > cutoffDate && !isReportToday) {
-          return;
-        }
-      }
 
       total++;
       if (data.status === 'pendiente') pending++;
@@ -533,9 +518,16 @@ export async function fetchUserProfileStats(user) {
       if (isReportToday) today++;
       if (tsDate && isSameLocalWeek(tsDate, now)) week++;
       if (tsDate && isSameLocalMonth(tsDate, now)) month++;
+      if (tsDate && tsDate.getFullYear() === now.getFullYear()) year++;
     });
 
-    return { total, today, week, month, pending, reviewed, repeated };
+    // Build recent list (last 20 non-rejected, most recent first)
+    const recent = allDocs
+      .filter((d) => d.status !== 'rechazado')
+      .sort((a, b) => new Date(b.timestamp || b.fechaHora || 0) - new Date(a.timestamp || a.fechaHora || 0))
+      .slice(0, 20);
+
+    return { total, today, week, month, year, pending, reviewed, repeated, recent };
   } catch (err) {
     console.error('Error fetching user profile stats:', err);
     return null;

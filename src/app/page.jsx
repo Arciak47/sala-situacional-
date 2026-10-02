@@ -74,6 +74,10 @@ export default function Home() {
 
   const [dashboardStats, setDashboardStats] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  // Keep a ref to users so loadDashboardStats always has the latest list
+  // regardless of when it was called (avoids stale closure in subscriptions)
+  const usersRef = useRef([]);
+  useEffect(() => { usersRef.current = users; }, [users]);
 
   const loadDashboardStats = async () => {
     if (!currentUser) return;
@@ -90,16 +94,17 @@ export default function Home() {
             today: profileStats.today,
             week: profileStats.week,
             month: profileStats.month,
-            year: profileStats.year || 'N/A',
+            year: profileStats.year ?? 0,
             pending: profileStats.pending,
             reviewed: profileStats.reviewed,
             repeated: profileStats.repeated,
+            recent: profileStats.recent || [],
           });
         }
       } else {
         const [global, perAnalyst] = await Promise.all([
           fetchGlobalStats(),
-          fetchAnalystStats(users.filter(u => u.role === 'Analista'))
+          fetchAnalystStats((usersRef.current.length > 0 ? usersRef.current : users).filter(u => u.role === 'Analista'))
         ]);
         setDashboardStats({
           ...global,
@@ -197,17 +202,20 @@ export default function Home() {
     const unsubSubs = subscribeSubmissions((data) => {
       if (data) {
         setSubmissions(data);
+        // Auto-refresh stats when submissions change (new report, status change, etc.)
+        // Use a small debounce to avoid hammering Firestore on rapid updates
+        if (typeof window !== 'undefined') {
+          clearTimeout(window.__statsRefreshTimer);
+          window.__statsRefreshTimer = setTimeout(() => {
+            loadDashboardStats();
+          }, 1500);
+        }
         if (typeof window !== 'undefined') {
           const savedSubId = localStorage.getItem('sdm_selectedSubmissionId');
           if (savedSubId) {
             const found = data.find((s) => String(s.id) === String(savedSubId));
             if (found) {
-              // Update selectedSubmission so the badge/status badge stays current
               setSelectedSubmission(found);
-              // NOTE: do NOT overwrite reportData or elements here.
-              // saveSubmissionEdits already applied them optimistically and
-              // re-applies them after the await. Overwriting here would race
-              // against the user's current edit session.
             }
           }
         }

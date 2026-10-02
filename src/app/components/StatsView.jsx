@@ -66,6 +66,7 @@ export default function StatsView({
   ) : null;
 
   if (isAnalyst && stats) {
+    const recentList = Array.isArray(stats.recent) ? stats.recent : [];
     return (
       <div className="space-y-6" id="stats-export-container">
         {exportBar}
@@ -76,11 +77,11 @@ export default function StatsView({
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
-              { label: 'Hoy', value: stats.today, icon: '📅', color: 'text-red-600 dark:text-red-400' },
-              { label: 'Esta Semana', value: stats.week, icon: '📆', color: 'text-red-600 dark:text-red-400' },
-              { label: 'Este Mes', value: stats.month, icon: '🗓️', color: 'text-red-600 dark:text-red-400' },
-              { label: 'Este Año', value: stats.year, icon: '📈', color: 'text-red-600 dark:text-red-400' },
-              { label: 'Repetidas', value: stats.repeated || 0, icon: '🔁', color: 'text-orange-600 dark:text-orange-400' },
+              { label: 'Hoy', value: stats.today ?? 0, icon: '📅', color: 'text-red-600 dark:text-red-400' },
+              { label: 'Esta Semana', value: stats.week ?? 0, icon: '📆', color: 'text-red-600 dark:text-red-400' },
+              { label: 'Este Mes', value: stats.month ?? 0, icon: '🗓️', color: 'text-red-600 dark:text-red-400' },
+              { label: 'Este Año', value: stats.year ?? 0, icon: '📈', color: 'text-red-600 dark:text-red-400' },
+              { label: 'Repetidas', value: stats.repeated ?? 0, icon: '🔁', color: 'text-orange-600 dark:text-orange-400' },
             ].map((s) => (
               <div
                 key={s.label}
@@ -97,17 +98,17 @@ export default function StatsView({
           </div>
           <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
             <span className="text-xs text-slate-500 font-bold">
-              Total subidos: <span className="text-slate-900 dark:text-white">{stats.total}</span>
+              Total subidos: <span className="text-slate-900 dark:text-white">{stats.total ?? 0}</span>
             </span>
             <span className="text-slate-300 dark:text-slate-700">|</span>
             <span className="text-xs text-slate-500 font-bold">
-              Revisados: <span className="text-emerald-600">{stats.reviewed || 0}</span>
+              Revisados: <span className="text-emerald-600">{stats.reviewed ?? 0}</span>
             </span>
             <span className="text-slate-300 dark:text-slate-700">|</span>
             <span className="text-xs text-slate-500 font-bold">
-              Repetidas: <span className="text-orange-600">{stats.repeated || 0}</span>
+              Repetidas: <span className="text-orange-600">{stats.repeated ?? 0}</span>
             </span>
-            {(stats.repeated || 0) > 0 && (
+            {(stats.repeated ?? 0) > 0 && (
               <span className="text-[11px] text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/50 px-2 py-0.5 rounded-full font-bold">
                 ⚠️ {stats.repeated} de {stats.total} reportes fueron marcados como repetidos
               </span>
@@ -119,7 +120,7 @@ export default function StatsView({
           <h4 className="text-sm font-black border-b dark:border-slate-800 pb-3 mb-4">
             📋 Últimos Reportes Enviados
           </h4>
-          {stats.recent.length === 0 ? (
+          {recentList.length === 0 ? (
             <p className="text-center text-xs text-slate-400 py-8">
               No has enviado reportes aún.
             </p>
@@ -135,15 +136,15 @@ export default function StatsView({
                   </tr>
                 </thead>
                 <tbody className="divide-y dark:divide-slate-800">
-            {stats.recent.map((s, index) => (
+            {recentList.map((s, index) => (
                     <tr key={s.id ? `${s.id}-${index}` : `stat-${index}`}>
                       <td className="py-3 px-4 text-slate-500 font-mono">
                         {new Date(s.timestamp).toLocaleDateString('es-ES')}
                       </td>
                       <td className="py-3 px-4 font-bold">
-                        {s.reportData.municipio}
+                        {s.reportData?.municipio || '—'}
                       </td>
-                      <td className="py-3 px-4">{s.reportData.redSocial}</td>
+                      <td className="py-3 px-4">{s.reportData?.redSocial || '—'}</td>
                       <td className="py-3 px-4">
                         <span
                           className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
@@ -185,12 +186,12 @@ export default function StatsView({
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
             {[
-              { label: 'Total Reportes', value: allStats.totalGlobal, icon: '📋', color: 'text-slate-900 dark:text-white' },
-              { label: 'Reportes Hoy', value: allStats.todayGlobal, icon: '📅', color: 'text-red-600' },
-              { label: 'Esta Semana', value: allStats.weekGlobal, icon: '📆', color: 'text-blue-600' },
-              { label: 'Pendientes', value: allStats.pendingGlobal, icon: '⏳', color: 'text-amber-600' },
-              { label: 'Revisados', value: allStats.reviewedGlobal, icon: '✅', color: 'text-emerald-600' },
-              { label: 'Repetidas', value: allStats.repeatedGlobal || 0, icon: '🔁', color: 'text-orange-600' },
+              { label: 'Total Reportes', value: allStats.totalGlobal ?? 0, icon: '📋', color: 'text-slate-900 dark:text-white' },
+              { label: 'Reportes Hoy', value: allStats.todayGlobal ?? 0, icon: '📅', color: 'text-red-600' },
+              { label: 'Esta Semana', value: allStats.weekGlobal ?? 0, icon: '📆', color: 'text-blue-600' },
+              { label: 'Pendientes', value: allStats.pendingGlobal ?? 0, icon: '⏳', color: 'text-amber-600' },
+              { label: 'Revisados', value: allStats.reviewedGlobal ?? 0, icon: '✅', color: 'text-emerald-600' },
+              { label: 'Repetidas', value: allStats.repeatedGlobal ?? 0, icon: '🔁', color: 'text-orange-600' },
             ].map((s) => (
               <div
                 key={s.label}
