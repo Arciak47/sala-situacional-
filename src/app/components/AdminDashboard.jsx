@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MUNICIPIOS, AREAS, getEventHour, getEventTimestamp } from '../lib/constants';
 import {
   exportSubmissionsToExcel,
@@ -8,6 +8,7 @@ import {
   exportStatsToPDF,
   exportElementToPNG,
 } from '../lib/exportUtils';
+import { fetchSubmissionsByDateRange } from '../lib/firestoreService';
 
 export default function AdminDashboard({
   currentUser,
@@ -27,14 +28,50 @@ export default function AdminDashboard({
   const [shiftFilter, setShiftFilter] = useState('all'); // 'all' | 't1' | 't2' | 't3'
   const [includeRepeatedAnalysts, setIncludeRepeatedAnalysts] = useState(true);
 
+  // ── On-demand range fetch: descarga solo los docs del rango pedido desde Firestore
+  // sin afectar el estado global. Al limpiar el filtro vuelve a los 300 normales.
+  const [rangeSubmissions, setRangeSubmissions] = useState(null); // null = usar submissions normales
+  const [rangeFetching, setRangeFetching] = useState(false);
+  const fetchTimerRef = useRef(null);
+
+  useEffect(() => {
+    // Limpiar timer anterior (debounce de 600ms para no disparar en cada tecla)
+    if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current);
+
+    if (!analystDateFrom && !analystDateTo) {
+      // El usuario limpió el filtro → volver a los 300 normales
+      setRangeSubmissions(null);
+      return;
+    }
+
+    fetchTimerRef.current = setTimeout(async () => {
+      setRangeFetching(true);
+      try {
+        const docs = await fetchSubmissionsByDateRange(analystDateFrom, analystDateTo);
+        setRangeSubmissions(docs);
+      } catch (e) {
+        console.error('Error fetching range submissions:', e);
+        setRangeSubmissions(null); // fallback a memoria
+      } finally {
+        setRangeFetching(false);
+      }
+    }, 600);
+
+    return () => { if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current); };
+  }, [analystDateFrom, analystDateTo]);
+
   const isAnalyst = currentUser?.role === 'Analista';
+
+  // Si hay resultados del fetch de rango, usarlos en lugar del cache de 300 docs.
+  // Los analistas solo ven sus propios reportes independientemente de la fuente.
+  const activeSubmissions = rangeSubmissions !== null ? rangeSubmissions : submissions;
 
   // Filter submissions strictly for current user if Analista
   const targetSubmissions = isAnalyst
-    ? submissions.filter(
+    ? activeSubmissions.filter(
         (s) => s.analystId === currentUser?.id || s.analystEmail === currentUser?.email
       )
-    : submissions;
+    : activeSubmissions;
 
   // Filter messages for current user
   const userMessages = messages.filter(
@@ -260,7 +297,7 @@ export default function AdminDashboard({
   const perAnalystFiltered = analystsList.map((a) => {
     let analystSubs;
     if (analystDateFrom || analystDateTo) {
-      // Custom date range overrides global timeFilter
+      // Custom date range → filtrar desde submissions en memoria (rango específico)
       analystSubs = targetSubmissions.filter((s) => {
         const localDate = toLocalDateStr(s.timestamp || s.fechaHora);
         const fromOk = analystDateFrom ? localDate >= analystDateFrom : true;
@@ -271,24 +308,49 @@ export default function AdminDashboard({
           toOk
         );
       });
-    } else {
-      analystSubs = allFilteredSubmissions.filter(
-        (s) => s.analystId === a.id || s.analystEmail === a.email || (s.analystName && s.analystName.trim() === a.name.trim())
-      );
+      if (!includeRepeatedAnalysts) {
+        analystSubs = analystSubs.filter((s) => s.status !== 'repetido');
+      }
+      return {
+        id: a.id, name: a.name, email: a.email,
+        total: analystSubs.length,
+        pending: analystSubs.filter((s) => s.status === 'pendiente').length,
+        reviewed: analystSubs.filter((s) => ['revisado', 'reportar', 'reportado', 'repetido'].includes(s.status)).length,
+      };
     }
 
-    if (!includeRepeatedAnalysts) {
-      analystSubs = analystSubs.filter((s) => s.status !== 'repetido');
+    // ── Sin rango personalizado: usar datos de Firestore (allStats.perAnalyst) ──
+    // Esto corrige el problema del límite de ~300 docs en memoria que hacía que
+    // analistas con muchos reportes aparecieran con números incorrectos.
+    const fd = allStats?.perAnalyst?.find((p) => p.id === a.id || p.email === a.email);
+    if (fd) {
+      let total;
+      if (timeFilter === 'diario') {
+        total = fd.today ?? 0;
+      } else if (timeFilter === 'semanal') {
+        total = fd.week ?? 0;
+      } else if (timeFilter === 'mensual') {
+        total = fd.month ?? 0;
+      } else {
+        // 'todos' o 'anual' → total real de Firestore
+        total = fd.total ?? 0;
+      }
+      return { id: a.id, name: a.name, email: a.email, total, pending: fd.pending ?? 0, reviewed: fd.reviewed ?? 0 };
     }
+
+    // Fallback: calcular desde memoria si aún no hay datos de Firestore
+    analystSubs = allFilteredSubmissions.filter(
+      (s) => s.analystId === a.id || s.analystEmail === a.email || (s.analystName && s.analystName.trim() === a.name.trim())
+    );
+    if (!includeRepeatedAnalysts) analystSubs = analystSubs.filter((s) => s.status !== 'repetido');
     return {
-      id: a.id,
-      name: a.name,
-      email: a.email,
+      id: a.id, name: a.name, email: a.email,
       total: analystSubs.length,
       pending: analystSubs.filter((s) => s.status === 'pendiente').length,
       reviewed: analystSubs.filter((s) => ['revisado', 'reportar', 'reportado', 'repetido'].includes(s.status)).length,
     };
   }).sort((a, b) => b.total - a.total);
+
 
   // Filter dynamic titles
   const filterTitles = {
@@ -1099,13 +1161,35 @@ export default function AdminDashboard({
                   ✕ Limpiar
                 </button>
               )}
+              {rangeFetching && (
+                <span className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-bold animate-pulse">
+                  <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  Descargando...
+                </span>
+              )}
+              {rangeSubmissions !== null && !rangeFetching && (analystDateFrom || analystDateTo) && (
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+                  ✓ {rangeSubmissions.length} docs cargados desde Firestore
+                </span>
+              )}
               <span className="text-xs font-bold text-slate-400 self-center">
                 {perAnalystFiltered.length} Analistas
               </span>
             </div>
           </div>
 
-          {perAnalystFiltered.length === 0 ? (
+          {rangeFetching ? (
+            <div className="flex items-center justify-center gap-3 py-12 text-slate-400">
+              <svg className="w-5 h-5 animate-spin text-blue-500" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+              <span className="text-sm font-bold">Descargando reportes del rango seleccionado...</span>
+            </div>
+          ) : perAnalystFiltered.length === 0 ? (
             <p className="text-center text-xs text-slate-400 py-8">
               No hay analistas registrados en el sistema.
             </p>

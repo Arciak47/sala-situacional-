@@ -287,6 +287,42 @@ export async function fetchAllActiveSubmissionsForBackup() {
 }
 
 
+/**
+ * Fetches submissions from Firestore for a specific date range.
+ * Does NOT affect the global submissions state — only used for on-demand filtering.
+ * @param {string} fromDate - 'YYYY-MM-DD' local date (inclusive start)
+ * @param {string} toDate   - 'YYYY-MM-DD' local date (inclusive end)
+ * @returns {Promise<Array>} array of submission data objects
+ */
+export async function fetchSubmissionsByDateRange(fromDate, toDate) {
+  try {
+    const colRef = collection(db, 'submissions');
+
+    // Convert local YYYY-MM-DD to ISO timestamps for the query.
+    // fromDate → start of that day 00:00:00 local → ISO
+    // toDate   → end of that day 23:59:59 local → ISO
+    const fromTs = fromDate ? new Date(`${fromDate}T00:00:00`).toISOString() : null;
+    const toTs   = toDate   ? new Date(`${toDate}T23:59:59`).toISOString()   : null;
+
+    let q;
+    if (fromTs && toTs) {
+      q = query(colRef, orderBy('timestamp'), where('timestamp', '>=', fromTs), where('timestamp', '<=', toTs));
+    } else if (fromTs) {
+      q = query(colRef, orderBy('timestamp'), where('timestamp', '>=', fromTs));
+    } else if (toTs) {
+      q = query(colRef, orderBy('timestamp'), where('timestamp', '<=', toTs));
+    } else {
+      return [];
+    }
+
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    console.error('Error fetching submissions by date range:', err);
+    return [];
+  }
+}
+
 export async function fetchGlobalStats() {
   try {
     const colRef = collection(db, 'submissions');
@@ -414,7 +450,7 @@ export async function fetchAnalystStats(analysts) {
         });
       });
 
-      let total = 0, pending = 0, reviewed = 0, repeated = 0, today = 0, week = 0;
+      let total = 0, pending = 0, reviewed = 0, repeated = 0, today = 0, week = 0, month = 0;
 
       docs.forEach((data) => {
         if (data.status === 'rechazado') return;
@@ -430,6 +466,7 @@ export async function fetchAnalystStats(analysts) {
 
         if (isReportToday) today++;
         if (tsDate && isSameLocalWeek(tsDate, now)) week++;
+        if (tsDate && isSameLocalMonth(tsDate, now)) month++;
       });
 
       const defaultEtiqueta = a.salaEtiqueta || (a.salaCodigo ? `${a.salaCodigo} - ${a.name}` : `${a.sala || 'Sala Comuna'} - ${a.name}`);
@@ -444,6 +481,7 @@ export async function fetchAnalystStats(analysts) {
         total,
         today,
         week,
+        month,
         pending,
         reviewed,
         repeated,
