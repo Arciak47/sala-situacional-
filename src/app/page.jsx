@@ -202,14 +202,8 @@ export default function Home() {
     const unsubSubs = subscribeSubmissions((data) => {
       if (data) {
         setSubmissions(data);
-        // Auto-refresh stats when submissions change (new report, status change, etc.)
-        // Use a small debounce to avoid hammering Firestore on rapid updates
-        if (typeof window !== 'undefined') {
-          clearTimeout(window.__statsRefreshTimer);
-          window.__statsRefreshTimer = setTimeout(() => {
-            loadDashboardStats();
-          }, 1500);
-        }
+        // Avoid auto-refreshing heavy stats on every submission change to save mobile data and prevent freezing.
+        // Users can manually refresh stats using the "Actualizar" button in the dashboard.
         if (typeof window !== 'undefined') {
           const savedSubId = localStorage.getItem('sdm_selectedSubmissionId');
           if (savedSubId) {
