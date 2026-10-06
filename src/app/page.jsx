@@ -1331,10 +1331,12 @@ export default function Home() {
   };
 
   const role = currentUser?.role;
+  const isAnderson = currentUser?.username?.toLowerCase().includes('anderson') || currentUser?.name?.toLowerCase().includes('anderson');
   const isAdmin = role === 'Administrador';
   const isAnalyst = role === 'Analista';
   const isSupervisor = role === 'Supervisor';
   const isObserver = role === 'Observador';
+  const canAccessHR = isAdmin || (isSupervisor && isAnderson);
   const stats = isAnalyst ? getStats() : null;
   const allStats = isAdmin || isSupervisor || isObserver ? dashboardStats : null;
   const pendingCount = submissions.filter(
@@ -1362,7 +1364,7 @@ export default function Home() {
       tabs.push({ id: 'attendance', label: '⏰ Asistencia' });
     }
     tabs.push({ id: 'profile', label: '👤 Mi Perfil' });
-    if (isAdmin) {
+    if (canAccessHR) {
       tabs.push({ id: 'hr_admin', label: '👥 Control RRHH' });
     }
   } else if (isAnalyst) {
@@ -1384,8 +1386,11 @@ export default function Home() {
       { id: 'history', label: '📖 Historial Turnos' },
       { id: 'users', label: '👥 Usuarios' }
     );
-    if (currentUser?.sala === 'Sala Principal') {
+    if (currentUser?.sala === 'Sala Principal' || canAccessHR) {
       tabs.push({ id: 'attendance', label: '⏰ Asistencia' });
+    }
+    if (canAccessHR) {
+      tabs.push({ id: 'hr_admin', label: '👥 Control RRHH' });
     }
     tabs.push({ id: 'profile', label: '👤 Mi Perfil' });
   }
@@ -1571,7 +1576,7 @@ export default function Home() {
           />
         )}
 
-        {activeTab === 'hr_admin' && isAdmin && (
+        {activeTab === 'hr_admin' && canAccessHR && (
           <AdminAttendanceView
             users={users}
             setToastMsg={setToastMsg}
