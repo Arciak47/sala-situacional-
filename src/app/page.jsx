@@ -1331,7 +1331,13 @@ export default function Home() {
   };
 
   const role = currentUser?.role;
-  const isAnderson = currentUser?.username?.toLowerCase().includes('anderson') || currentUser?.name?.toLowerCase().includes('anderson');
+  const isAnderson = 
+    currentUser?.username?.toLowerCase().includes('anderson') || 
+    currentUser?.name?.toLowerCase().includes('anderson') ||
+    currentUser?.username?.toLowerCase().includes('arangel') ||
+    currentUser?.name?.toLowerCase().includes('rangel') ||
+    currentUser?.nombres?.toLowerCase().includes('anderson') ||
+    currentUser?.apellidos?.toLowerCase().includes('rangel');
   const isAdmin = role === 'Administrador';
   const isAnalyst = role === 'Analista';
   const isSupervisor = role === 'Supervisor';
