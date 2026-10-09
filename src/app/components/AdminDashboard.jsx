@@ -296,21 +296,26 @@ export default function AdminDashboard({
   const analystsList = users.filter((u) => u.role === 'Analista');
   const perAnalystFiltered = analystsList.map((a) => {
     let analystSubs;
-    if (analystDateFrom || analystDateTo) {
-      // Custom date range → filtrar desde submissions en memoria (rango específico)
-      analystSubs = targetSubmissions.filter((s) => {
-        const localDate = toLocalDateStr(s.timestamp || s.fechaHora);
-        const fromOk = analystDateFrom ? localDate >= analystDateFrom : true;
-        const toOk = analystDateTo ? localDate <= analystDateTo : true;
-        return (
-          (s.analystId === a.id || s.analystEmail === a.email || (s.analystName && s.analystName.trim() === a.name.trim())) &&
-          fromOk &&
-          toOk
-        );
+    // Si hay un filtro específico (fecha exacta, turno, o rango personalizado) o si el filtro es diario,
+    // calculamos las estadísticas en tiempo real usando los reportes en memoria (que incluye los de ese día).
+    if (analystDateFrom || analystDateTo || specificDate || shiftFilter !== 'all' || timeFilter === 'diario') {
+      analystSubs = allFilteredSubmissions.filter((s) => {
+        const isTarget = s.analystId === a.id || s.analystEmail === a.email || (s.analystName && s.analystName.trim() === a.name.trim());
+        if (!isTarget) return false;
+        
+        if (analystDateFrom || analystDateTo) {
+          const localDate = toLocalDateStr(s.timestamp || s.fechaHora);
+          const fromOk = analystDateFrom ? localDate >= analystDateFrom : true;
+          const toOk = analystDateTo ? localDate <= analystDateTo : true;
+          if (!fromOk || !toOk) return false;
+        }
+        return true;
       });
+      
       if (!includeRepeatedAnalysts) {
         analystSubs = analystSubs.filter((s) => s.status !== 'repetido');
       }
+      
       return {
         id: a.id, name: a.name, email: a.email,
         total: analystSubs.length,
@@ -319,15 +324,12 @@ export default function AdminDashboard({
       };
     }
 
-    // ── Sin rango personalizado: usar datos de Firestore (allStats.perAnalyst) ──
-    // Esto corrige el problema del límite de ~300 docs en memoria que hacía que
-    // analistas con muchos reportes aparecieran con números incorrectos.
+    // ── Para períodos largos (semanal, mensual, anual, todos): usar datos de Firestore (allStats.perAnalyst) ──
+    // Esto corrige el problema del límite de ~300 docs en memoria.
     const fd = allStats?.perAnalyst?.find((p) => p.id === a.id || p.email === a.email);
     if (fd) {
       let total;
-      if (timeFilter === 'diario') {
-        total = fd.today ?? 0;
-      } else if (timeFilter === 'semanal') {
+      if (timeFilter === 'semanal') {
         total = fd.week ?? 0;
       } else if (timeFilter === 'mensual') {
         total = fd.month ?? 0;
